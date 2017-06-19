@@ -19,6 +19,7 @@ import sys
 
 from .config import DEFAULT_CONFIG, load_config
 from .sql import DiscordSqlHandler
+from .util import plural
 
 __all__ = [
     'LOG_FILE',
@@ -88,13 +89,14 @@ if __name__ == '__main__':
         logger.info("Logged in as {} ({})".format(bot.user.name, bot.user.id))
         logger.info("")
         logger.info("Connected to:")
-        logger.info(" * {} server{}".format(servers, util.plural(servers)))
-        logger.info(" * {} channel{}".format(channels, util.plural(channels)))
-        logger.info(" * {} user{}".format(users, util.plural(users)))
+        logger.info(" * {} server{}".format(servers, plural(servers)))
+        logger.info(" * {} channel{}".format(channels, plural(channels)))
+        logger.info(" * {} user{}".format(users, plural(users)))
         logger.info("")
 
         # Set up SQL interface
-        bot.sql = DiscordSqlHandler(args.db, logger)
+        db = getattr(args, 'sql-database-file')
+        bot.sql = DiscordSqlHandler(db, logger)
 
         # All done setting up
         logger.info("Ready!")

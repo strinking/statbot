@@ -63,3 +63,6 @@ class DiscordSqlHandler:
         # TODO(path)
         self.logger = logger
 
+    def ingest_message(self, message):
+        pass
+
