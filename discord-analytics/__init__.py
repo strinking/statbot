@@ -11,10 +11,5 @@
 #
 
 __all__ = [
-    'config',
-    'sql',
 ]
-
-import config
-import sql
 

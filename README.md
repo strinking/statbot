@@ -13,6 +13,6 @@ Available under the terms of the MIT License.
 
 ### Execution
 ```
-python3 __main__.py [-q] [-d] [-s AUTH_FILE] [-c CONFIG] SQL_DB_FILE
+python3 -m discord-analytics [-q] [-d] [-s AUTH_FILE] [-c CONFIG] SQL_DB_FILE
 ```
 

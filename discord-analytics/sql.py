@@ -10,7 +10,7 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
-from sqlalchemy import Array, Boolean, Column, Integer, String
+from sqlalchemy import ARRAY, Boolean, Column, Integer, String
 
 __all__ = [
     'DiscordSqlHandler',
@@ -21,6 +21,7 @@ Base = declarative_base()
 class MessageTable(Base):
     __tablename__ = 'messages'
     id = Column('message_id', Integer, primary_key=True)
+    edited = Column('is_edited', Boolean)
     deleted = Column('is_deleted', Boolean)
     content = Column('content', UnicodeText)
     author = Column('author_id', Integer)
@@ -30,7 +31,7 @@ class MessageTable(Base):
 class ReactionTable(Base):
     __tablename__ = 'reactions'
     id = Column('message_id', Integer, primary_key=True)
-    reaction = Column('reaction_id', Integer)
+    emoji = Column('emoji_id', Integer)
     user = Column('user_id', Integer)
 
 class ServerLookupTable(Base):
@@ -51,9 +52,9 @@ class UserLookupTable(Base):
     name = Column('name', Unicode(100))
     discriminator = Column('discriminator', Integer)
 
-class ReactionLookupTable(Base):
-    __tablename__ = 'reaction_lookup'
-    id = Column('reaction_id', Integer, primary_key=True)
+class EmojiLookupTable(Base):
+    __tablename__ = 'emoji_lookup'
+    id = Column('emoji_id', Integer, primary_key=True)
     name = Column('name', String(50))
 
 class DiscordSqlHandler:
