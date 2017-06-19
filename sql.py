@@ -10,7 +10,7 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Array, Boolean, Column, Integer, String
 
 __all__ = [
     'DiscordSqlHandler',
@@ -18,10 +18,43 @@ __all__ = [
 
 Base = declarative_base()
 
-class Table(Base):
-    __tablename__ = 'discord_messages'
+class MessageTable(Base):
+    __tablename__ = 'messages'
     id = Column('message_id', Integer, primary_key=True)
+    deleted = Column('is_deleted', Boolean)
+    content = Column('content', UnicodeText)
+    author = Column('author_id', Integer)
+    channel = Column('channel_id', Integer)
+    server = Column('server_id', Integer)
 
+class ReactionTable(Base):
+    __tablename__ = 'reactions'
+    id = Column('message_id', Integer, primary_key=True)
+    reaction = Column('reaction_id', Integer)
+    user = Column('user_id', Integer)
+
+class ServerLookupTable(Base):
+    __tablename__ == 'server_lookup'
+    id = Column('server_id', Integer, primary_key=True)
+    name = Column('name', Unicode(100))
+    channels = Column('channels', Array(Integer))
+
+class ChannelLookupTable(Base):
+    __tablename__ = 'channel_lookup'
+    id = Column('channel_id', Integer, primary_key=True)
+    name = Column('name', String(100))
+    server = Column('server_id', Integer)
+
+class UserLookupTable(Base):
+    __tablename__ = 'user_lookup'
+    id = Column('user_id', Integer, primary_key=True)
+    name = Column('name', Unicode(100))
+    discriminator = Column('discriminator', Integer)
+
+class ReactionLookupTable(Base):
+    __tablename__ = 'reaction_lookup'
+    id = Column('reaction_id', Integer, primary_key=True)
+    name = Column('name', String(50))
 
 class DiscordSqlHandler:
     def __init__(self, path, logger):
