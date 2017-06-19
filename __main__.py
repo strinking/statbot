@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-
 #
-# main.py
+# __main__.py
 #
 # discord-analytics - Store Discord records for later analysis
 # Copyright (c) 2017 Ammon Smith
@@ -14,10 +12,12 @@
 
 import argparse
 import asyncio
-import config
 import discord
 import logging
 import sys
+
+from .config import DEFAULT_CONFIG, load_config
+from .sql import DiscordSqlHandler
 
 __all__ = [
     'LOG_FILE',
@@ -45,6 +45,8 @@ if __name__ == '__main__':
     argparser.add_argument('-c', '--conf', '--config',
             dest='config_file', nargs='?',
             help="Specify a configuration file to use")
+    argparser.add_argument('sql-database-file', dest='db',
+            help="The database file to store the records in")
     args = argparser.parse_args()
 
     # Set up logging
@@ -64,9 +66,9 @@ if __name__ == '__main__':
     # Get and verify configuration
     if args.config_file is None:
         logger.info("No configuration file passed. Using default...")
-        cfg = config.DEFAULT_CONFIG
+        cfg = DEFAULT_CONFIG
     else:
-        cfg, valid = config.load_config(args.config_file)
+        cfg, valid = load_config(args.config_file)
         if not valid:
             logger.error("Configuration file was invalid.")
             exit(1)
@@ -77,9 +79,6 @@ if __name__ == '__main__':
 
     @bot.async_event
     def on_ready():
-        # Set up SQL interface
-        bot.sql = False
-
         # Print welcome string
         users = len(set(bot.get_all_members()))
         servers = len(bot.servers)
@@ -93,6 +92,9 @@ if __name__ == '__main__':
         logger.info(" * {} user{}".format(users, util.plural(users)))
         logger.info("")
 
+        # Set up SQL interface
+        bot.sql = DiscordSqlHandler(args.db, logger)
+
         # All done setting up
         logger.info("Ready!")
 
@@ -103,7 +105,22 @@ if __name__ == '__main__':
         if bot.sql is None:
             logger.warn("Can't log message, not ready yet!")
             return
+        elif message.channel.is_private or message.server.id not in cfg['servers']:
+            logger.debug("Ignoring message.")
+            return
 
-        # TODO
+        logger.info("Message from {}#{} in {} #{}: {}".format(
+            message.author.name,
+            message.author.discriminator,
+            message.server.name,
+            message.channel.name,
+            message.content))
+        bot.sql.ingest_message(message)
 
+    # Get authentication token
+    with open(args.auth_file, 'r') as fh:
+        token = json.load(fh)['token']
+
+    # Run the bot
+    bot.run(token, bot=False)
 

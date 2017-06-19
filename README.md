@@ -13,6 +13,6 @@ Available under the terms of the MIT License.
 
 ### Execution
 ```
-python3 main.py [-q] [-d] [-s AUTH_FILE] [-c CONFIG]
+python3 __main__.py [-q] [-d] [-s AUTH_FILE] [-c CONFIG] SQL_DB_FILE
 ```
 
