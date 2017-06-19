@@ -1,0 +1,17 @@
+# Secret information
+client_secret.json
+
+# Artifacts
+__pycache__
+*.py[cdo]
+
+# Logging
+*.log
+*.json
+
+# Misc
+.*.swp
+*.bak
+*~
+*#
+
