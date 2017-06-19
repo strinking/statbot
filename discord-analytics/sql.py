@@ -10,7 +10,8 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
-from sqlalchemy import ARRAY, Boolean, Column, Integer, String
+from sqlalchemy import ARRAY, Boolean, Column, Integer, String, Unicode, UnicodeText
+from sqlalchemy.ext.declarative import declarative_base
 
 __all__ = [
     'DiscordSqlHandler',
@@ -35,10 +36,10 @@ class ReactionTable(Base):
     user = Column('user_id', Integer)
 
 class ServerLookupTable(Base):
-    __tablename__ == 'server_lookup'
+    __tablename__ = 'server_lookup'
     id = Column('server_id', Integer, primary_key=True)
     name = Column('name', Unicode(100))
-    channels = Column('channels', Array(Integer))
+    channels = Column('channels', ARRAY(Integer))
 
 class ChannelLookupTable(Base):
     __tablename__ = 'channel_lookup'

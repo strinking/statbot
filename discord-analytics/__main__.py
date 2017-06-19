@@ -13,6 +13,7 @@
 import argparse
 import asyncio
 import discord
+import json
 import logging
 import sys
 
@@ -45,7 +46,7 @@ if __name__ == '__main__':
     argparser.add_argument('-c', '--conf', '--config',
             dest='config_file', nargs='?',
             help="Specify a configuration file to use")
-    argparser.add_argument('sql-database-file', dest='db',
+    argparser.add_argument('sql-database-file',
             help="The database file to store the records in")
     args = argparser.parse_args()
 
