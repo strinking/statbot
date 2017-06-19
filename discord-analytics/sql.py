@@ -10,7 +10,8 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
-from sqlalchemy import ARRAY, Boolean, Column, Integer, String, Unicode, UnicodeText
+from sqlalchemy import ARRAY, Boolean, Column, Integer, String, Table, Unicode, UnicodeText
+from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 
 __all__ = [
