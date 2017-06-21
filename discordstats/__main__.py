@@ -82,17 +82,7 @@ if __name__ == '__main__':
     @bot.async_event
     def on_ready():
         # Print welcome string
-        users = len(set(bot.get_all_members()))
-        servers = len(bot.servers)
-        channels = len([c for c in bot.get_all_channels()])
-        logger.info("")
         logger.info("Logged in as {} ({})".format(bot.user.name, bot.user.id))
-        logger.info("")
-        logger.info("Connected to:")
-        logger.info(" * {} server{}".format(servers, plural(servers)))
-        logger.info(" * {} channel{}".format(channels, plural(channels)))
-        logger.info(" * {} user{}".format(users, plural(users)))
-        logger.info("")
 
         # Set up SQL interface
         db = getattr(args, 'sql-database-file')

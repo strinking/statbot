@@ -5,6 +5,9 @@ client_secret.json
 __pycache__
 *.py[cdo]
 
+# Data
+*.db
+
 # Logging
 *.log
 *.json

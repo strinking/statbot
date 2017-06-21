@@ -11,59 +11,53 @@
 #
 
 from sqlalchemy import ARRAY, Boolean, Column, Integer, String, Table, Unicode, UnicodeText
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import MetaData, create_engine
 
 __all__ = [
     'DiscordSqlHandler',
 ]
 
-Base = declarative_base()
-
-class MessageTable(Base):
-    __tablename__ = 'messages'
-    id = Column('message_id', Integer, primary_key=True)
-    edited = Column('is_edited', Boolean)
-    deleted = Column('is_deleted', Boolean)
-    content = Column('content', UnicodeText)
-    author = Column('author_id', Integer)
-    channel = Column('channel_id', Integer)
-    server = Column('server_id', Integer)
-
-class ReactionTable(Base):
-    __tablename__ = 'reactions'
-    id = Column('message_id', Integer, primary_key=True)
-    emoji = Column('emoji_id', Integer)
-    user = Column('user_id', Integer)
-
-class ServerLookupTable(Base):
-    __tablename__ = 'server_lookup'
-    id = Column('server_id', Integer, primary_key=True)
-    name = Column('name', Unicode(100))
-    channels = Column('channels', ARRAY(Integer))
-
-class ChannelLookupTable(Base):
-    __tablename__ = 'channel_lookup'
-    id = Column('channel_id', Integer, primary_key=True)
-    name = Column('name', String(100))
-    server = Column('server_id', Integer)
-
-class UserLookupTable(Base):
-    __tablename__ = 'user_lookup'
-    id = Column('user_id', Integer, primary_key=True)
-    name = Column('name', Unicode(100))
-    discriminator = Column('discriminator', Integer)
-
-class EmojiLookupTable(Base):
-    __tablename__ = 'emoji_lookup'
-    id = Column('emoji_id', Integer, primary_key=True)
-    name = Column('name', String(50))
-
 class DiscordSqlHandler:
     def __init__(self, path, logger):
-        # TODO(path)
+        self.db = create_engine('postgresql://{}'.format(path),
+                client_encoding='utf8')
+        self.meta = MetaData(self.db)
         self.logger = logger
 
+        # Primary tables
+        self.tb_messages = Table('messages', self.meta,
+                Column('message_id', Integer, primary_key=True),
+                Column('is_edited', Boolean),
+                Column('is_deleted', Boolean),
+                Column('content', UnicodeText),
+                Column('author_id', Integer),
+                Column('channel_id', Integer),
+                Column('server_id', Integer))
+        self.tb_reactions = Table('reactions', self.meta,
+                Column('message_id', Integer, primary_key=True),
+                Column('emoji_id', Integer),
+                Column('user_id', Integer))
+
+        # Lookup tables
+        self.tb_server_lookup = Table('server_lookup', self.meta,
+                Column('server_id', Integer, primary_key=True),
+                Column('name', Unicode()),
+                Column('channels', ARRAY(Integer)))
+        self.tb_channel_lookup = Table('channel_lookup', self.meta,
+                Column('channel_id', Integer, primary_key=True),
+                Column('name', String()),
+                Column('server_id', Integer))
+        self.tb_user_lookup = Table('user_lookup', self.meta,
+                Column('user_id', Integer, primary_key=True),
+                Column('name', Unicode()),
+                Column('discriminator', Integer))
+        self.tb_emoji_lookup = Table('emoji_lookup', self.meta,
+                Column('emoji_id', Integer, primary_key=True),
+                Column('name', String()))
+
+        # Create tables
+        self.meta.create_all(self.db)
+
     def ingest_message(self, message):
-        pass
+        ins = self.db.insert()
 
