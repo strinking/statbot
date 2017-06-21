@@ -10,6 +10,11 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
+from . import config
+from . import sql
+
 __all__ = [
+    'config',
+    'sql',
 ]
 
