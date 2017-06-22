@@ -1,0 +1,17 @@
+{
+    "servers": [
+        "129409120491092041",
+        "any",
+        "other",
+        "discord",
+        "server",
+        "ids"
+    ],
+    "token": "your_discord_token_here",
+
+    "database": "postgresql",
+    "host": "localhost",
+    "port": 5432,
+    "user": "user",
+    "password": "password"
+}

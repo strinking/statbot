@@ -12,13 +12,19 @@ Available under the terms of the MIT License.
 * [SQLAlchemy](http://www.sqlalchemy.org/)
 
 ### Execution
+After preparing a configuration file, (see `misc/sample_config.json`)
+you can call the program as follows:
+```sh
+python3 -m discordstats [-q] [-d] config_file.json
 ```
+
+An easy way to set up a PostgreSQL client (for development especially)
+you can use Docker:
+```sh
 docker run --name postgresql -itd --restart always \
   --env 'PG_PASSWORD=[your_password_here]' \
   --publish 5432:5432 \
   --volume /srv/docker/postgresql:/var/lib/postgresql \
   sameersbn/postgresql:9.6-2
-
-python3 -m discordstats [-q] [-d] config_file.json
 ```
 
