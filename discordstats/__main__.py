@@ -41,11 +41,7 @@ if __name__ == '__main__':
     argparser.add_argument('-d', '--debug',
             dest='debug', action='store_true',
             help="Set logging level to debug.")
-    argparser.add_argument('-p', '--port',
-            dest='port', nargs='?', default=5432,
-            help='Which port to listen on for the database')
-    argparser.add_argument('-c', '--conf', '--config',
-            dest='config_file',
+    argparser.add_argument('config_file',
             help="Specify a configuration file to use. Keep it secret!")
     args = argparser.parse_args()
 
