@@ -50,7 +50,8 @@ class DiscordSqlHandler:
         self.tb_user_lookup = Table('user_lookup', self.meta,
                 Column('user_id', Integer, primary_key=True),
                 Column('name', Unicode()),
-                Column('discriminator', Integer))
+                Column('discriminator', Integer),
+                Column('is_bot', Boolean))
         self.tb_emoji_lookup = Table('emoji_lookup', self.meta,
                 Column('emoji_id', Integer, primary_key=True),
                 Column('name', String()))

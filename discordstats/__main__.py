@@ -15,6 +15,7 @@ import asyncio
 import discord
 import json
 import logging
+import re
 import sys
 
 from .config import DEFAULT_CONFIG, load_config
@@ -47,8 +48,8 @@ if __name__ == '__main__':
     argparser.add_argument('-c', '--conf', '--config',
             dest='config_file', nargs='?',
             help="Specify a configuration file to use")
-    argparser.add_argument('sql-database-file',
-            help="The database file to store the records in")
+    argparser.add_argument('database',
+            help="The database used to store the records, format is 'host:port'")
     args = argparser.parse_args()
 
     # Set up logging
@@ -85,7 +86,9 @@ if __name__ == '__main__':
         logger.info("Logged in as {} ({})".format(bot.user.name, bot.user.id))
 
         # Set up SQL interface
-        db = getattr(args, 'sql-database-file')
+        db = args.database
+        if not re.search(r':[0-9]+$'):
+            db += ':5432'
         bot.sql = DiscordSqlHandler(db, logger)
 
         # All done setting up

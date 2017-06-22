@@ -8,7 +8,7 @@ Available under the terms of the MIT License.
 
 ### Requirements
 * Python 3.5 or later
-* [discord.py](https://github.com/Rapptz/discord.py)
+* [discord.py (rewrite branch)](https://github.com/Rapptz/discord.py)
 * [SQLAlchemy](http://www.sqlalchemy.org/)
 
 ### Execution
