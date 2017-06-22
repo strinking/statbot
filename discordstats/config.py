@@ -40,7 +40,13 @@ def is_string_list(obj):
             return False
     return True
 
-def check(cfg):
+class _NullLogger:
+    def error(*args, **kwargs):
+        pass
+
+null_logger = _NullLogger()
+
+def check(cfg, logger=null_logger):
     '''
     Determines if the given dictionary has
     the correct fields and types.
@@ -48,25 +54,20 @@ def check(cfg):
 
     try:
         if not is_string_list(cfg['servers']):
+            logger.error("Configuration lacks 'servers', a string list")
             return False
         if type(cfg['token']) != str:
+            logger.error("Configuration lacks 'token', a string")
             return False
-        if type(cfg['database']) != str:
-            return False
-        if type(cfg['host']) != str:
-            return False
-        if type(cfg['port']) != int:
-            return False
-        if not is_string_or_null(cfg['user']):
-            return False
-        if not is_string_or_null(cfg['password']):
+        if type(cfg['url']) != str:
+            logger.error("Configuration lacks 'url', a string")
             return False
     except KeyError:
         return False
     else:
         return True
 
-def load_config(fn):
+def load_config(fn, logger=null_logger):
     '''
     Loads a JSON config from the given file.
     This returns a tuple of the object and whether
@@ -75,5 +76,5 @@ def load_config(fn):
 
     with open(fn, 'r') as fh:
         obj = json.load(fh)
-    return obj, check(obj)
+    return obj, check(obj, logger)
 

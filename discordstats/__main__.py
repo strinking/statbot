@@ -60,13 +60,13 @@ if __name__ == '__main__':
         logger.addHandler(log_hndl)
 
     # Get and verify configuration
-    config, valid = load_config(args.config_file)
+    config, valid = load_config(args.config_file, logger)
     if not valid:
         logger.error("Configuration file was invalid.")
         exit(1)
 
     #FIXME
-    sql = DiscordSqlHandler(config, logger)
+    sql = DiscordSqlHandler(config['url'], logger)
     exit(0)
 
     # Open client
@@ -79,7 +79,7 @@ if __name__ == '__main__':
         logger.info(f"Logged in as {bot.user.name} ({bot.user.id})")
 
         # Set up SQL interface
-        bot.sql = DiscordSqlHandler(config, logger)
+        bot.sql = DiscordSqlHandler(config['url'], logger)
 
         # All done setting up
         logger.info("Ready!")

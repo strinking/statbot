@@ -17,25 +17,6 @@ __all__ = [
     'DiscordSqlHandler',
 ]
 
-def make_addr(config):
-    parts = [
-        config['database'],
-        '://',
-    ]
-
-    if config['user']:
-        parts.append(config['user'])
-
-        if config['password']:
-            parts.append(':')
-            parts.append(config['password'])
-        parts.append('@')
-
-    parts.append(config['host'])
-    parts.append(':')
-    parts.append(str(config['port']))
-    return ''.join(parts)
-
 class DiscordSqlHandler:
     '''
     An abstract handling class that bridges the gap between
@@ -45,8 +26,7 @@ class DiscordSqlHandler:
     process them into the SQL database accordingly.
     '''
 
-    def __init__(self, config, logger):
-        addr = make_addr(config)
+    def __init__(self, addr, logger):
         logger.info(f"Opening database: '{addr}'")
         self.db = create_engine(addr, client_encoding='utf8')
         self.meta = MetaData(self.db)
