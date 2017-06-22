@@ -71,6 +71,20 @@ if __name__ == '__main__':
     bot.sql = DiscordSqlHandler(config['url'], logger)
     bot.ready = False
 
+    def accept_message(message):
+        if not bot.ready:
+            logger.warn("Can't log message, not ready yet!")
+            return False
+        elif message.channel.is_private or message.server.id not in config['servers']:
+            logger.debug("Ignoring message.")
+            return False
+        else:
+            return True
+
+    def log_message(message, action):
+        author = f"{message.author.name}#{message.author.discriminator}"
+        logger.info(f"Message from {author} in {message.server.name} #{message.channel.name} {action}: {message.content}")
+
     @bot.async_event
     async def on_ready():
         # Print welcome string
@@ -82,18 +96,54 @@ if __name__ == '__main__':
 
     @bot.async_event
     async def on_message(message):
-        logger.debug(f"Received message id {message.id}")
-
-        if not bot.ready:
-            logger.warn("Can't log message, not ready yet!")
-            return
-        elif message.channel.is_private or message.server.id not in config['servers']:
-            logger.debug("Ignoring message.")
+        logger.debug(f"Message id {message.id} created")
+        if not accept_message(message):
             return
 
-        author = f"{message.author.name}#{message.author.discriminator}"
-        logger.info(f"Message from {author} in {message.server.name} #{message.channel.name}: {message.content}")
-        bot.sql.ingest_message(message)
+        log_message(message, 'created')
+        bot.sql.add_message(message)
+
+    @bot.async_event
+    async def on_message_edit(message):
+        logger.debug(f"Message id {message.id} edited")
+        if not accept_message(message):
+            return
+
+        log_message(message, 'edited')
+        bot.sql.edit_message(message)
+
+    @bot.async_event
+    async def on_message_delete(message):
+        logger.debug(f"Message id {message.id} deleted")
+        if not accept_message(message):
+            return
+
+        log_message(message, 'deleted')
+        bot.sql.delete_message(message)
+
+    @bot.async_event
+    async def on_reaction_add(reaction, user):
+        logger.debug(f"Reaction {reaction.emoji.name} added")
+        if not accept_message(reaction.message):
+            return
+
+        bot.sql.add_reaction(reaction, user)
+
+    @bot.async_event
+    async def on_reaction_remove(reaction, user):
+        logger.debug(f"Reaction {reaction.emoji.name} added")
+        if not accept_message(reaction.message):
+            return
+
+        bot.sql.delete_reaction(reaction, user)
+
+    @bot.async_event
+    async def on_reaction_clear(message, reactions):
+        logger.debug(f"Reactions from {message.id} cleared")
+        if not accept_message(message):
+            return
+
+        bot.sql.clear_reactions(message)
 
     # Get authentication token
     with open(args.auth_file, 'r') as fh:
