@@ -47,6 +47,7 @@ class DiscordSqlHandler:
 
     def __init__(self, config, logger):
         addr = make_addr(config)
+        logger.info(f"Opening database: '{addr}'")
         self.db = create_engine(addr, client_encoding='utf8')
         self.meta = MetaData(self.db)
         self.logger = logger

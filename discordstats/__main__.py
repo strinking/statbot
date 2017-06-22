@@ -76,7 +76,7 @@ if __name__ == '__main__':
     @bot.async_event
     async def on_ready():
         # Print welcome string
-        logger.info("Logged in as {} ({})".format(bot.user.name, bot.user.id))
+        logger.info(f"Logged in as {bot.user.name} ({bot.user.id})")
 
         # Set up SQL interface
         bot.sql = DiscordSqlHandler(config, logger)
@@ -86,7 +86,7 @@ if __name__ == '__main__':
 
     @bot.async_event
     async def on_message(message):
-        logger.debug("Received message id {}".format(message.id))
+        logger.debug(f"Received message id {message.id}")
 
         if bot.sql is None:
             logger.warn("Can't log message, not ready yet!")
@@ -95,12 +95,8 @@ if __name__ == '__main__':
             logger.debug("Ignoring message.")
             return
 
-        logger.info("Message from {}#{} in {} #{}: {}".format(
-            message.author.name,
-            message.author.discriminator,
-            message.server.name,
-            message.channel.name,
-            message.content))
+        author = f"{message.author.name}#{message.author.discriminator}"
+        logger.info(f"Message from {author} in {message.server.name} #{message.channel.name}: {message.content}")
         bot.sql.ingest_message(message)
 
     # Get authentication token
