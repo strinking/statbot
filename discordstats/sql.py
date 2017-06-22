@@ -12,6 +12,7 @@
 
 from sqlalchemy import ARRAY, Boolean, BigInteger, Column, String, Table, Unicode, UnicodeText
 from sqlalchemy import MetaData, create_engine
+from sqlalchemy.dialects.postgresql import insert as p_insert
 
 __all__ = [
     'DiscordSqlHandler',
@@ -68,6 +69,47 @@ class DiscordSqlHandler:
         # Create tables
         self.meta.create_all(self.db)
 
+    def update_server(self, server):
+        ups = p_insert(self.tb_server_lookup)
+        ups.values({
+            'server_id': server.id,
+            'name': server.name,
+            'channels': [channel.id for channel in server.channels],
+            'region': str(server.region),
+        })
+        ups.on_conflict_do_update(index_elements=['server_id'])
+        self.db.execute(ups)
+
+    def update_channel(self, channel):
+        ups = p_insert(self.tb_channel_lookup)
+        ups.values({
+            'channel_id': channel.id,
+            'name': channel.name,
+            'server_id': channel.server.id,
+        })
+        ups.on_conflict_do_update(index_elements=['channel_id'])
+        self.db.execute(ups)
+
+    def update_user(self, user):
+        ups = p_insert(self.tb_user_lookup)
+        ups.values({
+            'user_id': user.id,
+            'name': user.name,
+            'discriminator': user.discriminator,
+            'is_bot': user.bot,
+        })
+        ups.on_conflict_do_update(index_elements=['user_id'])
+        self.db.execute(ups)
+
+    def update_emoji(self, emoji):
+        ups = p_insert(self.tb_emoji_lookup)
+        ups.values({
+            'emoji_id': emoji.id,
+            'name': emoji.name,
+        })
+        ups.on_conflict_do_update(index_elements=['emoji_id'])
+        self.db.execute(ups)
+
     def add_message(self, message):
         ins = self.tb_messages.insert()
         ins.values({
@@ -81,6 +123,10 @@ class DiscordSqlHandler:
         })
         self.db.execute(ins)
 
+        self.update_server(message.server)
+        self.update_channel(message.channel)
+        self.update_user(message.author)
+
     def edit_message(self, message):
         upd = self.tb_messages.update()
         upd.values({
@@ -90,6 +136,10 @@ class DiscordSqlHandler:
         upd.where(self.tb_messages.c.message_id == message.id)
         self.db.execute(upd)
 
+        self.update_server(message.server)
+        self.update_channel(message.channel)
+        self.update_user(message.author)
+
     def delete_message(self, message):
         upd = self.tb_messages.update()
         upd.values({
@@ -97,6 +147,10 @@ class DiscordSqlHandler:
         })
         upd.where(self.tb_messages.c.message_id == message.id)
         self.db.execute(upd)
+
+        self.update_server(message.server)
+        self.update_channel(message.channel)
+        self.update_user(message.author)
 
     def add_reaction(self, reaction, user):
         ins = self.tb_reactions.insert()
@@ -107,10 +161,7 @@ class DiscordSqlHandler:
         })
         self.db.execute(ins)
 
-        self.tb_reactions = Table('reactions', self.meta,
-                Column('message_id', Integer, primary_key=True),
-                Column('emoji_id', Integer),
-                Column('user_id', Integer))
+        self.update_emoji(reaction.emoji)
 
     def delete_reaction(self, reaction, user):
         delet = self.tb_reactions.delete()
@@ -118,8 +169,12 @@ class DiscordSqlHandler:
         delet.where(self.tb_reactions.c.user_id == user.id)
         self.db.execute(delet)
 
+        self.update_emoji(reaction.emoji)
+
     def clear_reactions(self, message):
         delet = self.tb_reactions.delete()
         delet.where(self.tb_reactions.c.message_id == reaction.message.id)
         self.db.execute(delet)
+
+        self.update_emoji(reaction.emoji)
 
