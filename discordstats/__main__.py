@@ -65,30 +65,26 @@ if __name__ == '__main__':
         logger.error("Configuration file was invalid.")
         exit(1)
 
-    #FIXME
-    sql = DiscordSqlHandler(config['url'], logger)
-    exit(0)
-
     # Open client
+    logger.info("Creating Discord client")
     bot = discord.Client()
-    bot.sql = None
+    bot.sql = DiscordSqlHandler(config['url'], logger)
+    bot.ready = False
 
     @bot.async_event
     async def on_ready():
         # Print welcome string
         logger.info(f"Logged in as {bot.user.name} ({bot.user.id})")
 
-        # Set up SQL interface
-        bot.sql = DiscordSqlHandler(config['url'], logger)
-
         # All done setting up
         logger.info("Ready!")
+        bot.ready = True
 
     @bot.async_event
     async def on_message(message):
         logger.debug(f"Received message id {message.id}")
 
-        if bot.sql is None:
+        if not bot.ready:
             logger.warn("Can't log message, not ready yet!")
             return
         elif message.channel.is_private or message.server.id not in config['servers']:
@@ -104,5 +100,6 @@ if __name__ == '__main__':
         token = json.load(fh)['token']
 
     # Run the bot
+    log.info("Starting bot...")
     bot.run(token, bot=False)
 
