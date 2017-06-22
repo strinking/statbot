@@ -13,6 +13,12 @@ Available under the terms of the MIT License.
 
 ### Execution
 ```
-python3 -m discord-analytics [-q] [-d] [-s AUTH_FILE] [-c CONFIG] SQL_DB_FILE
+docker run --name postgresql -itd --restart always \
+  --env 'PG_PASSWORD=[your_password_here]' \
+  --publish 5432:5432 \
+  --volume /srv/docker/postgresql:/var/lib/postgresql \
+  sameersbn/postgresql:9.6-2
+
+python3 -m discordstats [-q] [-d] config_file.json
 ```
 
