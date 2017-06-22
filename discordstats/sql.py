@@ -10,7 +10,7 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
-from sqlalchemy import ARRAY, Boolean, Column, Integer, String, Table, Unicode, UnicodeText
+from sqlalchemy import ARRAY, Boolean, BigInteger, Column, String, Table, Unicode, UnicodeText
 from sqlalchemy import MetaData, create_engine
 
 __all__ = [
@@ -34,34 +34,35 @@ class DiscordSqlHandler:
 
         # Primary tables
         self.tb_messages = Table('messages', self.meta,
-                Column('message_id', Integer, primary_key=True),
+                Column('message_id', BigInteger, primary_key=True),
                 Column('is_edited', Boolean),
                 Column('is_deleted', Boolean),
                 Column('content', UnicodeText),
-                Column('author_id', Integer),
-                Column('channel_id', Integer),
-                Column('server_id', Integer))
+                Column('author_id', BigInteger),
+                Column('channel_id', BigInteger),
+                Column('server_id', BigInteger))
         self.tb_reactions = Table('reactions', self.meta,
-                Column('message_id', Integer, primary_key=True),
-                Column('emoji_id', Integer),
-                Column('user_id', Integer))
+                Column('message_id', BigInteger, primary_key=True),
+                Column('emoji_id', BigInteger),
+                Column('user_id', BigInteger))
 
         # Lookup tables
         self.tb_server_lookup = Table('server_lookup', self.meta,
-                Column('server_id', Integer, primary_key=True),
+                Column('server_id', BigInteger, primary_key=True),
                 Column('name', Unicode()),
-                Column('channels', ARRAY(Integer)))
+                Column('channels', ARRAY(BigInteger)),
+                Column('region',  String()))
         self.tb_channel_lookup = Table('channel_lookup', self.meta,
-                Column('channel_id', Integer, primary_key=True),
+                Column('channel_id', BigInteger, primary_key=True),
                 Column('name', String()),
-                Column('server_id', Integer))
+                Column('server_id', BigInteger))
         self.tb_user_lookup = Table('user_lookup', self.meta,
-                Column('user_id', Integer, primary_key=True),
+                Column('user_id', BigInteger, primary_key=True),
                 Column('name', Unicode()),
-                Column('discriminator', Integer),
+                Column('discriminator', BigInteger),
                 Column('is_bot', Boolean))
         self.tb_emoji_lookup = Table('emoji_lookup', self.meta,
-                Column('emoji_id', Integer, primary_key=True),
+                Column('emoji_id', BigInteger, primary_key=True),
                 Column('name', String()))
 
         # Create tables
