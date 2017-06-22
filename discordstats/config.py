@@ -15,21 +15,23 @@ import json
 __all__ = [
     'check',
     'load_config',
-    'DEFAULT_CONFIG',
 ]
 
-DEFAULT_CONFIG = {
-    'servers': [
-        '181866934353133570',
-        '273534239310479360',
-    ],
-}
-
 def is_string_or_null(obj):
+    '''
+    Determines if the given object
+    is of type str or is None.
+    '''
+
     return type(obj) == str or \
             obj is None
 
 def is_string_list(obj):
+    '''
+    Determines if the given object
+    is a list of strings.
+    '''
+
     if type(obj) != list:
         return False
 
@@ -39,8 +41,25 @@ def is_string_list(obj):
     return True
 
 def check(cfg):
+    '''
+    Determines if the given dictionary has
+    the correct fields and types.
+    '''
+
     try:
         if not is_string_list(cfg['servers']):
+            return False
+        if type(cfg['token']) != str:
+            return False
+        if type(cfg['database']) != str:
+            return False
+        if type(cfg['host']) != str:
+            return False
+        if type(cfg['port']) != int:
+            return False
+        if not is_string_or_null(cfg['user']):
+            return False
+        if not is_string_or_null(cfg['password']):
             return False
     except KeyError:
         return False
@@ -48,7 +67,13 @@ def check(cfg):
         return True
 
 def load_config(fn):
+    '''
+    Loads a JSON config from the given file.
+    This returns a tuple of the object and whether
+    it is valid or not.
+    '''
+
     with open(fn, 'r') as fh:
-        obj = json.load(fn)
-    return config_check(obj), obj
+        obj = json.load(fh)
+    return obj, check(obj)
 

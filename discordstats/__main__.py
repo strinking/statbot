@@ -15,10 +15,9 @@ import asyncio
 import discord
 import json
 import logging
-import re
 import sys
 
-from .config import DEFAULT_CONFIG, load_config
+from .config import load_config
 from .sql import DiscordSqlHandler
 from .util import plural
 
@@ -42,14 +41,12 @@ if __name__ == '__main__':
     argparser.add_argument('-d', '--debug',
             dest='debug', action='store_true',
             help="Set logging level to debug.")
-    argparser.add_argument('-s', '--secret',
-            dest='auth_file', nargs='?', default='client_secret.json',
-            help="The JSON file with all the Discord authentication data. Keep it secret!")
+    argparser.add_argument('-p', '--port',
+            dest='port', nargs='?', default=5432,
+            help='Which port to listen on for the database')
     argparser.add_argument('-c', '--conf', '--config',
-            dest='config_file', nargs='?',
-            help="Specify a configuration file to use")
-    argparser.add_argument('database',
-            help="The database used to store the records, format is 'host:port'")
+            dest='config_file',
+            help="Specify a configuration file to use. Keep it secret!")
     args = argparser.parse_args()
 
     # Set up logging

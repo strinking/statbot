@@ -1,5 +1,5 @@
 # Secret information
-client_secret.json
+config.json
 
 # Artifacts
 __pycache__
