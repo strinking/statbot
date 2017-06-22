@@ -12,11 +12,24 @@
 
 __all__ = [
     'plural',
+    'id2timestamp',
 ]
 
-def plural(x):
+def plural(x, suffix='s'):
+    '''
+    Assists in human-readable messages with plurals
+    by returning the suffix if the value is not 1.
+    '''
+
     if x == 1:
-        return 's'
-    else:
         return ''
+    else:
+        return suffix
+
+def id2timestamp(id):
+    '''
+    Converts a Discord snowflake/ID into a UNIX timestamp.
+    '''
+
+    return (id // 4194304) + 1420070400000
 

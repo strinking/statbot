@@ -64,41 +64,38 @@ if __name__ == '__main__':
         logger.addHandler(log_hndl)
 
     # Get and verify configuration
-    if args.config_file is None:
-        logger.info("No configuration file passed. Using default...")
-        cfg = DEFAULT_CONFIG
-    else:
-        cfg, valid = load_config(args.config_file)
-        if not valid:
-            logger.error("Configuration file was invalid.")
-            exit(1)
+    config, valid = load_config(args.config_file)
+    if not valid:
+        logger.error("Configuration file was invalid.")
+        exit(1)
+
+    #FIXME
+    sql = DiscordSqlHandler(config, logger)
+    exit(0)
 
     # Open client
     bot = discord.Client()
     bot.sql = None
 
     @bot.async_event
-    def on_ready():
+    async def on_ready():
         # Print welcome string
         logger.info("Logged in as {} ({})".format(bot.user.name, bot.user.id))
 
         # Set up SQL interface
-        db = args.database
-        if not re.search(r':[0-9]+$'):
-            db += ':5432'
-        bot.sql = DiscordSqlHandler(db, logger)
+        bot.sql = DiscordSqlHandler(config, logger)
 
         # All done setting up
         logger.info("Ready!")
 
     @bot.async_event
-    def on_message(message):
+    async def on_message(message):
         logger.debug("Received message id {}".format(message.id))
 
         if bot.sql is None:
             logger.warn("Can't log message, not ready yet!")
             return
-        elif message.channel.is_private or message.server.id not in cfg['servers']:
+        elif message.channel.is_private or message.server.id not in config['servers']:
             logger.debug("Ignoring message.")
             return
 
