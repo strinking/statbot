@@ -18,6 +18,12 @@ __all__ = [
     'DiscordSqlHandler',
 ]
 
+def get_emoji_id(emoji):
+    if type(emoji) == str:
+        return ord(emoji)
+    else:
+        return emoji.id
+
 class DiscordSqlHandler:
     '''
     An abstract handling class that bridges the gap between
@@ -43,7 +49,7 @@ class DiscordSqlHandler:
                 Column('channel_id', BigInteger),
                 Column('server_id', BigInteger))
         self.tb_reactions = Table('reactions', self.meta,
-                Column('message_id', BigInteger, primary_key=True),
+                Column('message_id', BigInteger),
                 Column('emoji_id', BigInteger),
                 Column('user_id', BigInteger))
 
@@ -62,9 +68,6 @@ class DiscordSqlHandler:
                 Column('name', Unicode()),
                 Column('discriminator', BigInteger),
                 Column('is_bot', Boolean))
-        self.tb_emoji_lookup = Table('emoji_lookup', self.meta,
-                Column('emoji_id', BigInteger, primary_key=True),
-                Column('name', String()))
 
         # Create tables
         self.meta.create_all(self.db)
@@ -99,15 +102,6 @@ class DiscordSqlHandler:
             'is_bot': user.bot,
         })
         ups.on_conflict_do_update(index_elements=['user_id'])
-        self.db.execute(ups)
-
-    def update_emoji(self, emoji):
-        ups = p_insert(self.tb_emoji_lookup)
-        ups.values({
-            'emoji_id': emoji.id,
-            'name': emoji.name,
-        })
-        ups.on_conflict_do_update(index_elements=['emoji_id'])
         self.db.execute(ups)
 
     def add_message(self, message):
@@ -156,20 +150,17 @@ class DiscordSqlHandler:
         ins = self.tb_reactions.insert()
         ins.values({
             'message_id': reaction.message.id,
-            'emoji_id': reaction.emoji.id,
+            'emoji': get_emoji(reaction.emoji),
             'user_id': user.id,
         })
         self.db.execute(ins)
 
-        self.update_emoji(reaction.emoji)
-
     def delete_reaction(self, reaction, user):
         delet = self.tb_reactions.delete()
         delet.where(self.tb_reactions.c.message_id == reaction.message.id)
+        delet.where(self.tb_reactions.c.emoji_id == get_emoji_id(reaction.emoji))
         delet.where(self.tb_reactions.c.user_id == user.id)
         self.db.execute(delet)
-
-        self.update_emoji(reaction.emoji)
 
     def clear_reactions(self, message):
         delet = self.tb_reactions.delete()
