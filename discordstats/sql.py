@@ -47,22 +47,22 @@ class DiscordSqlHandler:
                 Column('content', UnicodeText),
                 Column('author_id', BigInteger),
                 Column('channel_id', BigInteger),
-                Column('server_id', BigInteger))
+                Column('guild_id', BigInteger))
         self.tb_reactions = Table('reactions', self.meta,
                 Column('message_id', BigInteger),
                 Column('emoji_id', BigInteger),
                 Column('user_id', BigInteger))
 
         # Lookup tables
-        self.tb_server_lookup = Table('server_lookup', self.meta,
-                Column('server_id', BigInteger, primary_key=True),
+        self.tb_guild_lookup = Table('guild_lookup', self.meta,
+                Column('guild_id', BigInteger, primary_key=True),
                 Column('name', Unicode()),
                 Column('channels', ARRAY(BigInteger)),
                 Column('region',  String()))
         self.tb_channel_lookup = Table('channel_lookup', self.meta,
                 Column('channel_id', BigInteger, primary_key=True),
                 Column('name', String()),
-                Column('server_id', BigInteger))
+                Column('guild_id', BigInteger))
         self.tb_user_lookup = Table('user_lookup', self.meta,
                 Column('user_id', BigInteger, primary_key=True),
                 Column('name', Unicode()),
@@ -72,15 +72,15 @@ class DiscordSqlHandler:
         # Create tables
         self.meta.create_all(self.db)
 
-    def update_server(self, server):
-        ups = p_insert(self.tb_server_lookup)
+    def update_guild(self, guild):
+        ups = p_insert(self.tb_guild_lookup)
         ups.values({
-            'server_id': server.id,
-            'name': server.name,
-            'channels': [channel.id for channel in server.channels],
-            'region': str(server.region),
+            'guild_id': guild.id,
+            'name': guild.name,
+            'channels': [channel.id for channel in guild.channels],
+            'region': str(guild.region),
         })
-        ups.on_conflict_do_update(index_elements=['server_id'])
+        ups.on_conflict_do_update(index_elements=['guild_id'])
         self.db.execute(ups)
 
     def update_channel(self, channel):
@@ -88,7 +88,7 @@ class DiscordSqlHandler:
         ups.values({
             'channel_id': channel.id,
             'name': channel.name,
-            'server_id': channel.server.id,
+            'guild_id': channel.guild.id,
         })
         ups.on_conflict_do_update(index_elements=['channel_id'])
         self.db.execute(ups)
@@ -113,11 +113,11 @@ class DiscordSqlHandler:
             'content': message.content,
             'author_id': message.author.id,
             'channel_id': message.channel.id,
-            'server_id': message.server.id,
+            'guild_id': message.guild.id,
         })
         self.db.execute(ins)
 
-        self.update_server(message.server)
+        self.update_guild(message.guild)
         self.update_channel(message.channel)
         self.update_user(message.author)
 
@@ -130,7 +130,7 @@ class DiscordSqlHandler:
         upd.where(self.tb_messages.c.message_id == message.id)
         self.db.execute(upd)
 
-        self.update_server(message.server)
+        self.update_guild(message.guild)
         self.update_channel(message.channel)
         self.update_user(message.author)
 
@@ -142,7 +142,7 @@ class DiscordSqlHandler:
         upd.where(self.tb_messages.c.message_id == message.id)
         self.db.execute(upd)
 
-        self.update_server(message.server)
+        self.update_guild(message.guild)
         self.update_channel(message.channel)
         self.update_user(message.author)
 
