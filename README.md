@@ -15,6 +15,6 @@ Available under the terms of the MIT License.
 After preparing a configuration file, (see `misc/sample_config.json`)
 you can call the program as follows:
 ```sh
-python3 -m discordstats [-q] [-d] config_file.json
+python3 -m discordstats [-q] [-d] your_config_file.json
 ```
 
