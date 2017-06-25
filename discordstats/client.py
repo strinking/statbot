@@ -50,6 +50,13 @@ class IngestionClient(discord.client):
         self.logger.info(message.content)
         self.logger.info("***")
 
+    def _log_typing(self, channel, user):
+        name = get_username(user)
+        guild = channel.guild.name
+        chan = channel.name
+
+        self.logger.info(f"{name} is typing on {guild} #{chan}")
+
     def _log_react(self, reaction, user, action):
         name = get_username(user)
         emote = get_emoji_name(reaction.emoji)
@@ -93,6 +100,15 @@ class IngestionClient(discord.client):
 
         self._log(message, 'deleted')
         self.sql.delete_message(message)
+
+    @async_event
+    async def on_typing(self, channel, user, when):
+        logger.debug(f"User id {user.id} is typing")
+        if channel.guild.id not in self.config['guilds']:
+            return
+
+        self._log_typing(channel, user)
+        self.sql.typing(channel, user, when)
 
     @async_event
     async def on_reaction_add(self, reaction, user):

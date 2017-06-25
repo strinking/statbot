@@ -13,6 +13,7 @@
 __all__ = [
     'get_username',
     'get_emoji_name',
+    'get_emoji_id',
     'id2timestamp',
     'plural',
     'null_logger',
@@ -31,7 +32,7 @@ def get_username(member):
 
 def get_emoji_name(emoji):
     '''
-    Get's an emoji's name, or the actual character
+    Gets an emoji's name, or the actual character
     itself if it's a unicode emoji.
     '''
 
@@ -39,6 +40,17 @@ def get_emoji_name(emoji):
         return emoji
     else:
         return emoji.name
+
+def get_emoji_id(emoji):
+    '''
+    Gets a unique integer that represents a particular
+    emoji. The id of a unicode emoji is its code point.
+    '''
+
+    if type(emoji) == str:
+        return ord(emoji)
+    else:
+        return emoji.id
 
 def id2timestamp(id):
     '''

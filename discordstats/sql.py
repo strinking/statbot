@@ -10,19 +10,16 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
-from sqlalchemy import ARRAY, Boolean, BigInteger, Column, String, Table, Unicode, UnicodeText
+from sqlalchemy import ARRAY, Boolean, BigInteger, Column, DateTime
+from sqlalchemy import String, Table, Unicode, UnicodeText
 from sqlalchemy import MetaData, create_engine
 from sqlalchemy.dialects.postgresql import insert as p_insert
+
+from .util import get_emoji_id
 
 __all__ = [
     'DiscordSqlHandler',
 ]
-
-def get_emoji_id(emoji):
-    if type(emoji) == str:
-        return ord(emoji)
-    else:
-        return emoji.id
 
 class DiscordSqlHandler:
     '''
@@ -52,6 +49,11 @@ class DiscordSqlHandler:
                 Column('message_id', BigInteger),
                 Column('emoji_id', BigInteger),
                 Column('user_id', BigInteger))
+        self.tb_typing = Table('typing', self.meta,
+                Column('timestamp', DateTime),
+                Column('user_id', BigInteger),
+                Column('channel_id', BigInteger),
+                Column('guild_id', BigInteger))
 
         # Lookup tables
         self.tb_guild_lookup = Table('guild_lookup', self.meta,
@@ -145,6 +147,16 @@ class DiscordSqlHandler:
         self.update_guild(message.guild)
         self.update_channel(message.channel)
         self.update_user(message.author)
+
+    def typing(self, channel, user, when):
+        ins = self.tb_typing.insert()
+        ins.values({
+            'timestamp': when,
+            'user_id': user.id,
+            'channel_id': channel.id,
+            'guild_id': channel.guild.id,
+        })
+        self.db.execute(ins)
 
     def add_reaction(self, reaction, user):
         ins = self.tb_reactions.insert()
