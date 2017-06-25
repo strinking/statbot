@@ -42,12 +42,26 @@ def make_client(config, logger=null_logger):
         else:
             return True
 
+    def _accept_typing(channel):
+        if not client.ready:
+            logger.warn("Can't log message, not read yet!")
+            return False
+        elif not hasattr(channel, 'guild'):
+            logger.debug("Message not from a guild.")
+            logger.debug("Ignoring message.")
+        elif getattr(channel.guild, 'id', None) not in config['guilds']:
+            logger.debug("Message from a guild we don't care about.")
+            logger.debug("Ignoring message.")
+            return False
+        else:
+            return True
+
     def _log(message, action):
         name = get_username(message.author)
         guild = message.guild.name
         chan = message.channel.name
 
-        logger.info(f"Message {action} by {name} in {guild} #{chan}:")
+        logger.info(f"Message {action} by {name} in {guild} #{chan}")
         if LOG_FULL_MESSAGES:
             logger.info("<bom>")
             logger.info(message.content)
@@ -111,8 +125,7 @@ def make_client(config, logger=null_logger):
     @client.async_event
     async def on_typing(channel, user, when):
         logger.debug(f"User id {user.id} is typing")
-        if not hasattr(channel, 'guild') or \
-                channel.guild.id not in config['guilds']:
+        if not _accept_typing(channel):
             return
 
         _log_typing(channel, user)
