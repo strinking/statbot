@@ -21,11 +21,11 @@ from .util import get_username, get_emoji_name, null_logger
 
 def make_client(config, logger=null_logger):
     client = discord.Client()
+    client.ready = False
     sql = DiscordSqlHandler(config['url'], logger)
-    ready = False
 
     def _accept(message):
-        if not ready:
+        if not client.ready:
             logger.warn("Can't log message, not ready yet!")
             return False
         elif not isinstance(message.channel, discord.TextChannel):
@@ -70,7 +70,7 @@ def make_client(config, logger=null_logger):
 
         # All done setting up
         logger.info("Ready!")
-        ready = True
+        client.ready = True
 
     @client.async_event
     async def on_message(message):
