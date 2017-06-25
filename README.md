@@ -4,6 +4,9 @@ of servers and stores it in a SQL database. This application has two parts: the
 listener, which ingests raw data from the Discord API, and the crawler, which
 walks through the database and applies a function on it.
 
+This bot is designed for use with Postgres, but in principle could be used
+with any database that SQLAlchemy supports.
+
 Available under the terms of the MIT License.
 
 ### Requirements
