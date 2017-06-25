@@ -116,16 +116,17 @@ class DiscordSqlHandler:
         self.db.execute(ups)
 
     def add_message(self, message):
-        ins = self.tb_messages.insert()
-        ins.values({
-            'message_id': message.id,
-            'is_edited': False,
-            'is_deleted': False,
-            'content': message.content,
-            'author_id': message.author.id,
-            'channel_id': message.channel.id,
-            'guild_id': message.guild.id,
-        })
+        ins = self.tb_messages \
+                .insert() \
+                .values({
+                    'message_id': message.id,
+                    'is_edited': False,
+                    'is_deleted': False,
+                    'content': message.content,
+                    'author_id': message.author.id,
+                    'channel_id': message.channel.id,
+                    'guild_id': message.guild.id,
+                })
         self.db.execute(ins)
 
         self.update_guild(message.guild)
@@ -133,12 +134,13 @@ class DiscordSqlHandler:
         self.update_user(message.author)
 
     def edit_message(self, message):
-        upd = self.tb_messages.update()
-        upd.values({
-            'is_edited': True,
-            'content': message.content,
-        })
-        upd.where(self.tb_messages.c.message_id == message.id)
+        upd = self.tb_messages \
+                .update() \
+                .values({
+                    'is_edited': True,
+                    'content': message.content,
+                }) \
+                .where(self.tb_messages.c.message_id == message.id)
         self.db.execute(upd)
 
         self.update_guild(message.guild)
@@ -146,11 +148,12 @@ class DiscordSqlHandler:
         self.update_user(message.author)
 
     def delete_message(self, message):
-        upd = self.tb_messages.update()
-        upd.values({
-            'is_deleted': True,
-        })
-        upd.where(self.tb_messages.c.message_id == message.id)
+        upd = self.tb_messages \
+                .update() \
+                .values({
+                    'is_deleted': True,
+                }) \
+                .where(self.tb_messages.c.message_id == message.id)
         self.db.execute(upd)
 
         self.update_guild(message.guild)
@@ -158,34 +161,38 @@ class DiscordSqlHandler:
         self.update_user(message.author)
 
     def typing(self, channel, user, when):
-        ins = self.tb_typing.insert()
-        ins.values({
-            'timestamp': when,
-            'user_id': user.id,
-            'channel_id': channel.id,
-            'guild_id': channel.guild.id,
-        })
+        ins = self.tb_typing \
+                .insert() \
+                .values({
+                    'timestamp': when,
+                    'user_id': user.id,
+                    'channel_id': channel.id,
+                    'guild_id': channel.guild.id,
+                })
         self.db.execute(ins)
 
     def add_reaction(self, reaction, user):
-        ins = self.tb_reactions.insert()
-        ins.values({
-            'message_id': reaction.message.id,
-            'emoji': get_emoji(reaction.emoji),
-            'user_id': user.id,
-        })
+        ins = self.tb_reactions \
+                .insert() \
+                .values({
+                    'message_id': reaction.message.id,
+                    'emoji': get_emoji(reaction.emoji),
+                    'user_id': user.id,
+                })
         self.db.execute(ins)
 
     def delete_reaction(self, reaction, user):
-        delet = self.tb_reactions.delete()
-        delet.where(self.tb_reactions.c.message_id == reaction.message.id)
-        delet.where(self.tb_reactions.c.emoji_id == get_emoji_id(reaction.emoji))
-        delet.where(self.tb_reactions.c.user_id == user.id)
+        delet = self.tb_reactions \
+                .delete() \
+                .where(self.tb_reactions.c.message_id == reaction.message.id) \
+                .where(self.tb_reactions.c.emoji_id == get_emoji_id(reaction.emoji)) \
+                .where(self.tb_reactions.c.user_id == user.id)
         self.db.execute(delet)
 
     def clear_reactions(self, message):
-        delet = self.tb_reactions.delete()
-        delet.where(self.tb_reactions.c.message_id == reaction.message.id)
+        delet = self.tb_reactions \
+                .delete() \
+                .where(self.tb_reactions.c.message_id == reaction.message.id)
         self.db.execute(delet)
 
         self.update_emoji(reaction.emoji)
