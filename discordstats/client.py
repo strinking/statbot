@@ -44,9 +44,9 @@ def make_client(config, logger=null_logger):
         guild = message.guild.name
         chan = message.channel.name
 
-        logger.info(f"Message from {name} in {guild} #{chan} {action}:")
+        logger.info(f"Message {action} by {name} in {guild} #{chan}:")
         logger.info(message.content)
-        logger.info("***")
+        logger.info("<eom>")
 
     def _log_typing(channel, user):
         name = get_username(user)
@@ -83,7 +83,7 @@ def make_client(config, logger=null_logger):
 
     @client.async_event
     async def on_message_edit(before, after):
-        logger.debug(f"Message id {message.id} edited")
+        logger.debug(f"Message id {after.id} edited")
         if not _accept(after):
             return
 
