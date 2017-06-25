@@ -13,13 +13,13 @@
 import discord
 
 __all__ = [
-    'AnalyticsClient',
+    'IngestionClient',
 ]
 
 from .sql import DiscordSqlHandler
-from .util import null_logger
+from .util import get_username, get_emoji_name, null_logger
 
-class AnalyticsClient(discord.client):
+class IngestionClient(discord.client):
     def __init__(self, config, logger=null_logger):
         self.config = config
         self.sql = DiscordSqlHandler(config['url'], logger)
@@ -33,6 +33,7 @@ class AnalyticsClient(discord.client):
         elif not isinstance(message.channel, discord.TextChannel):
             self.logger.debug("Message not from a guild.")
             self.logger.debug("Ignoring message.")
+            return False
         elif not message.guild.id not in self.config['guilds']:
             self.logger.debug("Message from a guild we don't care about.")
             self.logger.debug("Ignoring message.")
@@ -41,67 +42,82 @@ class AnalyticsClient(discord.client):
             return True
 
     def _log(self, message, action):
-        #TODO
-        author = f"{message.author.name}#{message.author.discriminator}"
-        logger.info(f"Message from {author} in {message.server.name} #{message.channel.name} {action}: {message.content}")
+        name = get_username(message.author)
+        guild = message.guild.name
+        chan = message.channel.name
 
-    @bot.async_event
+        self.logger.info(f"Message from {name} in {guild} #{chan} {action}:")
+        self.logger.info(message.content)
+        self.logger.info("***")
+
+    def _log_react(self, reaction, user, action):
+        name = get_username(user)
+        emote = get_emoji_name(reaction.emoji)
+        count = reaction.count
+        id = reaction.message.id
+
+        self.logger.info(f"{name} {action} {emote} (total {count}) on message id {id}")
+
+    @async_event
     async def on_ready(self):
         # Print welcome string
-        logger.info(f"Logged in as {bot.user.name} ({bot.user.id})")
+        logger.info(f"Logged in as {self.user.name} ({self.user.id})")
 
         # All done setting up
         logger.info("Ready!")
-        bot.ready = True
+        self.ready = True
 
-    @bot.async_event
+    @async_event
     async def on_message(self, message):
         logger.debug(f"Message id {message.id} created")
-        if not accept_message(message):
+        if not self._accept(message):
             return
 
-        log_message(message, 'created')
-        bot.sql.add_message(message)
+        self._log(message, 'created')
+        self.sql.add_message(message)
 
-    @bot.async_event
+    @async_event
     async def on_message_edit(self, message):
         logger.debug(f"Message id {message.id} edited")
-        if not accept_message(message):
+        if not self._accept(message):
             return
 
-        log_message(message, 'edited')
-        bot.sql.edit_message(message)
+        self._log(message, 'edited')
+        self.sql.edit_message(message)
 
-    @bot.async_event
+    @async_event
     async def on_message_delete(self, message):
         logger.debug(f"Message id {message.id} deleted")
-        if not accept_message(message):
+        if not self._accept(message):
             return
 
-        log_message(message, 'deleted')
-        bot.sql.delete_message(message)
+        self._log(message, 'deleted')
+        self.sql.delete_message(message)
 
-    @bot.async_event
+    @async_event
     async def on_reaction_add(self, reaction, user):
         logger.debug(f"Reaction {reaction.emoji.name} added")
         if not accept_message(reaction.message):
             return
 
-        bot.sql.add_reaction(reaction, user)
+        self._log_react(reaction, user, 'reacted with')
+        self.sql.add_reaction(reaction, user)
 
-    @bot.async_event
+    @async_event
     async def on_reaction_remove(self, reaction, user):
-        logger.debug(f"Reaction {reaction.emoji.name} added")
+        logger.debug(f"Reaction {reaction.emoji.name} removed")
         if not accept_message(reaction.message):
             return
 
-        bot.sql.delete_reaction(reaction, user)
+        self._log_react(reaction, user, 'removed a reaction of ')
+        self.sql.delete_reaction(reaction, user)
 
-    @bot.async_event
+    @async_event
     async def on_reaction_clear(self, message, reactions):
         logger.debug(f"Reactions from {message.id} cleared")
         if not accept_message(message):
             return
 
-        bot.sql.clear_reactions(message)
+        self.logger.info("All reactions on message id {message.id} cleared")
+        self.sql.clear_reactions(message)
 

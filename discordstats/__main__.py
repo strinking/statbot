@@ -16,7 +16,7 @@ import json
 import logging
 import sys
 
-from .client import AnalyticsClient
+from .client import IngestionClient
 from .config import load_config
 from .util import plural
 
@@ -67,6 +67,6 @@ if __name__ == '__main__':
 
     # Open and run client
     logger.info("Starting bot...")
-    client = AnalyticsClient(config, logger)
-    bot.run(config['token'], bot=False)
+    client = IngestionClient(config, logger)
+    client.run(config['token'], bot=False)
 

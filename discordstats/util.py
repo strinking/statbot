@@ -11,10 +11,41 @@
 #
 
 __all__ = [
+    'get_username',
+    'get_emoji_name',
     'id2timestamp',
-    'null_logger',
     'plural',
+    'null_logger',
 ]
+
+def get_username(member):
+    '''
+    Get's a user's nickname, if they have one,
+    or just their username if they don't.
+    '''
+
+    if getattr(member, 'nick', None):
+        return member.nick
+    else:
+        return member.name
+
+def get_emoji_name(emoji):
+    '''
+    Get's an emoji's name, or the actual character
+    itself if it's a unicode emoji.
+    '''
+
+    if type(emoji) == str:
+        return emoji
+    else:
+        return emoji.name
+
+def id2timestamp(id):
+    '''
+    Converts a Discord snowflake/ID into a UNIX timestamp.
+    '''
+
+    return (id // 4194304) + 1420070400000
 
 def plural(x, suffix='s'):
     '''
@@ -26,13 +57,6 @@ def plural(x, suffix='s'):
         return ''
     else:
         return suffix
-
-def id2timestamp(id):
-    '''
-    Converts a Discord snowflake/ID into a UNIX timestamp.
-    '''
-
-    return (id // 4194304) + 1420070400000
 
 class _NullLogger:
     def __init__(self):

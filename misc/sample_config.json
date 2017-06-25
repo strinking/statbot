@@ -1,17 +1,9 @@
 {
-    "servers": [
-        "129409120491092041",
-        "any",
-        "other",
-        "discord",
-        "server",
-        "ids"
+    "guilds": [
+        129409120491092041,
+        1290192091029091120
     ],
     "token": "your_discord_token_here",
 
-    "database": "postgresql",
-    "host": "localhost",
-    "port": 5432,
-    "user": "user",
-    "password": "password"
+    "url": "postgresql://username:password@localhost:5432"
 }
