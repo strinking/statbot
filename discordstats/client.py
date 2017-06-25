@@ -31,7 +31,7 @@ def make_client(config, logger=null_logger):
         if not client.ready:
             logger.warn("Can't log message, not ready yet!")
             return False
-        elif not isinstance(message.channel, discord.TextChannel):
+        elif not hasattr(message, 'guild'):
             logger.debug("Message not from a guild.")
             logger.debug("Ignoring message.")
             return False
