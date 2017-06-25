@@ -42,13 +42,15 @@ class DiscordSqlHandler:
                 Column('is_edited', Boolean),
                 Column('is_deleted', Boolean),
                 Column('content', UnicodeText),
-                Column('author_id', BigInteger),
+                Column('user_id', BigInteger),
                 Column('channel_id', BigInteger),
                 Column('guild_id', BigInteger))
         self.tb_reactions = Table('reactions', self.meta,
                 Column('message_id', BigInteger),
                 Column('emoji_id', BigInteger),
-                Column('user_id', BigInteger))
+                Column('user_id', BigInteger),
+                Column('channel_id', BigInteger),
+                Column('guild_id', BigInteger))
         self.tb_typing = Table('typing', self.meta,
                 Column('timestamp', DateTime),
                 Column('user_id', BigInteger),
@@ -123,7 +125,7 @@ class DiscordSqlHandler:
                     'is_edited': False,
                     'is_deleted': False,
                     'content': message.content,
-                    'author_id': message.author.id,
+                    'user_id': message.author.id,
                     'channel_id': message.channel.id,
                     'guild_id': message.guild.id,
                 })
@@ -178,6 +180,8 @@ class DiscordSqlHandler:
                     'message_id': reaction.message.id,
                     'emoji_id': get_emoji_id(reaction.emoji),
                     'user_id': user.id,
+                    'channel_id': reaction.message.channel.id,
+                    'guild_id': reaction.message.guild.id,
                 })
         self.db.execute(ins)
 
