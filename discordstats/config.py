@@ -1,8 +1,7 @@
 #
 # config.py
 #
-# discord-analytics - Store Discord records for later analysis
-# Copyright (c) 2017 Ammon Smith
+# discord-analytics - Store Discord records for later analysis # Copyright (c) 2017 Ammon Smith
 #
 # discord-analytics is available free of charge under the terms of the MIT
 # License. You are free to redistribute and/or modify it under those
@@ -11,6 +10,8 @@
 #
 
 import json
+
+from .util import null_logger
 
 __all__ = [
     'check',
@@ -26,12 +27,16 @@ def is_string_or_null(obj):
     return type(obj) == str or \
             obj is None
 
-def is_string_list(obj):
-    '''
-    Determines if the given object
-    is a list of strings.
-    '''
+def is_int_list(object):
+    if type(obj) != list:
+        return False
 
+    for item in obj:
+        if type(item) != int:
+            return False
+    return True
+
+def is_string_list(obj):
     if type(obj) != list:
         return False
 
@@ -40,12 +45,6 @@ def is_string_list(obj):
             return False
     return True
 
-class _NullLogger:
-    def error(*args, **kwargs):
-        pass
-
-null_logger = _NullLogger()
-
 def check(cfg, logger=null_logger):
     '''
     Determines if the given dictionary has
@@ -53,8 +52,8 @@ def check(cfg, logger=null_logger):
     '''
 
     try:
-        if not is_string_list(cfg['servers']):
-            logger.error("Configuration lacks 'servers', a string list")
+        if not is_int_list(cfg['guilds']):
+            logger.error("Configuration lacks 'guilds', an int list")
             return False
         if type(cfg['token']) != str:
             logger.error("Configuration lacks 'token', a string")

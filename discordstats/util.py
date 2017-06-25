@@ -11,8 +11,9 @@
 #
 
 __all__ = [
-    'plural',
     'id2timestamp',
+    'null_logger',
+    'plural',
 ]
 
 def plural(x, suffix='s'):
@@ -33,3 +34,20 @@ def id2timestamp(id):
 
     return (id // 4194304) + 1420070400000
 
+class _NullLogger:
+    def __init__(self):
+        pass
+
+    def debug(*args, **kwargs):
+        pass
+
+    def info(*args, **kwargs):
+        pass
+
+    def warning(*args, **kwargs):
+        pass
+
+    def error(*args, **kwargs):
+        pass
+
+null_logger = _NullLogger()
