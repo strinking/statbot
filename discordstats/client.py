@@ -58,7 +58,7 @@ def make_client(config, logger=null_logger):
         guild = channel.guild.name
         chan = channel.name
 
-        logger.info(f"{name} is typing on {guild} #{chan}")
+        logger.info(f"Typing by {name} on {guild} #{chan}")
 
     def _log_react(reaction, user, action):
         name = get_username(user)
