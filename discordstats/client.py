@@ -82,13 +82,13 @@ def make_client(config, logger=null_logger):
         sql.add_message(message)
 
     @client.async_event
-    async def on_message_edit(message):
+    async def on_message_edit(before, after):
         logger.debug(f"Message id {message.id} edited")
-        if not _accept(message):
+        if not _accept(after):
             return
 
-        _log(message, 'edited')
-        sql.edit_message(message)
+        _log(after, 'edited')
+        sql.edit_message(after)
 
     @client.async_event
     async def on_message_delete(message):
