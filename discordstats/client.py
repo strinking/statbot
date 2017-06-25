@@ -32,7 +32,7 @@ def make_client(config, logger=null_logger):
             logger.debug("Message not from a guild.")
             logger.debug("Ignoring message.")
             return False
-        elif not message.guild.id not in config['guilds']:
+        elif message.guild.id not in config['guilds']:
             logger.debug("Message from a guild we don't care about.")
             logger.debug("Ignoring message.")
             return False
