@@ -1,12 +1,10 @@
-# Secret information
-/config.json
+# Configuration
+config.json
+docker-compose.yaml
 
 # Artifacts
 __pycache__
 *.py[cdo]
-
-# Data
-*.db
 
 # Logging
 *.log
