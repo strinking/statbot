@@ -10,6 +10,12 @@ Available under the terms of the MIT License.
 * Python 3.6 or later
 * [discord.py (rewrite branch)](https://github.com/Rapptz/discord.py)
 * [SQLAlchemy](http://www.sqlalchemy.org/)
+* [psycopg2](https://pypi.python.org/pypi/psycopg2)
+
+You can install them all using pip by running:
+```sh
+pip3 -r requirements.txt
+```
 
 ### Execution
 After preparing a configuration file, (see `misc/sample_config.json`)
