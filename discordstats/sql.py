@@ -176,7 +176,7 @@ class DiscordSqlHandler:
                 .insert() \
                 .values({
                     'message_id': reaction.message.id,
-                    'emoji': get_emoji(reaction.emoji),
+                    'emoji_id': get_emoji_id(reaction.emoji),
                     'user_id': user.id,
                 })
         self.db.execute(ins)
