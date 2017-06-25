@@ -32,7 +32,7 @@ def make_client(config, logger=null_logger):
             logger.debug("Message not from a guild.")
             logger.debug("Ignoring message.")
             return False
-        elif not message.guild.id not in client.config['guilds']:
+        elif not message.guild.id not in config['guilds']:
             logger.debug("Message from a guild we don't care about.")
             logger.debug("Ignoring message.")
             return False
@@ -73,7 +73,7 @@ def make_client(config, logger=null_logger):
         ready = True
 
     @client.async_event
-    async def on_message(client, message):
+    async def on_message(message):
         logger.debug(f"Message id {message.id} created")
         if not _accept(message):
             return
@@ -82,7 +82,7 @@ def make_client(config, logger=null_logger):
         sql.add_message(message)
 
     @client.async_event
-    async def on_message_edit(client, message):
+    async def on_message_edit(message):
         logger.debug(f"Message id {message.id} edited")
         if not _accept(message):
             return
@@ -91,7 +91,7 @@ def make_client(config, logger=null_logger):
         sql.edit_message(message)
 
     @client.async_event
-    async def on_message_delete(client, message):
+    async def on_message_delete(message):
         logger.debug(f"Message id {message.id} deleted")
         if not _accept(message):
             return
@@ -100,16 +100,16 @@ def make_client(config, logger=null_logger):
         sql.delete_message(message)
 
     @client.async_event
-    async def on_typing(client, channel, user, when):
+    async def on_typing(channel, user, when):
         logger.debug(f"User id {user.id} is typing")
-        if channel.guild.id not in client.config['guilds']:
+        if channel.guild.id not in config['guilds']:
             return
 
         _log_typing(channel, user)
         sql.typing(channel, user, when)
 
     @client.async_event
-    async def on_reaction_add(client, reaction, user):
+    async def on_reaction_add(reaction, user):
         logger.debug(f"Reaction {reaction.emoji.name} added")
         if not accept_message(reaction.message):
             return
@@ -118,7 +118,7 @@ def make_client(config, logger=null_logger):
         sql.add_reaction(reaction, user)
 
     @client.async_event
-    async def on_reaction_remove(client, reaction, user):
+    async def on_reaction_remove(reaction, user):
         logger.debug(f"Reaction {reaction.emoji.name} removed")
         if not accept_message(reaction.message):
             return
@@ -127,11 +127,14 @@ def make_client(config, logger=null_logger):
         sql.delete_reaction(reaction, user)
 
     @client.async_event
-    async def on_reaction_clear(client, message, reactions):
+    async def on_reaction_clear(message, reactions):
         logger.debug(f"Reactions from {message.id} cleared")
         if not accept_message(message):
             return
 
         logger.info("All reactions on message id {message.id} cleared")
         sql.clear_reactions(message)
+
+    # Return client object
+    return client
 

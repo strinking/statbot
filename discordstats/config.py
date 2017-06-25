@@ -27,7 +27,7 @@ def is_string_or_null(obj):
     return type(obj) == str or \
             obj is None
 
-def is_int_list(object):
+def is_int_list(obj):
     if type(obj) != list:
         return False
 

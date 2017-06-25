@@ -16,7 +16,7 @@ import json
 import logging
 import sys
 
-from .client import IngestionClient
+from .client import make_client
 from .config import load_config
 from .util import plural
 
