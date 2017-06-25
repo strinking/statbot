@@ -67,8 +67,12 @@ def make_client(config, logger=null_logger):
     async def on_ready():
         # Print welcome string
         logger.info(f"Logged in as {client.user.name} ({client.user.id})")
+        logger.info("Recording activity in the following guilds:")
+        for id in config['guilds']:
+            logger.info(f"* {id}")
 
         # All done setting up
+        logger.info("")
         logger.info("Ready!")
         client.ready = True
 
@@ -111,7 +115,7 @@ def make_client(config, logger=null_logger):
     @client.async_event
     async def on_reaction_add(reaction, user):
         logger.debug(f"Reaction {reaction.emoji.name} added")
-        if not accept_message(reaction.message):
+        if not _accept(reaction.message):
             return
 
         _log_react(reaction, user, 'reacted with')
@@ -120,7 +124,7 @@ def make_client(config, logger=null_logger):
     @client.async_event
     async def on_reaction_remove(reaction, user):
         logger.debug(f"Reaction {reaction.emoji.name} removed")
-        if not accept_message(reaction.message):
+        if not _accept(reaction.message):
             return
 
         _log_react(reaction, user, 'removed a reaction of ')
@@ -129,7 +133,7 @@ def make_client(config, logger=null_logger):
     @client.async_event
     async def on_reaction_clear(message, reactions):
         logger.debug(f"Reactions from {message.id} cleared")
-        if not accept_message(message):
+        if not _accept(message):
             return
 
         logger.info("All reactions on message id {message.id} cleared")
