@@ -35,7 +35,7 @@ def make_client(config, logger=null_logger):
             logger.debug("Message not from a guild.")
             logger.debug("Ignoring message.")
             return False
-        elif message.guild.id not in config['guilds']:
+        elif getattr(message.guild, 'id', None) not in config['guilds']:
             logger.debug("Message from a guild we don't care about.")
             logger.debug("Ignoring message.")
             return False
@@ -111,7 +111,8 @@ def make_client(config, logger=null_logger):
     @client.async_event
     async def on_typing(channel, user, when):
         logger.debug(f"User id {user.id} is typing")
-        if channel.guild.id not in config['guilds']:
+        if not hasattr(channel, 'guild') or \
+                channel.guild.id not in config['guilds']:
             return
 
         _log_typing(channel, user)
