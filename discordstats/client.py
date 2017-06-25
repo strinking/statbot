@@ -13,8 +13,11 @@
 import discord
 
 __all__ = [
+    'LOG_FULL_MESSAGES',
     'make_client',
 ]
+
+LOG_FULL_MESSAGES = False
 
 from .sql import DiscordSqlHandler
 from .util import get_username, get_emoji_name, null_logger
@@ -45,9 +48,10 @@ def make_client(config, logger=null_logger):
         chan = message.channel.name
 
         logger.info(f"Message {action} by {name} in {guild} #{chan}:")
-        logger.info("<bom>")
-        logger.info(message.content)
-        logger.info("<eom>")
+        if LOG_FULL_MESSAGES:
+            logger.info("<bom>")
+            logger.info(message.content)
+            logger.info("<eom>")
 
     def _log_typing(channel, user):
         name = get_username(user)
