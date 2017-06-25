@@ -75,7 +75,7 @@ class DiscordSqlHandler:
         self.meta.create_all(self.db)
 
     def update_guild(self, guild):
-        self.logger.warning("TODO: Not doing guild_lookup upsert")
+        #self.logger.warning("TODO: Not doing guild_lookup upsert")
         return
 
         ups = p_insert(self.tb_guild_lookup)
@@ -89,7 +89,7 @@ class DiscordSqlHandler:
         self.db.execute(ups)
 
     def update_channel(self, channel):
-        self.logger.warning("TODO: Not doing channel_lookup upsert")
+        #self.logger.warning("TODO: Not doing channel_lookup upsert")
         return
 
         ups = p_insert(self.tb_channel_lookup)
@@ -102,7 +102,7 @@ class DiscordSqlHandler:
         self.db.execute(ups)
 
     def update_user(self, user):
-        self.logger.warning("TODO: Not doing user_lookup upsert")
+        #self.logger.warning("TODO: Not doing user_lookup upsert")
         return
 
         ups = p_insert(self.tb_user_lookup)

@@ -45,6 +45,7 @@ def make_client(config, logger=null_logger):
         chan = message.channel.name
 
         logger.info(f"Message {action} by {name} in {guild} #{chan}:")
+        logger.info("<bom>")
         logger.info(message.content)
         logger.info("<eom>")
 
@@ -114,7 +115,7 @@ def make_client(config, logger=null_logger):
 
     @client.async_event
     async def on_reaction_add(reaction, user):
-        logger.debug(f"Reaction {reaction.emoji.name} added")
+        logger.debug(f"Reaction {reaction.emoji} added")
         if not _accept(reaction.message):
             return
 
@@ -123,7 +124,7 @@ def make_client(config, logger=null_logger):
 
     @client.async_event
     async def on_reaction_remove(reaction, user):
-        logger.debug(f"Reaction {reaction.emoji.name} removed")
+        logger.debug(f"Reaction {reaction.emoji} removed")
         if not _accept(reaction.message):
             return
 
