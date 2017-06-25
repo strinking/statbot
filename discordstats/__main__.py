@@ -67,6 +67,6 @@ if __name__ == '__main__':
 
     # Open and run client
     logger.info("Starting bot...")
-    client = IngestionClient(config, logger)
+    client = make_client(config, logger)
     client.run(config['token'], bot=False)
 
