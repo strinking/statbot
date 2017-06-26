@@ -73,49 +73,80 @@ class DiscordSqlHandler:
                 Column('discriminator', BigInteger),
                 Column('is_bot', Boolean))
 
+        # Lookup caches
+        self.guild_cache = {}
+        self.channel_cache = {}
+        self.user_cache = {}
+
         # Create tables
         self.meta.create_all(self.db)
 
     def update_guild(self, guild):
-        #self.logger.warning("TODO: Not doing guild_lookup upsert")
-        return
-
-        ups = p_insert(self.tb_guild_lookup)
-        ups.values({
+        values = {
             'guild_id': guild.id,
             'name': guild.name,
             'channels': [channel.id for channel in guild.channels],
             'region': str(guild.region),
-        })
-        ups.on_conflict_do_update(index_elements=['guild_id'])
+        }
+
+        if self.guild_cache.get(guild.id) == values:
+            self.logger.debug(f"Guild lookup for {guild.id} is already up-to-date")
+            return
+
+        self.logger.info(f"Updating lookup data for guild {guild.name}")
+        ups = p_insert(self.tb_guild_lookup) \
+                .values(values) \
+                .on_conflict_do_update(
+                        index_elements=['guild_id'],
+                        index_where=(self.tb_guild_lookup.c.guild_id == guild.id),
+                        set_=values,
+                )
         self.db.execute(ups)
+        self.guild_cache[guild.id] = values
 
     def update_channel(self, channel):
-        #self.logger.warning("TODO: Not doing channel_lookup upsert")
-        return
-
-        ups = p_insert(self.tb_channel_lookup)
-        ups.values({
+        values = {
             'channel_id': channel.id,
             'name': channel.name,
             'guild_id': channel.guild.id,
-        })
-        ups.on_conflict_do_update(index_elements=['channel_id'])
+        }
+
+        if self.channel_cache.get(channel.id) == values:
+            self.logger.debug(f"Channel lookup for {channel.id} is already up-to-date")
+            return
+
+        self.logger.info(f"Updating lookup data for channel {channel.name}")
+        ups = p_insert(self.tb_channel_lookup) \
+                .values(values) \
+                .on_conflict_do_update(
+                        index_elements=['channel_id'],
+                        index_where=(self.tb_channel_lookup.c.channel_id == channel.id),
+                        set_=values,
+                )
         self.db.execute(ups)
+        self.channel_cache[channel.id] = values
 
     def update_user(self, user):
-        #self.logger.warning("TODO: Not doing user_lookup upsert")
-        return
-
-        ups = p_insert(self.tb_user_lookup)
-        ups.values({
+        values = {
             'user_id': user.id,
             'name': user.name,
             'discriminator': user.discriminator,
             'is_bot': user.bot,
-        })
-        ups.on_conflict_do_update(index_elements=['user_id'])
+        }
+
+        if self.user_cache.get(user.id) == values:
+            self.logger.debug(f"User lookup for {user.id} is already up-to-date")
+            return
+
+        ups = p_insert(self.tb_user_lookup) \
+                .values(values) \
+                .on_conflict_do_update(
+                        index_elements=['user_id'],
+                        index_where=(self.tb_user_lookup.c.user_id == user.id),
+                        set_=values,
+                )
         self.db.execute(ups)
+        self.user_cache[user.id] = values
 
     def add_message(self, message):
         ins = self.tb_messages \
