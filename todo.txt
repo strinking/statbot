@@ -1,11 +1,5 @@
 + upsert_emoji() [add emoji cache]
 make upsert_* methods use transactions [http://docs.sqlalchemy.org/en/latest/orm/session_transaction.html]
-+ add_channel() [update cache!]
-+ delete_channel()
-+ update_channel()
-+ add_user()
-+ remove_user()
-+ update_user()
 webhook_id AttributeError
 pins table
 update pins stuff [project]

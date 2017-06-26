@@ -185,7 +185,7 @@ def make_client(config, logger=null_logger):
             return
 
         logger.info(f"Channel #{channel.name} deleted in {channel.guild.name}")
-        sql.delete_channel(channel)
+        sql.remove_channel(channel)
 
     @client.async_event
     async def on_guild_channel_update(before, after):
@@ -237,7 +237,7 @@ def make_client(config, logger=null_logger):
             changed = f' (now {after.name})'
         else:
             changed = ''
-        self.logger.info(f"Member {before.name}{changed} was changed in {after.guild.name}")
+        logger.info(f"Member {before.name}{changed} was changed in {after.guild.name}")
         sql.update_user(member)
 
     @client.async_event

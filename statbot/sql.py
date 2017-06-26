@@ -75,7 +75,7 @@ class DiscordSqlHandler:
         self.tb_user_lookup = Table('user_lookup', self.meta,
                 Column('user_id', BigInteger, primary_key=True),
                 Column('name', Unicode),
-                Column('discriminator', BigInteger),
+                Column('discriminator', Integer),
                 Column('is_bot', Boolean))
 
         # Lookup caches
@@ -152,6 +152,10 @@ class DiscordSqlHandler:
                 )
         self.db.execute(ups)
         self.user_cache[user.id] = values
+
+    def upsert_emojis(self, emoji):
+        # TODO
+        pass
 
     def add_message(self, message):
         attach_urls = '\n'.join((attach.url for attach in message.attachments))
@@ -233,7 +237,7 @@ class DiscordSqlHandler:
                 })
         self.db.execute(ins)
 
-        self.upsert_emojis(reaction.emoji)
+        self.upsert_emoji(reaction.emoji)
 
     def delete_reaction(self, reaction, user):
         delet = self.tb_reactions \
@@ -251,5 +255,78 @@ class DiscordSqlHandler:
                 .where(self.tb_reactions.c.message_id == reaction.message.id)
         self.db.execute(delet)
 
-        self.upsert_emojis(reaction.emoji)
+        self.upsert_emoji(reaction.emoji)
+
+    def update_guild(self, guild):
+        pass
+
+    def add_channel(self, channel):
+        values = {
+            'channel_id': channel.id,
+            'name': channel.name,
+            'guild_id': channel.guild.id,
+        }
+
+        ins = self.tb_channel_lookup \
+                .insert() \
+                .values(values)
+        self.db.execute(ins)
+        self.channel_cache[channel.id] = values
+
+    def remove_channel(self, channel):
+        delet = self.tb_channel_lookup \
+                .delete() \
+                .where(self.tb_channel_lookup.c.channel_id == channel.id)
+        self.db.execute(delet)
+        del self.channel_cache[channel.id]
+
+    def update_channel(self, channel):
+        values = {
+            'channel_id': channel.id,
+            'name': channel.name,
+            'guild_id': channel.guild.id,
+        }
+
+        upd = self.tb_channel_lookup \
+                .update() \
+                .where(self.tb_channel_lookup.c.channel_id == channel.id)
+                .values(values)
+        self.db.execute(upd)
+        self.channel_cache[channel.id] = values
+
+    def add_user(self, user):
+        values = {
+            'user_id': user.id,
+            'name': user.name,
+            'discriminator': user.discriminator,
+            'is_bot': user.bot,
+        }
+
+        ins = self.tb_user_lookup \
+                .insert() \
+                .values(values)
+        self.db.execute(ins)
+        self.user_cache[user.id] = values
+
+    def update_user(self, user):
+        values = {
+            'user_id': user.id,
+            'name': user.name,
+            'discriminator': user.discriminator,
+            'is_bot': user.bot,
+        }
+
+        upd = self.tb_user_lookup \
+                .update() \
+                .where(self.tb_user_lookup.c.user_id == user.id) \
+                .values(values)
+        self.db.execute(upd)
+        self.user_cache[user.id] = values
+
+    def remove_user(self, user):
+        delet = self.tb_user_lookup \
+                .delete() \
+                .where(self.tb_user_lookup.c.user_id == user.id)
+        self.db.execute(delet)
+        del self.user_cache[user.id]
 
