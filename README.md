@@ -1,4 +1,4 @@
-## discord-analytics
+## statbot
 A [Discord](https://discordapp.com) selfbot that reads in posts from a given set
 of servers and stores it in a SQL database. This application has two parts: the
 listener, which ingests raw data from the Discord API, and the crawler, which
