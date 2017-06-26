@@ -27,7 +27,7 @@ def make_client(config, logger=null_logger):
     client.ready = False
     sql = DiscordSqlHandler(config['url'], logger)
 
-    def _accept(message):
+    def _accept_message(message):
         if not client.ready:
             logger.warn("Can't log message, not ready yet!")
             return False
@@ -42,15 +42,26 @@ def make_client(config, logger=null_logger):
         else:
             return True
 
-    def _accept_typing(channel):
+    def _accept_channel(channel):
         if not client.ready:
-            logger.warn("Can't log message, not read yet!")
+            logger.warn("Can't log event, not ready yet!")
             return False
         elif not hasattr(channel, 'guild'):
-            logger.debug("Message not from a guild.")
+            logger.debug("Channel not in a guild.")
             logger.debug("Ignoring message.")
         elif getattr(channel.guild, 'id', None) not in config['guilds']:
-            logger.debug("Message from a guild we don't care about.")
+            logger.debug("Event from a guild we don't care about.")
+            logger.debug("Ignoring message.")
+            return False
+        else:
+            return True
+
+    def _accept_guild(guild):
+        if not client.ready:
+            logger.warn("Can't log event, not ready yet!")
+            return False
+        elif getattr(guild, 'id', None) not in config['guilds']:
+            logger.debug("Event from a guild we don't care about.")
             logger.debug("Ignoring message.")
             return False
         else:
@@ -98,7 +109,7 @@ def make_client(config, logger=null_logger):
     @client.async_event
     async def on_message(message):
         logger.debug(f"Message id {message.id} created")
-        if not _accept(message):
+        if not _accept_message(message):
             return
 
         _log(message, 'created')
@@ -107,7 +118,7 @@ def make_client(config, logger=null_logger):
     @client.async_event
     async def on_message_edit(before, after):
         logger.debug(f"Message id {after.id} edited")
-        if not _accept(after):
+        if not _accept_message(after):
             return
 
         _log(after, 'edited')
@@ -116,7 +127,7 @@ def make_client(config, logger=null_logger):
     @client.async_event
     async def on_message_delete(message):
         logger.debug(f"Message id {message.id} deleted")
-        if not _accept(message):
+        if not _accept_message(message):
             return
 
         _log(message, 'deleted')
@@ -125,7 +136,7 @@ def make_client(config, logger=null_logger):
     @client.async_event
     async def on_typing(channel, user, when):
         logger.debug(f"User id {user.id} is typing")
-        if not _accept_typing(channel):
+        if not _accept_channel(channel):
             return
 
         _log_typing(channel, user)
@@ -134,7 +145,7 @@ def make_client(config, logger=null_logger):
     @client.async_event
     async def on_reaction_add(reaction, user):
         logger.debug(f"Reaction {reaction.emoji} added")
-        if not _accept(reaction.message):
+        if not _accept_message(reaction.message):
             return
 
         _log_react(reaction, user, 'reacted with')
@@ -143,7 +154,7 @@ def make_client(config, logger=null_logger):
     @client.async_event
     async def on_reaction_remove(reaction, user):
         logger.debug(f"Reaction {reaction.emoji} removed")
-        if not _accept(reaction.message):
+        if not _accept_message(reaction.message):
             return
 
         _log_react(reaction, user, 'removed a reaction of ')

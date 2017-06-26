@@ -60,8 +60,7 @@ class DiscordSqlHandler:
                 Column('user_id', BigInteger),
                 Column('channel_id', BigInteger),
                 Column('guild_id', BigInteger))
-        self.tb_pins = Table('pins', self.meta,
-                Column('message_id',
+        # TODO tb_pins table
 
         # Lookup tables
         self.tb_guild_lookup = Table('guild_lookup', self.meta,
@@ -87,7 +86,7 @@ class DiscordSqlHandler:
         # Create tables
         self.meta.create_all(self.db)
 
-    def update_guild(self, guild):
+    def upsert_guild(self, guild, conn=None):
         values = {
             'guild_id': guild.id,
             'name': guild.name,
@@ -110,7 +109,7 @@ class DiscordSqlHandler:
         self.db.execute(ups)
         self.guild_cache[guild.id] = values
 
-    def update_channel(self, channel):
+    def upsert_channel(self, channel, conn=None):
         values = {
             'channel_id': channel.id,
             'name': channel.name,
@@ -132,7 +131,7 @@ class DiscordSqlHandler:
         self.db.execute(ups)
         self.channel_cache[channel.id] = values
 
-    def update_user(self, user):
+    def upsert_user(self, user, conn=None):
         values = {
             'user_id': user.id,
             'name': user.name,
@@ -178,9 +177,9 @@ class DiscordSqlHandler:
                 })
         self.db.execute(ins)
 
-        self.update_guild(message.guild)
-        self.update_channel(message.channel)
-        self.update_user(message.author)
+        self.upsert_guild(message.guild)
+        self.upsert_channel(message.channel)
+        self.upsert_user(message.author)
 
     def edit_message(self, before, after):
         upd = self.tb_messages \
@@ -194,9 +193,9 @@ class DiscordSqlHandler:
                 .where(self.tb_messages.c.message_id == after.id)
         self.db.execute(upd)
 
-        self.update_guild(after.guild)
-        self.update_channel(after.channel)
-        self.update_user(after.author)
+        self.upsert_guild(after.guild)
+        self.upsert_channel(after.channel)
+        self.upsert_user(after.author)
 
     def delete_message(self, message):
         upd = self.tb_messages \
@@ -207,9 +206,9 @@ class DiscordSqlHandler:
                 .where(self.tb_messages.c.message_id == message.id)
         self.db.execute(upd)
 
-        self.update_guild(message.guild)
-        self.update_channel(message.channel)
-        self.update_user(message.author)
+        self.upsert_guild(message.guild)
+        self.upsert_channel(message.channel)
+        self.upsert_user(message.author)
 
     def typing(self, channel, user, when):
         ins = self.tb_typing \
@@ -234,6 +233,8 @@ class DiscordSqlHandler:
                 })
         self.db.execute(ins)
 
+        self.upsert_emojis(reaction.emoji)
+
     def delete_reaction(self, reaction, user):
         delet = self.tb_reactions \
                 .delete() \
@@ -242,11 +243,13 @@ class DiscordSqlHandler:
                 .where(self.tb_reactions.c.user_id == user.id)
         self.db.execute(delet)
 
+        self.upsert_emojis(reaction.emoji)
+
     def clear_reactions(self, message):
         delet = self.tb_reactions \
                 .delete() \
                 .where(self.tb_reactions.c.message_id == reaction.message.id)
         self.db.execute(delet)
 
-        self.update_emoji(reaction.emoji)
+        self.upsert_emojis(reaction.emoji)
 
