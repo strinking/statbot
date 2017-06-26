@@ -24,6 +24,6 @@ pip3 -r requirements.txt
 After preparing a configuration file, (see `misc/sample_config.json`)
 you can call the program as follows:
 ```sh
-python3 -m discordstats [-q] [-d] your_config_file.json
+python3 -m statbot [-q] [-d] your_config_file.json
 ```
 

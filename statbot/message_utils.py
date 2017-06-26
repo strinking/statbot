@@ -15,7 +15,7 @@ import re
 URL_REGEX = re.compile(r'https?://[^ ]+')
 MENTION_REGEX = re.compile(r'<@[0-9]+>')
 CHANNEL_MENTION_REGEX = re.compile(r'<#[0-9]+>')
-EMOJI_REGEX = re.compile(r'<:([A-Za-z]+):[0-9]+>')
+EMOJI_REGEX = re.compile(r'<:([A-Za-z~]+):[0-9]+>')
 CODEBLOCK_REGEX = re.compile(r'`(?:``)?[^`]+`(?:``)?')
 SHRUG = r'¯\_(ツ)_/¯'
 TABLE_FLIP = '(╯°□°）╯︵ ┻━┻'
