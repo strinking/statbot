@@ -10,12 +10,14 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
+import json
+
 __all__ = [
     'get_username',
     'get_emoji_name',
     'get_emoji_id',
-    'id2timestamp',
     'plural',
+    'embeds_to_json',
     'null_logger',
 ]
 
@@ -52,12 +54,8 @@ def get_emoji_id(emoji):
     else:
         return emoji.id
 
-def id2timestamp(id):
-    '''
-    Converts a Discord snowflake/ID into a UNIX timestamp.
-    '''
-
-    return (id // 4194304) + 1420070400000
+def embeds_to_json(embeds):
+    return json.dumps([embed.to_dict() for embed in embeds])
 
 def plural(x, suffix='s'):
     '''

@@ -15,7 +15,7 @@ from sqlalchemy import String, Table, Unicode, UnicodeText
 from sqlalchemy import MetaData, create_engine
 from sqlalchemy.dialects.postgresql import insert as p_insert
 
-from .util import get_emoji_id
+from .util import embeds_to_json, get_emoji_id
 
 __all__ = [
     'DiscordSqlHandler',
@@ -41,7 +41,11 @@ class DiscordSqlHandler:
                 Column('message_id', BigInteger, primary_key=True),
                 Column('is_edited', Boolean),
                 Column('is_deleted', Boolean),
+                Column('is_webhook', Boolean),
+                Column('is_pinned', Boolean),
+                Column('has_upload', Boolean),
                 Column('content', UnicodeText),
+                Column('embeds', UnicodeText),
                 Column('user_id', BigInteger),
                 Column('channel_id', BigInteger),
                 Column('guild_id', BigInteger))
@@ -56,20 +60,22 @@ class DiscordSqlHandler:
                 Column('user_id', BigInteger),
                 Column('channel_id', BigInteger),
                 Column('guild_id', BigInteger))
+        self.tb_pins = Table('pins', self.meta,
+                Column('message_id',
 
         # Lookup tables
         self.tb_guild_lookup = Table('guild_lookup', self.meta,
                 Column('guild_id', BigInteger, primary_key=True),
-                Column('name', Unicode()),
+                Column('name', Unicode),
                 Column('channels', ARRAY(BigInteger)),
-                Column('region',  String()))
+                Column('region',  String))
         self.tb_channel_lookup = Table('channel_lookup', self.meta,
                 Column('channel_id', BigInteger, primary_key=True),
-                Column('name', String()),
+                Column('name', String),
                 Column('guild_id', BigInteger))
         self.tb_user_lookup = Table('user_lookup', self.meta,
                 Column('user_id', BigInteger, primary_key=True),
-                Column('name', Unicode()),
+                Column('name', Unicode),
                 Column('discriminator', BigInteger),
                 Column('is_bot', Boolean))
 
@@ -149,13 +155,23 @@ class DiscordSqlHandler:
         self.user_cache[user.id] = values
 
     def add_message(self, message):
+        attach_urls = '\n'.join((attach.url for attach in message.attachments))
+        if message.content:
+            content = '\n'.join((message.content, attach_urls))
+        else:
+            content = attach_urls
+
         ins = self.tb_messages \
                 .insert() \
                 .values({
                     'message_id': message.id,
                     'is_edited': False,
                     'is_deleted': False,
-                    'content': message.content,
+                    'is_webhook': bool(message.webhook_id),
+                    'is_pinned': message.pinned,
+                    'has_upload': bool(message.attachments),
+                    'content': content,
+                    'embeds': embeds_to_json(message.embeds),
                     'user_id': message.author.id,
                     'channel_id': message.channel.id,
                     'guild_id': message.guild.id,
@@ -166,19 +182,21 @@ class DiscordSqlHandler:
         self.update_channel(message.channel)
         self.update_user(message.author)
 
-    def edit_message(self, message):
+    def edit_message(self, before, after):
         upd = self.tb_messages \
                 .update() \
                 .values({
-                    'is_edited': True,
-                    'content': message.content,
+                    'is_edited': before.content != after.content,
+                    'is_pinned': after.pinned,
+                    'content': after.content,
+                    'embeds': embeds_to_json(message.embeds),
                 }) \
-                .where(self.tb_messages.c.message_id == message.id)
+                .where(self.tb_messages.c.message_id == after.id)
         self.db.execute(upd)
 
-        self.update_guild(message.guild)
-        self.update_channel(message.channel)
-        self.update_user(message.author)
+        self.update_guild(after.guild)
+        self.update_channel(after.channel)
+        self.update_user(after.author)
 
     def delete_message(self, message):
         upd = self.tb_messages \

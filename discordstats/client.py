@@ -111,7 +111,7 @@ def make_client(config, logger=null_logger):
             return
 
         _log(after, 'edited')
-        sql.edit_message(after)
+        sql.edit_message(before, after)
 
     @client.async_event
     async def on_message_delete(message):
