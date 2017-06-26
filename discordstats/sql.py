@@ -166,7 +166,7 @@ class DiscordSqlHandler:
                     'message_id': message.id,
                     'is_edited': False,
                     'is_deleted': False,
-                    'is_webhook': bool(message.webhook_id),
+                    'is_webhook': message.webhook_id is not None,
                     'is_pinned': message.pinned,
                     'has_upload': bool(message.attachments),
                     'content': content,
