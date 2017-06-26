@@ -163,11 +163,112 @@ def make_client(config, logger=null_logger):
     @client.async_event
     async def on_reaction_clear(message, reactions):
         logger.debug(f"Reactions from {message.id} cleared")
-        if not _accept(message):
+        if not _accept_message(message):
             return
 
-        logger.info("All reactions on message id {message.id} cleared")
+        logger.info(f"All reactions on message id {message.id} cleared")
         sql.clear_reactions(message)
+
+    @client.async_event
+    async def on_guild_channel_create(channel):
+        logger.debug(f"Channel was created in guild {channel.guild.id}")
+        if not _accept_channel(channel):
+            return
+
+        logger.info(f"Channel #{channel.name} created in {channel.guild.name}")
+        sql.add_channel(channel)
+
+    @client.async_event
+    async def on_guild_channel_delete(channel):
+        logger.debug(f"Channel was deleted in guild {channel.guild.id}")
+        if not _accept_channel(channel):
+            return
+
+        logger.info(f"Channel #{channel.name} deleted in {channel.guild.name}")
+        sql.delete_channel(channel)
+
+    @client.async_event
+    async def on_guild_channel_update(before, after):
+        logger.debug(f"Channel was updated in guild {after.guild.id}")
+        if not _accept_channel(after):
+            return
+
+        if before.name != after.name:
+            changed = f' (now {after.name})'
+        else:
+            changed = ''
+        logger.info(f"Channel #{before.name}{changed} was changed in {after.guild.name}")
+        sql.update_channel(before, after)
+
+    @client.async_event
+    async def on_guild_channel_pins_update(channel, last_pin):
+        logger.debug(f"Channel {channel.id} got a pin update")
+        if not _accept_channel(channel):
+            return
+
+        logger.info(f"Channel #{channel.name} got a pin update")
+        logger.warn("TODO: handling for on_guild_channel_pins_update")
+
+    @client.async_event
+    async def on_member_join(member):
+        logger.debug(f"Member {member.id} joined guild {member.guild.id}")
+        if not _accept_guild(member.guild):
+            return
+
+        logger.info(f"Member {member.name} has joined {member.guild.name}")
+        sql.add_user(member)
+
+    @client.async_event
+    async def on_member_remove(member):
+        logger.debug(f"Member {member.id} left guild {member.guild.id}")
+        if not _accept_guild(member.guild):
+            return
+
+        logger.info(f"Member {member.name} has left {member.guild.name}")
+        sql.remove_user(member)
+
+    @client.async_event
+    async def on_member_update(before, after):
+        logger.debug(f"Member {after.id} was updated in guild {after.guild.id}")
+        if not _accept_guild(after.guild):
+            return
+
+        if before.name != after.name:
+            changed = f' (now {after.name})'
+        else:
+            changed = ''
+        self.logger.info(f"Member {before.name}{changed} was changed in {after.guild.name}")
+        sql.update_user(member)
+
+    @client.async_event
+    async def on_guild_join(guild):
+        logger.info(f"Just joined guild {guild.name} ({guild.id})")
+        logger.info("(Doing nothing)")
+
+    @client.async_event
+    async def on_guild_remove(guild):
+        logger.info(f"Just left guild {guild.name} ({guild.id})")
+        logger.info("(Doing nothing)")
+
+    @client.async_event
+    async def on_guild_role_create(role):
+        # TODO
+        pass
+
+    @client.async_event
+    async def on_guild_role_delete(role):
+        # TODO
+        pass
+
+    @client.async_event
+    async def on_guild_role_update(role):
+        # TODO
+        pass
+
+    @client.async_event
+    async def on_guild_emojis_update(guild, before, after):
+        # TODO
+        pass
 
     # Return client object
     return client
