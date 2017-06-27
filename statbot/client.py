@@ -241,22 +241,38 @@ def make_client(config, logger=null_logger):
         else:
             changed = ''
         logger.info(f"Member {before.name}{changed} was changed in {after.guild.name}")
-        sql.update_user(member)
+        sql.update_user(after)
 
     @client.async_event
     async def on_guild_role_create(role):
-        # TODO
-        pass
+        logger.debug(f"Role {role.id} was created in guild {role.guild.id}")
+        if not _accept_guild(role.guild):
+            return
+
+        logger.info(f"Role {role.name} was created in {role.guild.name}")
+        sql.add_role(role)
 
     @client.async_event
     async def on_guild_role_delete(role):
-        # TODO
-        pass
+        logger.debug(f"Role {role.id} was created in guild {role.guild.id}")
+        if not _accept_guild(role.guild):
+            return
+
+        logger.info(f"Role {role.name} was deleted in {role.guild.name}")
+        sql.remove_role(role)
 
     @client.async_event
     async def on_guild_role_update(before, after):
-        # TODO
-        pass
+        logger.debug(f"Role {after.id} was created in guild {after.guild.id}")
+        if not _accept_guild(after.guild):
+            return
+
+        if before.name != after.name:
+            changed = f' (now {after.name})'
+        else:
+            changed = ''
+        logger.info(f"Role {before.name}{changed} was changed in {after.guild.name}")
+        sql.update_role(after)
 
     @client.async_event
     async def on_guild_emojis_update(guild, before, after):
