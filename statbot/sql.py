@@ -222,7 +222,7 @@ class DiscordSqlHandler:
                 .values({
                     'is_edited': before.content != after.content,
                     'content': after.content,
-                    'embeds': embeds_to_json(message.embeds),
+                    'embeds': embeds_to_json(after.embeds),
                 }) \
                 .where(self.tb_messages.c.message_id == after.id)
         self.db.execute(upd)
