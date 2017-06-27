@@ -333,9 +333,6 @@ class DiscordSqlHandler:
                 .where(self.tb_pins.c.message_id == message.id)
         self.db.execute(delet)
 
-    def update_guild(self, guild):
-        self.upsert_guild(guild)
-
     def add_channel(self, channel):
         values = self._channel_values(channel)
         ins = self.tb_channel_lookup \
@@ -383,4 +380,20 @@ class DiscordSqlHandler:
                 .where(self.tb_user_lookup.c.user_id == user.id)
         self.db.execute(delet)
         del self.user_cache[user.id]
+
+    def add_emoji(self, emoji):
+        values = self._emoji_values(emoji)
+        ins = self.tb_emoji_lookup \
+                .insert() \
+                .values(value)
+        self.db.execute(ins)
+        self.emoji_cache[values['emoji_id']] = values
+
+    def remove_emoji(self, emoji):
+        id = get_emoji_id(emoji)
+        delet = self.tb_emoji_lookup \
+                .delete() \
+                .where(self.tb_emoji_lookup.c.emoji_id == id)
+        self.db.execute(delet)
+        del self.emoji_cache[id]
 

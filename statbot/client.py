@@ -270,8 +270,13 @@ def make_client(config, logger=null_logger):
 
     @client.async_event
     async def on_guild_emojis_update(guild, before, after):
-        # TODO
-        pass
+        before = set(before)
+        after = set(before)
+
+        for emoji in after - before:
+            sql.add_emoji(emoji)
+        for emoji in before - after:
+            sql.remove_emoji(emoji)
 
     # Return client object
     return client
