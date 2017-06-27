@@ -13,10 +13,13 @@
 from . import client, config, message_utils, sql, util
 
 __all__ = [
+    '__version__',
     'client',
     'config',
     'message_utils',
     'sql',
     'util',
 ]
+
+__version__ = '0.0.1'
 
