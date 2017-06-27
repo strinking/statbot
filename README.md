@@ -1,8 +1,8 @@
 ## statbot
 A [Discord](https://discordapp.com) selfbot that reads in posts from a given set
 of servers and stores it in a SQL database. This application has two parts: the
-listener, which ingests raw data from the Discord API, and the crawler, which
-walks through the database and applies a function on it.
+listener, which ingests raw data as it arrives, and the crawler, which walks
+through past history of Discord events and adds them.
 
 This bot is designed for use with Postgres, but in principle could be used
 with any database that SQLAlchemy supports.
