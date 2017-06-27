@@ -1,3 +1,4 @@
 make upsert_* methods use transactions [http://docs.sqlalchemy.org/en/latest/orm/session_transaction.html]
 implement foreign keys for guild_id, channel_id, etc. [https://en.wikipedia.org/wiki/Foreign_key]
+add crawler [project]
 
