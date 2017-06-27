@@ -1,5 +1,4 @@
 standardize sql logging/data methods
 make upsert_* methods use transactions [http://docs.sqlalchemy.org/en/latest/orm/session_transaction.html]
-webhook_id AttributeError
 implement foreign keys for guild_id, channel_id, etc. [https://en.wikipedia.org/wiki/Foreign_key]
 
