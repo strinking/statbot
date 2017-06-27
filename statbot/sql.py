@@ -216,7 +216,7 @@ class DiscordSqlHandler:
         self.upsert_user(message.author)
 
     def edit_message(self, before, after):
-        self.logger.info(f"Updating message {message.id}")
+        self.logger.info(f"Updating message {after.id}")
         upd = self.tb_messages \
                 .update() \
                 .values({
@@ -226,10 +226,6 @@ class DiscordSqlHandler:
                 }) \
                 .where(self.tb_messages.c.message_id == after.id)
         self.db.execute(upd)
-
-        self.upsert_guild(after.guild)
-        self.upsert_channel(after.channel)
-        self.upsert_user(after.author)
 
     def delete_message(self, message):
         self.logger.info(f"Deleting message {message.id}")
@@ -258,6 +254,10 @@ class DiscordSqlHandler:
                 })
         self.db.execute(ins)
 
+        self.upsert_guild(message.guild)
+        self.upsert_channel(channel)
+        self.upsert_user(user)
+
     # Reactions
     def add_reaction(self, reaction, user):
         self.logger.info(f"Inserting reaction for user {user.id} on message {message.id}")
@@ -272,6 +272,9 @@ class DiscordSqlHandler:
                 })
         self.db.execute(ins)
 
+        self.upsert_guild(reaction.message.guild)
+        self.upsert_channel(reaction.message.channel)
+        self.upsert_user(user)
         self.upsert_emoji(reaction.emoji)
 
     def delete_reaction(self, reaction, user):
@@ -283,7 +286,10 @@ class DiscordSqlHandler:
                 .where(self.tb_reactions.c.user_id == user.id)
         self.db.execute(delet)
 
-        self.upsert_emojis(reaction.emoji)
+        self.upsert_guild(reaction.message.guild)
+        self.upsert_channel(reaction.message.channel)
+        self.upsert_user(user)
+        self.upsert_emoji(reaction.emoji)
 
     def clear_reactions(self, message):
         self.logger.info(f"Deleting all reactions on message {message.id}")
@@ -291,8 +297,6 @@ class DiscordSqlHandler:
                 .delete() \
                 .where(self.tb_reactions.c.message_id == reaction.message.id)
         self.db.execute(delet)
-
-        self.upsert_emoji(reaction.emoji)
 
     # Pins (TODO)
     def add_pin(self, announce, message):
@@ -331,6 +335,8 @@ class DiscordSqlHandler:
         self.db.execute(ins)
         self.role_cache[role.id] = values
 
+        self.upsert_guild(role.guild)
+
     def remove_role(self, role):
         self.logger.info(f"Deleting role {role.id}")
         delet = self.tb_role_lookup \
@@ -338,6 +344,8 @@ class DiscordSqlHandler:
                 .where(self.tb_role_lookup.c.role_id == role.id)
         self.db.execute(delet)
         del self.role_cache[role.id]
+
+        self.upsert_guild(role.guild)
 
     def upsert_role(self, role):
         values = self._role_values(role)
@@ -355,6 +363,8 @@ class DiscordSqlHandler:
                 )
         self.db.execute(ups)
         self.role_cache[role.id] = values
+
+        self.upsert_guild(role.guild)
 
     # Channels
     def add_channel(self, channel):
