@@ -1,6 +1,5 @@
 make upsert_* methods use transactions [http://docs.sqlalchemy.org/en/latest/orm/session_transaction.html]
 webhook_id AttributeError
-handling for special messages
 add roles?
 implement on_guild_emojis_update()
 implement foreign keys for guild_id, channel_id, etc. [https://en.wikipedia.org/wiki/Foreign_key]

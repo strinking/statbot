@@ -39,6 +39,9 @@ def make_client(config, logger=null_logger):
             logger.debug("Message from a guild we don't care about.")
             logger.debug("Ignoring message.")
             return False
+        elif message.type != discord.MessageType.default:
+            logger.debug("Special type of message receieved.")
+            logger.debug("Ignoring message.")
         else:
             return True
 
