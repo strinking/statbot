@@ -1,4 +1,3 @@
-+ upsert_emoji() [add emoji cache]
 make upsert_* methods use transactions [http://docs.sqlalchemy.org/en/latest/orm/session_transaction.html]
 webhook_id AttributeError
 handling for special messages
