@@ -11,7 +11,7 @@
 #
 
 from sqlalchemy import ARRAY, Boolean, BigInteger, Column, DateTime
-from sqlalchemy import String, Table, Unicode, UnicodeText
+from sqlalchemy import Integer, String, Table, Unicode, UnicodeText
 from sqlalchemy import MetaData, create_engine
 from sqlalchemy.dialects.postgresql import insert as p_insert
 import unicodedata
@@ -89,16 +89,28 @@ class DiscordSqlHandler:
                 Column('category', String),
                 Column('unicode', Unicode(1), nullable=True),
                 Column('guild_id', BigInteger, nullable=True))
+        self.tb_role_lookup = Table('role_lookup', self.meta,
+                Column('role_id', BigInteger, primary_key=True),
+                Column('name', Unicode),
+                Column('color', Integer),
+                Column('raw_permissions', BigInteger),
+                Column('guild_id', BigInteger),
+                Column('is_hoisted', Boolean),
+                Column('is_managed', Boolean),
+                Column('is_mentionable', Boolean),
+                Column('position', Integer))
 
         # Lookup caches
         self.guild_cache = {}
         self.channel_cache = {}
         self.user_cache = {}
         self.emoji_cache = {}
+        self.role_cache = {}
 
         # Create tables
         self.meta.create_all(self.db)
 
+    # Value builders
     @staticmethod
     def _guild_values(guild):
         return {
@@ -144,7 +156,22 @@ class DiscordSqlHandler:
                 'guild_id': emoji.guild.id,
             }
 
-    def upsert_guild(self, guild, conn=None):
+    @staticmethod
+    def _role_values(role):
+        return {
+            'role_id': role.id,
+            'name': role.name,
+            'color': role.color.value,
+            'raw_permissions': role.permissions.value,
+            'guild_id': role.guild.id,
+            'is_hoisted': role.hoist,
+            'is_managed': role.managed,
+            'is_mentionable': role.mentionable,
+            'position': role.position,
+        }
+
+    # Guild
+    def upsert_guild(self, guild):
         values = self._guild_values(guild)
         if self.guild_cache.get(guild.id) == values:
             self.logger.debug(f"Guild lookup for {guild.id} is already up-to-date")
@@ -161,56 +188,7 @@ class DiscordSqlHandler:
         self.db.execute(ups)
         self.guild_cache[guild.id] = values
 
-    def upsert_channel(self, channel, conn=None):
-        values = self._channel_values(channel)
-        if self.channel_cache.get(channel.id) == values:
-            self.logger.debug(f"Channel lookup for {channel.id} is already up-to-date")
-            return
-
-        self.logger.info(f"Updating lookup data for channel {channel.name}")
-        ups = p_insert(self.tb_channel_lookup) \
-                .values(values) \
-                .on_conflict_do_update(
-                        index_elements=['channel_id'],
-                        index_where=(self.tb_channel_lookup.c.channel_id == channel.id),
-                        set_=values,
-                )
-        self.db.execute(ups)
-        self.channel_cache[channel.id] = values
-
-    def upsert_user(self, user, conn=None):
-        values = self._user_values(user)
-        if self.user_cache.get(user.id) == values:
-            self.logger.debug(f"User lookup for {user.id} is already up-to-date")
-            return
-
-        ups = p_insert(self.tb_user_lookup) \
-                .values(values) \
-                .on_conflict_do_update(
-                        index_elements=['user_id'],
-                        index_where=(self.tb_user_lookup.c.user_id == user.id),
-                        set_=values,
-                )
-        self.db.execute(ups)
-        self.user_cache[user.id] = values
-
-    def upsert_emojis(self, emoji):
-        values = self._emoji_values(emoji)
-        id = values['emoji_id']
-        if self.emoji_cache.get(id) == values:
-            self.logger.debug(f"Emoji lookup for {id} is already up-to-date")
-            return
-
-        ups = p_insert(self.tb_emoji_lookup) \
-                .values(values) \
-                .on_conflict_do_update(
-                        index_elements=['emoji_id'],
-                        index_where=(self.tb_emoji_lookup.c.emoji_id == id),
-                        set_=values,
-                    )
-        self.db.execute(ups)
-        self.emoji_cache[id] = values
-
+    # Message
     def add_message(self, message):
         attach_urls = '\n'.join((attach.url for attach in message.attachments))
         if message.content:
@@ -266,6 +244,7 @@ class DiscordSqlHandler:
         self.upsert_channel(message.channel)
         self.upsert_user(message.author)
 
+    # Typing
     def typing(self, channel, user, when):
         ins = self.tb_typing \
                 .insert() \
@@ -277,6 +256,7 @@ class DiscordSqlHandler:
                 })
         self.db.execute(ins)
 
+    # Reactions
     def add_reaction(self, reaction, user):
         ins = self.tb_reactions \
                 .insert() \
@@ -309,10 +289,11 @@ class DiscordSqlHandler:
 
         self.upsert_emoji(reaction.emoji)
 
+    # Pins (TODO)
     def add_pin(self, announce, message):
         raise NotImplementedError
 
-        ins = = self.tb_pins \
+        ins = self.tb_pins \
                 .insert() \
                 .values({
                     'pin_id': announce.id,
@@ -333,12 +314,55 @@ class DiscordSqlHandler:
                 .where(self.tb_pins.c.message_id == message.id)
         self.db.execute(delet)
 
+    # Roles
+    def add_role(self, role):
+        values = self._role_values(role)
+        ins = self.tb_role_lookup \
+                .insert() \
+                .values(values)
+        self.db.execute(ins)
+        self.role_cache[role.id] = values
+
+    def remove_role(self, role):
+        delet = self.tb_role_lookup \
+                .delete() \
+                .where(self.tb_role_lookup.c.role_id == role.id)
+        self.db.execute(delet)
+        del self.role_cache[role.id]
+
+    def upsert_role(self, role):
+        values = self._role_values(role)
+        if self.role_cache.get(role.id) == values:
+            self.logger.debug(f"Role lookup for {role.id} is already up-to-date")
+            return
+
+        self.logger.info("Updating lookup data for role {role.name}")
+        ups = p_insert(self.tb_role_lookup) \
+                .values(values) \
+                .on_conflict_do_update(
+                        index_elements=['role_id'],
+                        index_where=(self.tb_role_lookup.c.role_id == role.id),
+                        set_=values,
+                )
+        self.db.execute(ups)
+        self.role_cache[role.id] = values
+
+    # Channels
     def add_channel(self, channel):
         values = self._channel_values(channel)
         ins = self.tb_channel_lookup \
                 .insert() \
                 .values(values)
         self.db.execute(ins)
+        self.channel_cache[channel.id] = values
+
+    def update_channel(self, channel):
+        values = self._channel_values(channel)
+        upd = self.tb_channel_lookup \
+                .update() \
+                .where(self.tb_channel_lookup.c.channel_id == channel.id) \
+                .values(values)
+        self.db.execute(upd)
         self.channel_cache[channel.id] = values
 
     def remove_channel(self, channel):
@@ -348,17 +372,26 @@ class DiscordSqlHandler:
         self.db.execute(delet)
         del self.channel_cache[channel.id]
 
-    def update_channel(self, channel):
+    def upsert_channel(self, channel):
         values = self._channel_values(channel)
-        upd = self.tb_channel_lookup \
-                .update() \
-                .where(self.tb_channel_lookup.c.channel_id == channel.id)
-                .values(values)
-        self.db.execute(upd)
+        if self.channel_cache.get(channel.id) == values:
+            self.logger.debug(f"Channel lookup for {channel.id} is already up-to-date")
+            return
+
+        self.logger.info(f"Updating lookup data for channel {channel.name}")
+        ups = p_insert(self.tb_channel_lookup) \
+                .values(values) \
+                .on_conflict_do_update(
+                        index_elements=['channel_id'],
+                        index_where=(self.tb_channel_lookup.c.channel_id == channel.id),
+                        set_=values,
+                )
+        self.db.execute(ups)
         self.channel_cache[channel.id] = values
 
+    # Users
     def add_user(self, user):
-        values = = self._user_values(user)
+        values = self._user_values(user)
         ins = self.tb_user_lookup \
                 .insert() \
                 .values(values)
@@ -366,7 +399,7 @@ class DiscordSqlHandler:
         self.user_cache[user.id] = values
 
     def update_user(self, user):
-        values = = self._user_values(user)
+        values = self._user_values(user)
         upd = self.tb_user_lookup \
                 .update() \
                 .where(self.tb_user_lookup.c.user_id == user.id) \
@@ -381,6 +414,23 @@ class DiscordSqlHandler:
         self.db.execute(delet)
         del self.user_cache[user.id]
 
+    def upsert_user(self, user):
+        values = self._user_values(user)
+        if self.user_cache.get(user.id) == values:
+            self.logger.debug(f"User lookup for {user.id} is already up-to-date")
+            return
+
+        ups = p_insert(self.tb_user_lookup) \
+                .values(values) \
+                .on_conflict_do_update(
+                        index_elements=['user_id'],
+                        index_where=(self.tb_user_lookup.c.user_id == user.id),
+                        set_=values,
+                )
+        self.db.execute(ups)
+        self.user_cache[user.id] = values
+
+    # Emojis
     def add_emoji(self, emoji):
         values = self._emoji_values(emoji)
         ins = self.tb_emoji_lookup \
@@ -396,4 +446,21 @@ class DiscordSqlHandler:
                 .where(self.tb_emoji_lookup.c.emoji_id == id)
         self.db.execute(delet)
         del self.emoji_cache[id]
+
+    def upsert_emojis(self, emoji):
+        values = self._emoji_values(emoji)
+        id = values['emoji_id']
+        if self.emoji_cache.get(id) == values:
+            self.logger.debug(f"Emoji lookup for {id} is already up-to-date")
+            return
+
+        ups = p_insert(self.tb_emoji_lookup) \
+                .values(values) \
+                .on_conflict_do_update(
+                        index_elements=['emoji_id'],
+                        index_where=(self.tb_emoji_lookup.c.emoji_id == id),
+                        set_=values,
+                    )
+        self.db.execute(ups)
+        self.emoji_cache[id] = values
 

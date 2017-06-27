@@ -244,16 +244,6 @@ def make_client(config, logger=null_logger):
         sql.update_user(member)
 
     @client.async_event
-    async def on_guild_join(guild):
-        logger.info(f"Just joined guild {guild.name} ({guild.id})")
-        logger.info("(Doing nothing)")
-
-    @client.async_event
-    async def on_guild_remove(guild):
-        logger.info(f"Just left guild {guild.name} ({guild.id})")
-        logger.info("(Doing nothing)")
-
-    @client.async_event
     async def on_guild_role_create(role):
         # TODO
         pass
@@ -264,7 +254,7 @@ def make_client(config, logger=null_logger):
         pass
 
     @client.async_event
-    async def on_guild_role_update(role):
+    async def on_guild_role_update(before, after):
         # TODO
         pass
 
