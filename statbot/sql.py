@@ -42,7 +42,6 @@ class DiscordSqlHandler:
                 Column('is_edited', Boolean),
                 Column('is_deleted', Boolean),
                 Column('is_webhook', Boolean),
-                Column('is_pinned', Boolean),
                 Column('has_upload', Boolean),
                 Column('content', UnicodeText),
                 Column('embeds', UnicodeText),
@@ -60,7 +59,13 @@ class DiscordSqlHandler:
                 Column('user_id', BigInteger),
                 Column('channel_id', BigInteger),
                 Column('guild_id', BigInteger))
-        # TODO tb_pins table
+        self.tb_pins = Table('pins', self.meta,
+                Column('pin_id', BigInteger, primary_key=True),
+                Column('message_id', BigInteger, primary_key=True),
+                Column('pinner_id', BigInteger),
+                Column('user_id', BigInteger),
+                Column('channel_id', BigInteger),
+                Column('guild_id', BigInteger))
 
         # Lookup tables
         self.tb_guild_lookup = Table('guild_lookup', self.meta,
@@ -147,7 +152,7 @@ class DiscordSqlHandler:
         self.channel_cache[channel.id] = values
 
     def upsert_user(self, user, conn=None):
-        values =
+        values = self._user_values(user)
         if self.user_cache.get(user.id) == values:
             self.logger.debug(f"User lookup for {user.id} is already up-to-date")
             return
@@ -180,7 +185,6 @@ class DiscordSqlHandler:
                     'is_edited': False,
                     'is_deleted': False,
                     'is_webhook': message.webhook_id is not None,
-                    'is_pinned': message.pinned,
                     'has_upload': bool(message.attachments),
                     'content': content,
                     'embeds': embeds_to_json(message.embeds),
@@ -199,7 +203,6 @@ class DiscordSqlHandler:
                 .update() \
                 .values({
                     'is_edited': before.content != after.content,
-                    'is_pinned': after.pinned,
                     'content': after.content,
                     'embeds': embeds_to_json(message.embeds),
                 }) \
@@ -266,8 +269,32 @@ class DiscordSqlHandler:
 
         self.upsert_emoji(reaction.emoji)
 
+    def add_pin(self, announce, message):
+        raise NotImplementedError
+
+        ins = = self.tb_pins \
+                .insert() \
+                .values({
+                    'pin_id': announce.id,
+                    'message_id': message.id,
+                    'pinner_id': announce.author.id,
+                    'user_id': message.author.id,
+                    'channel_id': message.channel.id,
+                    'guild_id': message.guild.id,
+                })
+        self.db.execute(ins)
+
+    def remove_pin(self, announce, message):
+        raise NotImplementedError
+
+        delet = self.tb_pins \
+                .delete() \
+                .where(self.tb_pins.c.pin_id == announce.id) \
+                .where(self.tb_pins.c.message_id == message.id)
+        self.db.execute(delet)
+
     def update_guild(self, guild):
-        pass
+        self.upsert_guild(guild)
 
     def add_channel(self, channel):
         values = self._channel_values(channel)
