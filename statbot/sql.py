@@ -487,7 +487,7 @@ class DiscordSqlHandler:
         self.db.execute(delet)
         self.emoji_cache.pop(id, None)
 
-    def upsert_emojis(self, emoji):
+    def upsert_emoji(self, emoji):
         values = self._emoji_values(emoji)
         id = values['emoji_id']
         if self.emoji_cache.get(id) == values:
