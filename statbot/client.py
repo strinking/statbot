@@ -236,6 +236,13 @@ def make_client(config, logger=null_logger, sql_logger=null_logger):
         if not _accept_guild(after.guild):
             return
 
+        # Certain changes that we don't care about can trigger this event
+        before.status = after.status
+        before.game = after.game
+        if before == after:
+            logger.debug("It was only a status change")
+            return
+
         if before.name != after.name:
             changed = f' (now {after.name})'
         else:
