@@ -13,24 +13,12 @@
 import json
 
 __all__ = [
-    'get_username',
     'get_emoji_name',
     'get_emoji_id',
     'plural',
     'embeds_to_json',
     'null_logger',
 ]
-
-def get_username(member):
-    '''
-    Get's a user's nickname, if they have one,
-    or just their username if they don't.
-    '''
-
-    if getattr(member, 'nick', None):
-        return member.nick
-    else:
-        return member.name
 
 def get_emoji_name(emoji):
     '''

@@ -20,7 +20,7 @@ __all__ = [
 LOG_FULL_MESSAGES = False
 
 from .sql import DiscordSqlHandler
-from .util import get_username, get_emoji_name, null_logger
+from .util import get_emoji_name, null_logger
 
 def make_client(config, logger=null_logger, sql_logger=null_logger):
     client = discord.Client()
@@ -71,7 +71,7 @@ def make_client(config, logger=null_logger, sql_logger=null_logger):
             return True
 
     def _log(message, action):
-        name = get_username(message.author)
+        name = message.author.display_name
         guild = message.guild.name
         chan = message.channel.name
 
@@ -82,14 +82,14 @@ def make_client(config, logger=null_logger, sql_logger=null_logger):
             logger.info("<eom>")
 
     def _log_typing(channel, user):
-        name = get_username(user)
+        name = user.display_name
         guild = channel.guild.name
         chan = channel.name
 
         logger.info(f"Typing by {name} on {guild} #{chan}")
 
     def _log_react(reaction, user, action):
-        name = get_username(user)
+        name = user.display_name
         emote = get_emoji_name(reaction.emoji)
         count = reaction.count
         id = reaction.message.id
