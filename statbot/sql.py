@@ -254,7 +254,7 @@ class DiscordSqlHandler:
                 })
         self.db.execute(ins)
 
-        self.upsert_guild(message.guild)
+        self.upsert_guild(channel.guild)
         self.upsert_channel(channel)
         self.upsert_user(user)
 
