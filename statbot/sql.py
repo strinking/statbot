@@ -348,7 +348,7 @@ class DiscordSqlHandler:
         self.db.execute(ins)
         self.channel_cache[channel.id] = values
 
-    def update_channel(self, channel):
+    def _update_channel(self, channel):
         self.logger.info(f"Updating channel {channel.id} in guild {guild.id}")
         values = self._channel_values(channel)
         upd = self.tb_channel_lookup \
@@ -357,6 +357,12 @@ class DiscordSqlHandler:
                 .values(values)
         self.db.execute(upd)
         self.channel_cache[channel.id] = values
+
+    def update_channel(self, channel):
+        if channel.id in self.channel_cache.keys():
+            self._update_channel(channel)
+        else:
+            self.upsert_channel(channel)
 
     def remove_channel(self, channel):
         self.logger.info(f"Deleting channel {channel.id} in guild {guild.id}")
@@ -393,7 +399,7 @@ class DiscordSqlHandler:
         self.db.execute(ins)
         self.user_cache[user.id] = values
 
-    def update_user(self, user):
+    def _update_user(self, user):
         self.logger.info(f"Updating user {user.id}")
         values = self._user_values(user)
         upd = self.tb_user_lookup \
@@ -402,6 +408,12 @@ class DiscordSqlHandler:
                 .values(values)
         self.db.execute(upd)
         self.user_cache[user.id] = values
+
+    def update_user(self, user):
+        if user.id in self.user_cache.keys():
+            self._update_user(user)
+        else:
+            self.upsert_user(user)
 
     def remove_user(self, user):
         self.logger.info(f"Removing user {user.id}")
