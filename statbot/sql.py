@@ -211,8 +211,12 @@ class DiscordSqlHandler:
                 })
         self.db.execute(ins)
 
+        self.upsert_guild(message.guild)
+        self.upsert_channel(message.channel)
+        self.upsert_user(message.author)
+
     def edit_message(self, before, after):
-        self.logger.info(f"Updating message {after.id}")
+        self.logger.info(f"Updating message {message.id}")
         upd = self.tb_messages \
                 .update() \
                 .values({
@@ -223,6 +227,10 @@ class DiscordSqlHandler:
                 .where(self.tb_messages.c.message_id == after.id)
         self.db.execute(upd)
 
+        self.upsert_guild(after.guild)
+        self.upsert_channel(after.channel)
+        self.upsert_user(after.author)
+
     def delete_message(self, message):
         self.logger.info(f"Deleting message {message.id}")
         upd = self.tb_messages \
@@ -232,6 +240,10 @@ class DiscordSqlHandler:
                 }) \
                 .where(self.tb_messages.c.message_id == message.id)
         self.db.execute(upd)
+
+        self.upsert_guild(message.guild)
+        self.upsert_channel(message.channel)
+        self.upsert_user(message.author)
 
     # Typing
     def typing(self, channel, user, when):
@@ -260,6 +272,8 @@ class DiscordSqlHandler:
                 })
         self.db.execute(ins)
 
+        self.upsert_emoji(reaction.emoji)
+
     def delete_reaction(self, reaction, user):
         self.logger.info(f"Deleting reaction for user {user.id} on message {message.id}")
         delet = self.tb_reactions \
@@ -269,12 +283,16 @@ class DiscordSqlHandler:
                 .where(self.tb_reactions.c.user_id == user.id)
         self.db.execute(delet)
 
+        self.upsert_emojis(reaction.emoji)
+
     def clear_reactions(self, message):
         self.logger.info(f"Deleting all reactions on message {message.id}")
         delet = self.tb_reactions \
                 .delete() \
                 .where(self.tb_reactions.c.message_id == reaction.message.id)
         self.db.execute(delet)
+
+        self.upsert_emoji(reaction.emoji)
 
     # Pins (TODO)
     def add_pin(self, announce, message):
