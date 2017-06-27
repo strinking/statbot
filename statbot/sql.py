@@ -14,6 +14,7 @@ from sqlalchemy import ARRAY, Boolean, BigInteger, Column, DateTime
 from sqlalchemy import String, Table, Unicode, UnicodeText
 from sqlalchemy import MetaData, create_engine
 from sqlalchemy.dialects.postgresql import insert as p_insert
+import unicodedata
 
 from .util import embeds_to_json, get_emoji_id
 
@@ -82,11 +83,18 @@ class DiscordSqlHandler:
                 Column('name', Unicode),
                 Column('discriminator', Integer),
                 Column('is_bot', Boolean))
+        self.tb_emoji_lookup = Table('emoji_lookup', self.meta,
+                Column('emoji_id', BigInteger, primary_key=True),
+                Column('name', String),
+                Column('category', String),
+                Column('unicode', Unicode(1), nullable=True),
+                Column('guild_id', BigInteger, nullable=True))
 
         # Lookup caches
         self.guild_cache = {}
         self.channel_cache = {}
         self.user_cache = {}
+        self.emoji_cache = {}
 
         # Create tables
         self.meta.create_all(self.db)
@@ -116,6 +124,25 @@ class DiscordSqlHandler:
             'discriminator': user.discriminator,
             'is_bot': user.bot,
         }
+
+    @staticmethod
+    def _emoji_values(emoji):
+        if type(emoji) == str:
+            return {
+                'emoji_id': ord(emoji),
+                'name': unicodedata.name(emoji),
+                'category': unicodedata.category(emoji),
+                'unicode': emoji,
+                'guild_id': None,
+            }
+        else:
+            return {
+                'emoji_id': emoji.id,
+                'name': emoji.name,
+                'category': 'custom',
+                'unicode': None,
+                'guild_id': emoji.guild.id,
+            }
 
     def upsert_guild(self, guild, conn=None):
         values = self._guild_values(guild)
@@ -168,8 +195,21 @@ class DiscordSqlHandler:
         self.user_cache[user.id] = values
 
     def upsert_emojis(self, emoji):
-        # TODO
-        pass
+        values = self._emoji_values(emoji)
+        id = values['emoji_id']
+        if self.emoji_cache.get(id) == values:
+            self.logger.debug(f"Emoji lookup for {id} is already up-to-date")
+            return
+
+        ups = p_insert(self.tb_emoji_lookup) \
+                .values(values) \
+                .on_conflict_do_update(
+                        index_elements=['emoji_id'],
+                        index_where=(self.tb_emoji_lookup.c.emoji_id == id),
+                        set_=values,
+                    )
+        self.db.execute(ups)
+        self.emoji_cache[id] = values
 
     def add_message(self, message):
         attach_urls = '\n'.join((attach.url for attach in message.attachments))
