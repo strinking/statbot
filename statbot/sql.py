@@ -86,14 +86,34 @@ class DiscordSqlHandler:
         # Create tables
         self.meta.create_all(self.db)
 
-    def upsert_guild(self, guild, conn=None):
-        values = {
+    @staticmethod
+    def _guild_values(guild):
+        return {
             'guild_id': guild.id,
             'name': guild.name,
             'channels': [channel.id for channel in guild.channels],
             'region': str(guild.region),
         }
 
+    @staticmethod
+    def _channel_values(channel):
+        return {
+            'channel_id': channel.id,
+            'name': channel.name,
+            'guild_id': channel.guild.id,
+        }
+
+    @staticmethod
+    def _user_values(user):
+        return {
+            'user_id': user.id,
+            'name': user.name,
+            'discriminator': user.discriminator,
+            'is_bot': user.bot,
+        }
+
+    def upsert_guild(self, guild, conn=None):
+        values = self._guild_values(guild)
         if self.guild_cache.get(guild.id) == values:
             self.logger.debug(f"Guild lookup for {guild.id} is already up-to-date")
             return
@@ -110,12 +130,7 @@ class DiscordSqlHandler:
         self.guild_cache[guild.id] = values
 
     def upsert_channel(self, channel, conn=None):
-        values = {
-            'channel_id': channel.id,
-            'name': channel.name,
-            'guild_id': channel.guild.id,
-        }
-
+        values = self._channel_values(channel)
         if self.channel_cache.get(channel.id) == values:
             self.logger.debug(f"Channel lookup for {channel.id} is already up-to-date")
             return
@@ -132,13 +147,7 @@ class DiscordSqlHandler:
         self.channel_cache[channel.id] = values
 
     def upsert_user(self, user, conn=None):
-        values = {
-            'user_id': user.id,
-            'name': user.name,
-            'discriminator': user.discriminator,
-            'is_bot': user.bot,
-        }
-
+        values =
         if self.user_cache.get(user.id) == values:
             self.logger.debug(f"User lookup for {user.id} is already up-to-date")
             return
@@ -261,12 +270,7 @@ class DiscordSqlHandler:
         pass
 
     def add_channel(self, channel):
-        values = {
-            'channel_id': channel.id,
-            'name': channel.name,
-            'guild_id': channel.guild.id,
-        }
-
+        values = self._channel_values(channel)
         ins = self.tb_channel_lookup \
                 .insert() \
                 .values(values)
@@ -281,12 +285,7 @@ class DiscordSqlHandler:
         del self.channel_cache[channel.id]
 
     def update_channel(self, channel):
-        values = {
-            'channel_id': channel.id,
-            'name': channel.name,
-            'guild_id': channel.guild.id,
-        }
-
+        values = self._channel_values(channel)
         upd = self.tb_channel_lookup \
                 .update() \
                 .where(self.tb_channel_lookup.c.channel_id == channel.id)
@@ -295,13 +294,7 @@ class DiscordSqlHandler:
         self.channel_cache[channel.id] = values
 
     def add_user(self, user):
-        values = {
-            'user_id': user.id,
-            'name': user.name,
-            'discriminator': user.discriminator,
-            'is_bot': user.bot,
-        }
-
+        values = = self._user_values(user)
         ins = self.tb_user_lookup \
                 .insert() \
                 .values(values)
@@ -309,13 +302,7 @@ class DiscordSqlHandler:
         self.user_cache[user.id] = values
 
     def update_user(self, user):
-        values = {
-            'user_id': user.id,
-            'name': user.name,
-            'discriminator': user.discriminator,
-            'is_bot': user.bot,
-        }
-
+        values = = self._user_values(user)
         upd = self.tb_user_lookup \
                 .update() \
                 .where(self.tb_user_lookup.c.user_id == user.id) \
