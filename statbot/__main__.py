@@ -45,28 +45,34 @@ if __name__ == '__main__':
     args = argparser.parse_args()
 
     # Set up logging
-    logger = logging.getLogger('discord')
-    logger.setLevel(level=(logging.DEBUG if args.debug else logging.INFO))
     log_fmtr = logging.Formatter(LOG_FORMAT, datefmt=LOG_DATE_FORMAT)
-
     log_hndl = logging.FileHandler(filename=LOG_FILE,
             encoding='utf-8', mode=LOG_FILE_MODE)
     log_hndl.setFormatter(log_fmtr)
-    logger.addHandler(log_hndl)
+    log_level = (logging.DEBUG if args.debug else logging.INFO)
+
+    dis_logger = logging.getLogger('discord')
+    dis_logger.setLevel(level=log_level)
+    dis_logger.addHandler(log_hndl)
+
+    sql_logger = logging.getLogger('sql')
+    sql_logger.setLevel(level=log_level)
+    sql_logger.addHandler(log_hndl)
 
     if args.stdout:
         log_hndl = logging.StreamHandler(sys.stdout)
         log_hndl.setFormatter(log_fmtr)
-        logger.addHandler(log_hndl)
+        dis_logger.addHandler(log_hndl)
+        sql_logger.addHandler(log_hndl)
 
     # Get and verify configuration
-    config, valid = load_config(args.config_file, logger)
+    config, valid = load_config(args.config_file, dis_logger)
     if not valid:
-        logger.error("Configuration file was invalid.")
+        dis_logger.error("Configuration file was invalid.")
         exit(1)
 
     # Open and run client
-    logger.info("Starting bot...")
-    client = make_client(config, logger)
+    dis_logger.info("Starting bot...")
+    client = make_client(config, dis_logger, sql_logger=sql_logger)
     client.run(config['token'], bot=False)
 

@@ -22,10 +22,10 @@ LOG_FULL_MESSAGES = False
 from .sql import DiscordSqlHandler
 from .util import get_username, get_emoji_name, null_logger
 
-def make_client(config, logger=null_logger):
+def make_client(config, logger=null_logger, sql_logger=null_logger):
     client = discord.Client()
     client.ready = False
-    sql = DiscordSqlHandler(config['url'], logger)
+    sql = DiscordSqlHandler(config['url'], sql_logger)
 
     def _accept_message(message):
         if not client.ready:
