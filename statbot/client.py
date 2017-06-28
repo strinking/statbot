@@ -29,7 +29,6 @@ class EventIngestionClient(discord.Client):
         self.ready = False
 
         self.logger = logger
-        self.sql_logger = sql_logger
 
         self.sql = DiscordSqlHandler(config['url'], sql_logger)
 
