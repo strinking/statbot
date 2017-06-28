@@ -33,7 +33,7 @@ LOG_DATE_FORMAT = "[%d/%m/%Y %H:%M]"
 
 if __name__ == '__main__':
     # Parse arguments
-    argparser = argparse.ArgumentParser(description='Self-bot to track posting data')
+    argparser = argparse.ArgumentParser(description='Bot to track posting data')
     argparser.add_argument('-q', '--quiet', '--no-stdout',
             dest='stdout', action='store_false',
             help="Don't output to standard out.")

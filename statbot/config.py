@@ -53,18 +53,19 @@ def check(cfg, logger=null_logger):
 
     try:
         if not is_int_list(cfg['guilds']):
-            logger.error("Configuration lacks 'guilds', an int list")
+            logger.error("Configuration field 'guilds' is not an int list")
             return False
         if type(cfg['token']) != str:
-            logger.error("Configuration lacks 'token', a string")
+            logger.error("Configuration field 'token' is not a string")
             return False
         if type(cfg['bot']) != bool:
-            logger.error("Configuration lacks 'bot', a bool")
+            logger.error("Configuration field 'bot' is not a bool")
             return False
         if type(cfg['url']) != str:
-            logger.error("Configuration lacks 'url', a string")
+            logger.error("Configuration field 'url' is not a string")
             return False
-    except KeyError:
+    except KeyError as err:
+        logger.error(f"Configuration missing field: {err}")
         return False
     else:
         return True
