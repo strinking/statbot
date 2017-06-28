@@ -17,8 +17,11 @@ Available under the terms of the MIT License.
 
 You can install them all using pip by running:
 ```sh
-pip3 -r requirements.txt
+pip3 install --user -U 'git+https://github.com/Rapptz/discord.py@rewrite#egg=discord.py[voice]'
+pip3 install psycopg2 SQLAlchemy
 ```
+
+Since discord.py 1.0.0 is not in the pip repos, you cannot use the `requirements.txt` file as-is.
 
 ### Execution
 After preparing a configuration file, (see `misc/sample_config.json`)
@@ -26,4 +29,7 @@ you can call the program as follows:
 ```sh
 python3 -m statbot [-q] [-d] your_config_file.json
 ```
+
+A sample `docker-compose.yaml` configuration is also provided in `misc/` in case you would
+like to host your PostgreSQL database via Docker.
 
