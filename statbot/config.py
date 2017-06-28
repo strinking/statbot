@@ -58,6 +58,9 @@ def check(cfg, logger=null_logger):
         if type(cfg['token']) != str:
             logger.error("Configuration lacks 'token', a string")
             return False
+        if type(cfg['bot']) != bool:
+            logger.error("Configuration lacks 'bot', a bool")
+            return False
         if type(cfg['url']) != str:
             logger.error("Configuration lacks 'url', a string")
             return False
