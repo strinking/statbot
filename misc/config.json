@@ -4,6 +4,7 @@
         1290192091029091120
     ],
     "token": "your_discord_token_here",
+    "bot": true,
 
     "url": "postgresql://username:password@localhost:5432"
 }

@@ -16,7 +16,7 @@ import json
 import logging
 import sys
 
-from .client import make_client
+from .client import EventIngestionClient
 from .config import load_config
 from .util import plural
 
@@ -73,6 +73,6 @@ if __name__ == '__main__':
 
     # Open and run client
     dis_logger.info("Starting bot...")
-    client = make_client(config, dis_logger, sql_logger=sql_logger)
-    client.run(config['token'], bot=False)
+    client = EventIngestionClient(config, dis_logger, sql_logger=sql_logger)
+    client.run()
 
