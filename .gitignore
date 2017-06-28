@@ -1,6 +1,6 @@
 # Configuration
-config.json
-docker-compose.yaml
+/config.json
+/docker-compose.yaml
 
 # Artifacts
 __pycache__
