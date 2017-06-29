@@ -69,14 +69,15 @@ if __name__ == '__main__':
 
     # Enable specified logs
     if args.loglist is None:
-        loggers = [main_logger, event_logger, sql_logger]
+        loggers = [main_logger, event_logger, crawler_logger, sql_logger]
         if args.debug:
             loggers.append(discord_logger)
     else:
         logger_names = {
-            'main': main_logger,
             'discord': discord_logger,
+            'main': main_logger,
             'event': event_logger,
+            'crawler': crawler_logger,
             'sql': sql_logger,
         }
         try:
