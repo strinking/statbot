@@ -58,6 +58,7 @@ if __name__ == '__main__':
     def get_logger(name, level=log_level):
         logger = logging.getLogger(name)
         logger.setLevel(level=level)
+        return logger
 
     discord_logger = get_logger('discord', logging.INFO)
     main_logger = get_logger('main')
