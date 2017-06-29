@@ -265,26 +265,26 @@ class Range(AbstractRange):
         if isinstance(other, AbstractRange):
             return (self.begin <= other.min()) and (self.end >= other.max())
         else:
-            return False
+            raise TypeError(f'must be an AbstractRange, not a {type(other)}')
 
     def __lt__(self, other):
         if isinstance(other, AbstractRange):
             return (self.begin < other.min()) and (self.end > other.max())
         else:
-            return False
+            raise TypeError(f'must be an AbstractRange, not a {type(other)}')
 
     # Superset
     def __gt__(self, other):
         if isinstance(other, AbstractRange):
             return (self.begin > other.min()) and (self.end < other.max())
         else:
-            return False
+            raise TypeError(f'must be an AbstractRange, not a {type(other)}')
 
     def __ge__(self, other):
         if isinstance(other, AbstractRange):
             return (self.begin >= other.min()) and (self.end <= other.max())
         else:
-            return False
+            raise TypeError(f'must be an AbstractRange, not a {type(other)}')
 
     # Intersection
     def __and__(self, other):
