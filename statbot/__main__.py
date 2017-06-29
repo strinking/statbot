@@ -37,6 +37,9 @@ if __name__ == '__main__':
     argparser.add_argument('-q', '--quiet', '--no-stdout',
             dest='stdout', action='store_false',
             help="Don't output to standard out.")
+    argparser.add_argument('-N', '--no-sql-logs',
+            dest='sql_logs', action='store_false',
+            help="Only output the discord logger output.")
     argparser.add_argument('-d', '--debug',
             dest='debug', action='store_true',
             help="Set logging level to debug.")
@@ -63,7 +66,8 @@ if __name__ == '__main__':
         log_hndl = logging.StreamHandler(sys.stdout)
         log_hndl.setFormatter(log_fmtr)
         dis_logger.addHandler(log_hndl)
-        sql_logger.addHandler(log_hndl)
+        if args.sql_logs:
+            sql_logger.addHandler(log_hndl)
 
     # Get and verify configuration
     config, valid = load_config(args.config_file, dis_logger)
