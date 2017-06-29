@@ -57,6 +57,8 @@ def plural(x, suffix='s'):
         return suffix
 
 class _NullLogger:
+    __slots__ = ()
+
     def __init__(self):
         pass
 

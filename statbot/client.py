@@ -23,20 +23,23 @@ from .sql import DiscordSqlHandler
 from .util import get_emoji_name, null_logger
 
 class EventIngestionClient(discord.Client):
+    __slots__ = (
+        'config',
+        'logger',
+        'sql',
+        'ready',
+    )
 
     def __init__(self, config, logger=null_logger, sql_logger=null_logger):
         self.config = config
-        self.ready = False
-
         self.logger = logger
-
         self.sql = DiscordSqlHandler(config['url'], sql_logger)
 
         super().__init__()
+        self.ready = False
 
     def run(self):
-        # Replace in-built function to include the token from config
-
+        # Override function to include the token from config
         return super().run(self.config['token'], bot=self.config['bot'])
 
     def _accept_message(self, message):

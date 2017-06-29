@@ -31,6 +31,28 @@ class DiscordSqlHandler:
     process them into the SQL database accordingly.
     '''
 
+    __slots__ = (
+        'db',
+        'meta',
+        'logger',
+
+        'tb_messages',
+        'tb_reactions',
+        'tb_typing',
+        'tb_pins',
+        'tb_guild_lookup',
+        'tb_channel_lookup',
+        'tb_user_lookup',
+        'tb_emoji_lookup',
+        'tb_role_lookup',
+
+        'guild_cache',
+        'channel_cache',
+        'user_cache',
+        'emoji_cache',
+        'role_cache',
+    )
+
     def __init__(self, addr, logger):
         logger.info(f"Opening database: '{addr}'")
         self.db = create_engine(addr)
