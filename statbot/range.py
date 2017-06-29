@@ -51,46 +51,63 @@ class NullRange(collections.abc.Set):
     If you want an instance of this class use null_range.
     '''
 
+    # Membership
     def __contains__(self, item):
         return False
 
+    # Iteration
     def __iter__(self):
         return iter(())
 
     def __len__(self):
         return 0
 
-    def __le__(self, other):
-        return True
-
-    def __lt__(self, other):
-        return True
-
+    # Equality
     def __eq__(self, other):
         return len(other) == 0
 
     def __ne__(self, other):
         return not (self == other)
 
+    # Subset
+    def __le__(self, other):
+        return True
+
+    def __lt__(self, other):
+        return True
+
+    # Superset
     def __gt__(self, other):
         return False
 
     def __ge__(self, other):
         return (self == other)
 
+    # Intersection
     def __and__(self, other):
         return self
 
+    # Union
     def __or__(self, other):
         return other
 
+    # Difference
     def __sub__(self, other):
         return self
 
+    # Complement
     def __xor__(self, other):
         return other
 
+    # Disjoint
     def isdisjoint(self, other):
+        return True
+
+    # Misc
+    def __hash__(self):
+        return 0
+
+    def __bool__(self):
         return True
 
 null_range = NullRange()
@@ -105,50 +122,67 @@ class AllRange(collections.abc.Set):
     a NotImplementedError.
     '''
 
+    # Membership
     def __contains__(self, item):
         return True
 
+    # Iteration
     def __iter__(self):
         raise ValueError("Set uncountably large")
 
     def __len__(self):
         raise ValueError("Set uncountably large")
 
-    def __le__(self, other):
-        return (self == other)
-
-    def __lt__(self, other):
-        return False
-
+    # Equality
     def __eq__(self, other):
         return isinstance(other, AllRange)
 
     def __ne__(self, other):
         return not (self == other)
 
+    # Subset
+    def __le__(self, other):
+        return (self == other)
+
+    def __lt__(self, other):
+        return False
+
+    # Superset
     def __gt__(self, other):
         return True
 
     def __ge__(self, other):
         return True
 
+    # Intersection
     def __and__(self, other):
         return other
 
+    # Union
     def __or__(self, other):
         return self
 
+    # Difference
     def __sub__(self, other):
         # This would require making a separate
         # class, and I don't need this functionality
         raise NotImplementedError
 
+    # Complement
     def __xor__(self, other):
         # Ditto
         raise NotImplementedError
 
+    # Disjoint
     def isdisjoint(self, other):
         return False
+
+    # Misc
+    def __hash__(self):
+        return 1
+
+    def __bool__(self):
+        return True
 
 all_range = AllRange()
 
