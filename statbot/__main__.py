@@ -55,17 +55,16 @@ if __name__ == '__main__':
     log_level = (logging.DEBUG if args.debug else logging.INFO)
 
     # Create instances
-    discord_logger = logging.getLogger('discord')
-    discord_logger.setLevel(level=logging.INFO)
+    def get_logger(name, level=log_level):
+        logger = logging.getLogger(name)
+        logger.setLevel(level=level)
 
-    main_logger = logging.getLogger('main')
-    main_logger.setLevel(level=log_level)
-
-    event_logger = logging.getLogger('event')
-    event_logger.setLevel(level=log_level)
-
-    sql_logger = logging.getLogger('sql')
-    sql_logger.setLevel(level=log_level)
+    discord_logger = get_logger('discord', logging.INFO)
+    main_logger = get_logger('main')
+    event_logger = get_logger('event')
+    crawler_logger = get_logger('crawler')
+    sql_logger = get_logger('sql')
+    del get_logger
 
     # Enable specified logs
     if args.loglist is None:
