@@ -150,7 +150,7 @@ class DiscordSqlHandler:
             return {
                 'emoji_id': emoji.id,
                 'name': emoji.name,
-                'category': '(custom)',
+                'category': f'(custom:{emoji.guild.name})',
                 'unicode': None,
                 'guild_id': emoji.guild.id,
             }
