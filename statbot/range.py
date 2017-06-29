@@ -93,8 +93,64 @@ class NullRange(collections.abc.Set):
     def isdisjoint(self, other):
         return True
 
-
 null_range = NullRange()
+
+class AllRange(collections.abc.Set):
+    '''
+    A range of values with every possible member in it.
+    If you want an instance of this class use all_range.
+
+    Note that some methods, like getting the length or
+    attempting to iterate will raise a ValueError, or
+    a NotImplementedError.
+    '''
+
+    def __contains__(self, item):
+        return True
+
+    def __iter__(self):
+        raise ValueError("Set uncountably large")
+
+    def __len__(self):
+        raise ValueError("Set uncountably large")
+
+    def __le__(self, other):
+        return (self == other)
+
+    def __lt__(self, other):
+        return False
+
+    def __eq__(self, other):
+        return isinstance(other, AllRange)
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def __gt__(self, other):
+        return True
+
+    def __ge__(self, other):
+        return True
+
+    def __and__(self, other):
+        return other
+
+    def __or__(self, other):
+        return self
+
+    def __sub__(self, other):
+        # This would require making a separate
+        # class, and I don't need this functionality
+        raise NotImplementedError
+
+    def __xor__(self, other):
+        # Ditto
+        raise NotImplementedError
+
+    def isdisjoint(self, other):
+        return False
+
+all_range = AllRange()
 
 class Range(collections.abc.Set):
     '''
