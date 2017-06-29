@@ -327,6 +327,10 @@ class DiscordSqlHandler:
 
     # Roles
     def add_role(self, role):
+        if role.id in self.role_cache:
+            self.logger.debug(f"Role {role.id} already inserted.")
+            return
+
         self.logger.info(f"Inserting role {role.id}")
         values = self._role_values(role)
         ins = self.tb_role_lookup \
@@ -338,6 +342,10 @@ class DiscordSqlHandler:
         self.upsert_guild(role.guild)
 
     def remove_role(self, role):
+        if role.id not in self.role_cache:
+            self.logger.debug(f"Role {role.id} already deleted.")
+            return
+
         self.logger.info(f"Deleting role {role.id}")
         delet = self.tb_role_lookup \
                 .delete() \
@@ -368,6 +376,10 @@ class DiscordSqlHandler:
 
     # Channels
     def add_channel(self, channel):
+        if channel.id in self.channel_cache:
+            self.logger.debug(f"Channel {channel.id} already inserted.")
+            return
+
         self.logger.info(f"Inserting new channel {channel.id} for guild {guild.id}")
         values = self._channel_values(channel)
         ins = self.tb_channel_lookup \
@@ -393,6 +405,10 @@ class DiscordSqlHandler:
             self.upsert_channel(channel)
 
     def remove_channel(self, channel):
+        if channel.id not in self.channel_cache:
+            self.logger.debug(f"Channel {channel.id} already deleted.")
+            return
+
         self.logger.info(f"Deleting channel {channel.id} in guild {guild.id}")
         delet = self.tb_channel_lookup \
                 .delete() \
@@ -419,6 +435,10 @@ class DiscordSqlHandler:
 
     # Users
     def add_user(self, user):
+        if user.id in self.user_cache:
+            self.logger.debug(f"User {user.id} already inserted.")
+            return
+
         self.logger.info(f"Inserting user {user.id}")
         values = self._user_values(user)
         ins = self.tb_user_lookup \
@@ -471,6 +491,10 @@ class DiscordSqlHandler:
     def add_emoji(self, emoji):
         values = self._emoji_values(emoji)
         id = values['emoji_id']
+        if id in self.emoji_cache:
+            self.logger.debug(f"Emoji {id} already inserted.")
+            return
+
         self.logger.info(f"Inserting emoji {id}")
         ins = self.tb_emoji_lookup \
                 .insert() \
@@ -480,6 +504,10 @@ class DiscordSqlHandler:
 
     def remove_emoji(self, emoji):
         id = get_emoji_id(emoji)
+        if id not in self.emoji_cache:
+            self.logger.debug(f"Emoji {id} already deleted.")
+            return
+
         self.logger.info(f"Deleting emoji {id}")
         delet = self.tb_emoji_lookup \
                 .delete() \
