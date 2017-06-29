@@ -86,12 +86,14 @@ if __name__ == '__main__':
             exit(1)
 
     # Map to outputs
-    map(lambda x: x.addHandler(log_hndl), loggers)
+    for logger in loggers:
+        logger.addHandler(log_hndl)
 
     if args.stdout:
         log_out_hndl = logging.StreamHandler(sys.stdout)
         log_out_hndl.setFormatter(log_fmtr)
-        map(lambda x: x.addHandler(log_out_hndl), loggers)
+        for logger in loggers:
+            logger.addHandler(log_out_hndl)
 
     # Get and verify configuration
     config, valid = load_config(args.config_file, main_logger)
