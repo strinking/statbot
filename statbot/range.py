@@ -10,6 +10,7 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
+import bisect
 import collections.abc
 import heapq
 
