@@ -2,7 +2,7 @@
 A [Discord](https://discordapp.com) bot/selfbot that reads in posts from a given set
 of servers and stores it in a SQL database. This application has two parts: the
 listener, which ingests raw data as it arrives, and the crawler, which walks
-through past history of Discord events and adds them.
+through past history of Discord messages and adds them.
 
 This bot is designed for use with Postgres, but in principle could be used
 with any database that SQLAlchemy supports.
@@ -18,7 +18,7 @@ Available under the terms of the MIT License.
 You can install them all using pip by running:
 ```sh
 pip3 install --user -U 'git+https://github.com/Rapptz/discord.py@rewrite#egg=discord.py[voice]'
-pip3 install psycopg2 SQLAlchemy
+pip3 install SQLAlchemy psycopg2
 ```
 
 Since discord.py 1.0.0 is not in the pip repos, you cannot use the `requirements.txt` file as-is.
