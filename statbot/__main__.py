@@ -37,9 +37,9 @@ if __name__ == '__main__':
     argparser.add_argument('-q', '--quiet', '--no-stdout',
             dest='stdout', action='store_false',
             help="Don't output to standard out.")
-    argparser.add_argument('-N', '--no-sql-logs',
-            dest='sql_logs', action='store_false',
-            help="Only output the discord logger output.")
+    argparser.add_argument('-l', '--include-log',
+            dest='loglist', type=str, nargs='*',
+            help="Specify which logs you want outputted.")
     argparser.add_argument('-d', '--debug',
             dest='debug', action='store_true',
             help="Set logging level to debug.")
@@ -54,29 +54,53 @@ if __name__ == '__main__':
     log_hndl.setFormatter(log_fmtr)
     log_level = (logging.DEBUG if args.debug else logging.INFO)
 
-    dis_logger = logging.getLogger('discord')
-    dis_logger.setLevel(level=log_level)
-    dis_logger.addHandler(log_hndl)
+    # Create instances
+    discord_logger = logging.getLogger('discord')
+    discord_logger.setLevel(level=logging.INFO)
+
+    main_logger = logging.getLogger('main')
+    main_logger.setLevel(level=log_level)
+
+    event_logger = logging.getLogger('event')
+    event_logger.setLevel(level=log_level)
 
     sql_logger = logging.getLogger('sql')
     sql_logger.setLevel(level=log_level)
-    sql_logger.addHandler(log_hndl)
+
+    # Enable specified logs
+    if args.loglist is None:
+        loggers = [main_logger, event_logger, sql_logger]
+        if args.debug:
+            loggers.append(discord_logger)
+    else:
+        logger_names = {
+            'main': main_logger,
+            'discord': discord_logger,
+            'event': event_logger,
+            'sql': sql_logger,
+        }
+        try:
+            loggers = [logger_names[logname] for logname in args.loglist]
+        except KeyError:
+            print(f"No such logger: {logname}")
+            exit(1)
+
+    # Map to outputs
+    map(lambda x: x.addHandler(log_hndl), loggers)
 
     if args.stdout:
-        log_hndl = logging.StreamHandler(sys.stdout)
-        log_hndl.setFormatter(log_fmtr)
-        dis_logger.addHandler(log_hndl)
-        if args.sql_logs:
-            sql_logger.addHandler(log_hndl)
+        log_out_hndl = logging.StreamHandler(sys.stdout)
+        log_out_hndl.setFormatter(log_fmtr)
+        map(lambda x: x.addHandler(log_out_hndl), loggers)
 
     # Get and verify configuration
-    config, valid = load_config(args.config_file, dis_logger)
+    config, valid = load_config(args.config_file, main_logger)
     if not valid:
-        dis_logger.error("Configuration file was invalid.")
+        main_logger.error("Configuration file was invalid.")
         exit(1)
 
-    # Open and run client
-    dis_logger.info("Starting bot...")
-    client = EventIngestionClient(config, dis_logger, sql_logger=sql_logger)
+    # Open and run event client
+    main_logger.info("Starting bot...")
+    client = EventIngestionClient(config, event_logger, sql_logger=sql_logger)
     client.run()
 
