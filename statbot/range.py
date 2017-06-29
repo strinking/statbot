@@ -36,13 +36,65 @@ number of operations to be conveniently performed on them.
 '''
 
 __all__ = [
-    'Range',
-    'MultiRange',
     'NullRange',
     'null_range',
     'AllRange',
     'all_range',
+
+    'Range',
+    'MultiRange',
 ]
+
+class NullRange(collections.abc.Set):
+    '''
+    A range of values with no members in it.
+    If you want an instance of this class use null_range.
+    '''
+
+    def __contains__(self, item):
+        return False
+
+    def __iter__(self):
+        return iter(())
+
+    def __len__(self):
+        return 0
+
+    def __le__(self, other):
+        return True
+
+    def __lt__(self, other):
+        return True
+
+    def __eq__(self, other):
+        return len(other) == 0
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def __gt__(self, other):
+        return False
+
+    def __ge__(self, other):
+        return (self == other)
+
+    def __and__(self, other):
+        return self
+
+    def __or__(self, other):
+        return other
+
+    def __sub__(self, other):
+        return self
+
+    def __xor__(self, other):
+        return other
+
+    def isdisjoint(self, other):
+        return True
+
+
+null_range = NullRange()
 
 class Range(collections.abc.Set):
     '''
