@@ -26,7 +26,7 @@ set of values. Some operations on a Range will return this value if the result
 isn't contiguous.
 
 NullRange is a helper class that creates a Range that contains no members.
-It is available as a precreated instance called null_range.
+It is available as a precreated instance called NULL_RANGE.
 
 AllRange is a helper class that creates a Range that contains all members.
 It is available as a precreated instance called alll_range.
@@ -36,19 +36,37 @@ number of operations to be conveniently performed on them.
 '''
 
 __all__ = [
+    'AbstractRange',
     'NullRange',
-    'null_range',
+    'NULL_RANGE',
     'AllRange',
-    'all_range',
+    'ALL_RANGE',
 
     'Range',
     'MultiRange',
 ]
 
+class AbstractRange(collections.abc.Set):
+    @collections.abc.abstractmethod
+    def min(self):
+        '''
+        Returns the smallest value in the set.
+        '''
+
+        pass
+
+    @collections.abc.abstractmethod
+    def max(self):
+        '''
+        Returns the largest value in the set.
+        '''
+
+        pass
+
 class NullRange(collections.abc.Set):
     '''
     A range of values with no members in it.
-    If you want an instance of this class use null_range.
+    If you want an instance of this class use NULL_RANGE.
     '''
 
     # Membership
@@ -110,12 +128,12 @@ class NullRange(collections.abc.Set):
     def __bool__(self):
         return True
 
-null_range = NullRange()
+NULL_RANGE = NullRange()
 
 class AllRange(collections.abc.Set):
     '''
     A range of values with every possible member in it.
-    If you want an instance of this class use all_range.
+    If you want an instance of this class use ALL_RANGE.
 
     Note that some methods, like getting the length or
     attempting to iterate will raise a ValueError, or
@@ -184,9 +202,9 @@ class AllRange(collections.abc.Set):
     def __bool__(self):
         return True
 
-all_range = AllRange()
+ALL_RANGE = AllRange()
 
-class Range(collections.abc.Set):
+class Range(AbstractRange):
     '''
     A contiguous range of values, from a given starting to a given ending point.
     '''
