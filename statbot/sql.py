@@ -98,15 +98,18 @@ class DiscordSqlHandler:
         self.tb_channel_lookup = Table('channel_lookup', self.meta,
                 Column('channel_id', BigInteger, primary_key=True),
                 Column('name', String),
+                Column('is_deleted', Boolean),
                 Column('guild_id', BigInteger))
         self.tb_user_lookup = Table('user_lookup', self.meta,
                 Column('user_id', BigInteger, primary_key=True),
                 Column('name', Unicode),
                 Column('discriminator', Integer),
+                Column('is_deleted', Boolean),
                 Column('is_bot', Boolean))
         self.tb_emoji_lookup = Table('emoji_lookup', self.meta,
                 Column('emoji_id', BigInteger, primary_key=True),
                 Column('name', String),
+                Column('is_deleted', Boolean),
                 Column('category', String),
                 Column('unicode', Unicode(1), nullable=True),
                 Column('guild_id', BigInteger, nullable=True))
@@ -119,6 +122,7 @@ class DiscordSqlHandler:
                 Column('is_hoisted', Boolean),
                 Column('is_managed', Boolean),
                 Column('is_mentionable', Boolean),
+                Column('is_deleted', Boolean),
                 Column('position', Integer))
 
         # Lookup caches
@@ -146,6 +150,7 @@ class DiscordSqlHandler:
         return {
             'channel_id': channel.id,
             'name': channel.name,
+            'is_deleted': False,
             'guild_id': channel.guild.id,
         }
 
@@ -155,6 +160,7 @@ class DiscordSqlHandler:
             'user_id': user.id,
             'name': user.name,
             'discriminator': user.discriminator,
+            'is_deleted': False,
             'is_bot': user.bot,
         }
 
@@ -164,6 +170,7 @@ class DiscordSqlHandler:
             return {
                 'emoji_id': ord(emoji),
                 'name': unicodedata.name(emoji),
+                'is_deleted': False,
                 'category': unicodedata.category(emoji),
                 'unicode': emoji,
                 'guild_id': None,
@@ -172,6 +179,7 @@ class DiscordSqlHandler:
             return {
                 'emoji_id': emoji.id,
                 'name': emoji.name,
+                'is_deleted': False,
                 'category': f'(custom:{emoji.guild.name})',
                 'unicode': None,
                 'guild_id': emoji.guild.id,
@@ -188,6 +196,7 @@ class DiscordSqlHandler:
             'is_hoisted': role.hoist,
             'is_managed': role.managed,
             'is_mentionable': role.mentionable,
+            'is_deleted': False,
             'position': role.position,
         }
 
@@ -364,15 +373,12 @@ class DiscordSqlHandler:
         self.upsert_guild(role.guild)
 
     def remove_role(self, role):
-        if role.id not in self.role_cache:
-            self.logger.debug(f"Role {role.id} already deleted.")
-            return
-
         self.logger.info(f"Deleting role {role.id}")
-        delet = self.tb_role_lookup \
-                .delete() \
+        upd = self.tb_role_lookup \
+                .update() \
+                .values(is_deleted=True) \
                 .where(self.tb_role_lookup.c.role_id == role.id)
-        self.db.execute(delet)
+        self.db.execute(upd)
         self.role_cache.pop(role.id, None)
 
         self.upsert_guild(role.guild)
@@ -427,15 +433,12 @@ class DiscordSqlHandler:
             self.upsert_channel(channel)
 
     def remove_channel(self, channel):
-        if channel.id not in self.channel_cache:
-            self.logger.debug(f"Channel {channel.id} already deleted.")
-            return
-
         self.logger.info(f"Deleting channel {channel.id} in guild {guild.id}")
-        delet = self.tb_channel_lookup \
-                .delete() \
+        upd = self.tb_channel_lookup \
+                .update() \
+                .values(is_deleted=True) \
                 .where(self.tb_channel_lookup.c.channel_id == channel.id)
-        self.db.execute(delet)
+        self.db.execute(upd)
         self.channel_cache.pop(channel.id, None)
 
     def upsert_channel(self, channel):
@@ -487,10 +490,11 @@ class DiscordSqlHandler:
 
     def remove_user(self, user):
         self.logger.info(f"Removing user {user.id}")
-        delet = self.tb_user_lookup \
-                .delete() \
+        upd = self.tb_user_lookup \
+                .update() \
+                .values(is_deleted=True) \
                 .where(self.tb_user_lookup.c.user_id == user.id)
-        self.db.execute(delet)
+        self.db.execute(upd)
         self.user_cache.pop(user.id, None)
 
     def upsert_user(self, user):
@@ -526,15 +530,12 @@ class DiscordSqlHandler:
 
     def remove_emoji(self, emoji):
         id = get_emoji_id(emoji)
-        if id not in self.emoji_cache:
-            self.logger.debug(f"Emoji {id} already deleted.")
-            return
-
         self.logger.info(f"Deleting emoji {id}")
-        delet = self.tb_emoji_lookup \
-                .delete() \
+        upd = self.tb_emoji_lookup \
+                .update() \
+                .values(is_deleted=True) \
                 .where(self.tb_emoji_lookup.c.emoji_id == id)
-        self.db.execute(delet)
+        self.db.execute(upd)
         self.emoji_cache.pop(id, None)
 
     def upsert_emoji(self, emoji):
