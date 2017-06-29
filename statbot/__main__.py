@@ -103,7 +103,8 @@ if __name__ == '__main__':
         exit(1)
 
     # Open and run event client
-    main_logger.info("Starting bot...")
+    main_logger.info("Setting up bot")
     client = EventIngestionClient(config, event_logger, sql_logger=sql_logger)
+    main_logger.info("Starting bot, waiting for discord.py...")
     client.run()
 
