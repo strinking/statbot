@@ -406,6 +406,22 @@ class DiscordSqlHandler:
 
         self.upsert_guild(trans, role.guild)
 
+    def _update_role(self, trans, role):
+        self.logger.info(f"Updating role {role.id} in guild {role.guild.id}")
+        values = self._role_values(role)
+        upd = self.tb_role_lookup \
+                .update() \
+                .where(self.tb_role_lookup.c.role_id == role.id) \
+                .values(values)
+        trans.execute(upd)
+        self.role_cache[role.id] = values
+
+    def update_role(self, trans, role):
+        if role.id in self.role_cache:
+            self._update_role(self, role)
+        else:
+            self.upsert_role(self, role)
+
     def remove_role(self, trans, role):
         self.logger.info(f"Deleting role {role.id}")
         upd = self.tb_role_lookup \
@@ -461,7 +477,7 @@ class DiscordSqlHandler:
         self.channel_cache[channel.id] = values
 
     def update_channel(self, trans, channel):
-        if channel.id in self.channel_cache.keys():
+        if channel.id in self.channel_cache:
             self._update_channel(trans, channel)
         else:
             self.upsert_channel(trans, channel)
@@ -517,7 +533,7 @@ class DiscordSqlHandler:
         self.user_cache[user.id] = values
 
     def update_user(self, trans, user):
-        if user.id in self.user_cache.keys():
+        if user.id in self.user_cache:
             self._update_user(trans, user)
         else:
             self.upsert_user(trans, user)
