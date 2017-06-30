@@ -25,19 +25,21 @@ __all__ = [
 class _Transaction:
     __slots__ = (
         'sql',
-        'trans',
         'logger',
+        'trans',
+        'conn',
     )
 
     def __init__(self, sql):
         self.sql = sql
         self.logger = sql.logger
+        self.conn = sql.db.connect()
         self.trans = None
 
     def __enter__(self):
         self.logger.debug("Starting transaction...")
-        self.trans = self.sql.conn.begin()
-        return self.sql
+        self.trans = self.conn.begin()
+        return self
 
     def __exit__(self, type, value, traceback):
         if (type, value, traceback) == (None, None, None):
@@ -47,6 +49,13 @@ class _Transaction:
             self.logger.error("Exception occurred in 'with' scope!")
             self.logger.debug("Rolling back transaction...")
             self.trans.rollback()
+
+    # For wrapping self.sql methods
+    def __getattr__(self, name):
+        def wrapped(_, *args, **kwargs):
+            kwargs['trans'] = self
+            return getattr(self.sql, name)(*args, **kwargs)
+        return wrapped
 
 class DiscordSqlHandler:
     '''
@@ -60,7 +69,6 @@ class DiscordSqlHandler:
     __slots__ = (
         'db',
         'meta',
-        'conn',
         'logger',
 
         'tb_messages',
@@ -84,7 +92,6 @@ class DiscordSqlHandler:
         logger.info(f"Opening database: '{addr}'")
         self.db = create_engine(addr)
         self.meta = MetaData(self.db)
-        self.conn = self.db.connect()
         self.logger = logger
 
         # Primary tables
