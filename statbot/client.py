@@ -31,11 +31,10 @@ class EventIngestionClient(discord.Client):
     )
 
     def __init__(self, config, logger=null_logger, sql_logger=null_logger):
+        super().__init__()
         self.config = config
         self.logger = logger
         self.sql = DiscordSqlHandler(config['url'], sql_logger)
-
-        super().__init__()
         self.ready = False
 
     def run(self):
@@ -118,6 +117,9 @@ class EventIngestionClient(discord.Client):
         for id in self.config['guilds']:
             self.logger.info(f"* {id}")
 
+        self.logger.info("Setting presence to invisible")
+        self.change_presence(status=discord.Status.invisible)
+
         # All done setting up
         self.logger.info("")
         self.logger.info("Ready!")
@@ -170,8 +172,9 @@ class EventIngestionClient(discord.Client):
 
         self._log_react(reaction, user, 'reacted with')
 
-        with self.sql.transaction():
-            self.sql.add_reaction(reaction, user)
+        self.logger.warn("TODO: handling for on_reaction_add")
+        #with self.sql.transaction():
+            #self.sql.add_reaction(reaction, user)
 
     async def on_reaction_remove(self, reaction, user):
         self.logger.debug(f"Reaction {reaction.emoji} removed")
@@ -180,8 +183,9 @@ class EventIngestionClient(discord.Client):
 
         self._log_react(reaction, user, 'removed a reaction of ')
 
-        with self.sql.transaction():
-            self.sql.remove_reaction(reaction, user)
+        self.logger.warn("TODO: handling for on_reaction_remove")
+        #with self.sql.transaction():
+            #self.sql.remove_reaction(reaction, user)
 
     async def on_reaction_clear(self, message, reactions):
         self.logger.debug(f"Reactions from {message.id} cleared")
@@ -190,8 +194,9 @@ class EventIngestionClient(discord.Client):
 
         self.logger.info(f"All reactions on message id {message.id} cleared")
 
-        with self.sql.transaction():
-            self.sql.clear_reactions(message)
+        self.logger.warn("TODO: handling for on_reaction_clear")
+        #with self.sql.transaction():
+            #self.sql.clear_reactions(message)
 
     async def on_guild_channel_create(self, channel):
         self.logger.debug(f"Channel was created in guild {channel.guild.id}")
