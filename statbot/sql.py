@@ -306,7 +306,7 @@ class DiscordSqlHandler:
         self.upsert_guild(reaction.message.guild)
         self.upsert_channel(reaction.message.channel)
         self.upsert_user(user)
-        self.upsert_emoji(reaction.emoji)
+        #self.upsert_emoji(reaction.emoji)
 
     def delete_reaction(self, reaction, user):
         self.logger.info(f"Deleting reaction for user {user.id} on message {message.id}")
@@ -320,7 +320,7 @@ class DiscordSqlHandler:
         self.upsert_guild(reaction.message.guild)
         self.upsert_channel(reaction.message.channel)
         self.upsert_user(user)
-        self.upsert_emoji(reaction.emoji)
+        #self.upsert_emoji(reaction.emoji)
 
     def clear_reactions(self, message):
         self.logger.info(f"Deleting all reactions on message {message.id}")
@@ -513,8 +513,10 @@ class DiscordSqlHandler:
         self.db.execute(ups)
         self.user_cache[user.id] = values
 
-    # Emojis
+    # Emojis (TODO)
     def add_emoji(self, emoji):
+        raise NotImplementedError
+
         values = self._emoji_values(emoji)
         id = values['emoji_id']
         if id in self.emoji_cache:
@@ -529,6 +531,8 @@ class DiscordSqlHandler:
         self.emoji_cache[id] = values
 
     def remove_emoji(self, emoji):
+        raise NotImplementedError
+
         id = get_emoji_id(emoji)
         self.logger.info(f"Deleting emoji {id}")
         upd = self.tb_emoji_lookup \
@@ -539,6 +543,8 @@ class DiscordSqlHandler:
         self.emoji_cache.pop(id, None)
 
     def upsert_emoji(self, emoji):
+        raise NotImplementedError
+
         values = self._emoji_values(emoji)
         id = values['emoji_id']
         if self.emoji_cache.get(id) == values:

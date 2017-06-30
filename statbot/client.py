@@ -161,7 +161,8 @@ class EventIngestionClient(discord.Client):
             return
 
         self._log_react(reaction, user, 'reacted with')
-        self.sql.add_reaction(reaction, user)
+        self.logger.warn("TODO: handling for on_reaction_add")
+        #self.sql.add_reaction(reaction, user)
 
     async def on_reaction_remove(self, reaction, user):
         self.logger.debug(f"Reaction {reaction.emoji} removed")
@@ -169,7 +170,8 @@ class EventIngestionClient(discord.Client):
             return
 
         self._log_react(reaction, user, 'removed a reaction of ')
-        self.sql.delete_reaction(reaction, user)
+        self.logger.warn("TODO: handling for on_reaction_remove")
+        #self.sql.delete_reaction(reaction, user)
 
     async def on_reaction_clear(self, message, reactions):
         self.logger.debug(f"Reactions from {message.id} cleared")
@@ -177,7 +179,8 @@ class EventIngestionClient(discord.Client):
             return
 
         self.logger.info(f"All reactions on message id {message.id} cleared")
-        self.sql.clear_reactions(message)
+        self.logger.warn("TODO: handling for on_reaction_clear")
+        #self.sql.clear_reactions(message)
 
     async def on_guild_channel_create(self, channel):
         self.logger.debug(f"Channel was created in guild {channel.guild.id}")
