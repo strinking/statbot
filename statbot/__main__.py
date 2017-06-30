@@ -55,9 +55,6 @@ if __name__ == '__main__':
     argparser.add_argument('-q', '--quiet', '--no-stdout',
             dest='stdout', action='store_false',
             help="Don't output to standard out.")
-    argparser.add_argument('-N', '--no-sql-logs',
-            dest='sql_logs', action='store_false',
-            help="Only output the discord logger output.")
     argparser.add_argument('-d', '--debug',
             dest='debug', action='store_true',
             help="Set logging level to debug.")
@@ -72,29 +69,40 @@ if __name__ == '__main__':
     log_hndl.setFormatter(log_fmtr)
     log_level = (logging.DEBUG if args.debug else logging.INFO)
 
-    dis_logger = logging.getLogger('discord')
-    dis_logger.setLevel(level=log_level)
-    dis_logger.addHandler(log_hndl)
+    # Create instances
+    def get_logger(name, level=log_level):
+        logger = logging.getLogger(name)
+        logger.setLevel(level=level)
+        return logger
 
-    sql_logger = logging.getLogger('sql')
-    sql_logger.setLevel(level=log_level)
-    sql_logger.addHandler(log_hndl)
+    discord_logger = get_logger('discord', logging.INFO)
+    main_logger = get_logger('statbot')
+    event_logger = get_logger('statbot.event')
+    crawler_logger = get_logger('statbot.crawler')
+    sql_logger = get_logger('statbot.sql')
+    del get_logger
+
+    # Map logging to outputs
+    main_logger.addHandler(log_hndl)
+    if args.debug:
+        discord_logger.addHandler(log_hndl)
 
     if args.stdout:
-        log_hndl = logging.StreamHandler(sys.stdout)
-        log_hndl.setFormatter(log_fmtr)
-        dis_logger.addHandler(log_hndl)
-        if args.sql_logs:
-            sql_logger.addHandler(log_hndl)
+        log_out_hndl = logging.StreamHandler(sys.stdout)
+        log_out_hndl.setFormatter(log_fmtr)
+        main_logger.addHandler(log_out_hndl)
+        if args.debug:
+            discord_logger.addHandler(log_out_hndl)
 
     # Get and verify configuration
-    config, valid = load_config(args.config_file, dis_logger)
+    config, valid = load_config(args.config_file, main_logger)
     if not valid:
-        dis_logger.error("Configuration file was invalid.")
+        main_logger.error("Configuration file was invalid.")
         exit(1)
 
-    # Open and run client
-    dis_logger.info("Starting bot...")
-    client = EventIngestionClient(config, dis_logger, sql_logger=sql_logger)
+    # Open and run event client
+    main_logger.info("Setting up bot")
+    client = EventIngestionClient(config, event_logger, sql_logger=sql_logger)
+    main_logger.info("Starting bot, waiting for discord.py...")
     client.run()
 
