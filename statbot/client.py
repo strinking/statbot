@@ -133,7 +133,7 @@ class EventIngestionClient(discord.Client):
         self._log(message, 'created')
 
         with self.sql.transaction() as trans:
-            trans.add_message(message)
+            self.sql.add_message(trans, message)
 
     async def on_message_edit(self, before, after):
         self.logger.debug(f"Message id {after.id} edited")
@@ -143,7 +143,7 @@ class EventIngestionClient(discord.Client):
         self._log(after, 'edited')
 
         with self.sql.transaction() as trans:
-            trans.edit_message(before, after)
+            self.sql.edit_message(trans, before, after)
 
     async def on_message_delete(self, message):
         self.logger.debug(f"Message id {message.id} deleted")
@@ -153,7 +153,7 @@ class EventIngestionClient(discord.Client):
         self._log(message, 'deleted')
 
         with self.sql.transaction() as trans:
-            trans.remove_message(message)
+            self.sql.remove_message(trans, message)
 
     async def on_typing(self, channel, user, when):
         self.logger.debug(f"User id {user.id} is typing")
@@ -163,7 +163,7 @@ class EventIngestionClient(discord.Client):
         self._log_typing(channel, user)
 
         with self.sql.transaction() as trans:
-            trans.typing(channel, user, when)
+            self.sql.typing(trans, channel, user, when)
 
     async def on_reaction_add(self, reaction, user):
         self.logger.debug(f"Reaction {reaction.emoji} added")
@@ -174,7 +174,7 @@ class EventIngestionClient(discord.Client):
 
         self.logger.warn("TODO: handling for on_reaction_add")
         #with self.sql.transaction() as trans:
-            #trans.add_reaction(reaction, user)
+            #self.sql.add_reaction(trans, reaction, user)
 
     async def on_reaction_remove(self, reaction, user):
         self.logger.debug(f"Reaction {reaction.emoji} removed")
@@ -185,7 +185,7 @@ class EventIngestionClient(discord.Client):
 
         self.logger.warn("TODO: handling for on_reaction_remove")
         #with self.sql.transaction() as trans:
-            #trans.remove_reaction(reaction, user)
+            #self.sql.remove_reaction(trans, reaction, user)
 
     async def on_reaction_clear(self, message, reactions):
         self.logger.debug(f"Reactions from {message.id} cleared")
@@ -196,7 +196,7 @@ class EventIngestionClient(discord.Client):
 
         self.logger.warn("TODO: handling for on_reaction_clear")
         #with self.sql.transaction() as trans:
-            #trans.clear_reactions(message)
+            #self.sql.clear_reactions(trans, message)
 
     async def on_guild_channel_create(self, channel):
         self.logger.debug(f"Channel was created in guild {channel.guild.id}")
@@ -206,7 +206,7 @@ class EventIngestionClient(discord.Client):
         self.logger.info(f"Channel #{channel.name} created in {channel.guild.name}")
 
         with self.sql.transaction() as trans:
-            trans.add_channel(channel)
+            self.sql.add_channel(trans, channel)
 
     async def on_guild_channel_delete(self, channel):
         self.logger.debug(f"Channel was deleted in guild {channel.guild.id}")
@@ -216,7 +216,7 @@ class EventIngestionClient(discord.Client):
         self.logger.info(f"Channel #{channel.name} deleted in {channel.guild.name}")
 
         with self.sql.transaction() as trans:
-            trans.remove_channel(channel)
+            self.sql.remove_channel(trans, channel)
 
     async def on_guild_channel_update(self, before, after):
         self.logger.debug(f"Channel was updated in guild {after.guild.id}")
@@ -230,7 +230,7 @@ class EventIngestionClient(discord.Client):
         self.logger.info(f"Channel #{before.name}{changed} was changed in {after.guild.name}")
 
         with self.sql.transaction() as trans:
-            trans.update_channel(after)
+            self.sql.update_channel(trans, after)
 
     async def on_guild_channel_pins_update(self, channel, last_pin):
         self.logger.debug(f"Channel {channel.id} got a pin update")
@@ -248,7 +248,7 @@ class EventIngestionClient(discord.Client):
         self.logger.info(f"Member {member.name} has joined {member.guild.name}")
 
         with self.sql.transaction() as trans:
-            trans.add_user(member)
+            self.sql.add_user(trans, member)
 
     async def on_member_remove(self, member):
         self.logger.debug(f"Member {member.id} left guild {member.guild.id}")
@@ -258,7 +258,7 @@ class EventIngestionClient(discord.Client):
         self.logger.info(f"Member {member.name} has left {member.guild.name}")
 
         with self.sql.transaction() as trans:
-            trans.remove_user(member)
+            self.sql.remove_user(trans, member)
 
     async def on_member_update(self, before, after):
         self.logger.debug(f"Member {after.id} was updated in guild {after.guild.id}")
@@ -279,7 +279,7 @@ class EventIngestionClient(discord.Client):
         self.logger.info(f"Member {before.name}{changed} was changed in {after.guild.name}")
 
         with self.sql.transaction() as trans:
-            trans.update_user(after)
+            self.sql.update_user(trans, after)
 
     async def on_guild_role_create(self, role):
         self.logger.debug(f"Role {role.id} was created in guild {role.guild.id}")
@@ -289,7 +289,7 @@ class EventIngestionClient(discord.Client):
         self.logger.info(f"Role {role.name} was created in {role.guild.name}")
 
         with self.sql.transaction() as trans:
-            self.sql.add_role(role)
+            self.sql.add_role(trans, role)
 
     async def on_guild_role_delete(self, role):
         self.logger.debug(f"Role {role.id} was created in guild {role.guild.id}")
@@ -299,7 +299,7 @@ class EventIngestionClient(discord.Client):
         self.logger.info(f"Role {role.name} was deleted in {role.guild.name}")
 
         with self.sql.transaction() as trans:
-            trans.remove_role(role)
+            self.sql.remove_role(trans, role)
 
     async def on_guild_role_update(self, before, after):
         self.logger.debug(f"Role {after.id} was created in guild {after.guild.id}")
@@ -313,7 +313,7 @@ class EventIngestionClient(discord.Client):
         self.logger.info(f"Role {before.name}{changed} was changed in {after.guild.name}")
 
         with self.sql.transaction() as trans:
-            trans.update_role(after)
+            self.sql.update_role(trans, after)
 
     async def on_guild_emojis_update(self, guild, before, after):
         before = set(before)
@@ -321,7 +321,7 @@ class EventIngestionClient(discord.Client):
 
         with self.sql.transaction() as trans:
             for emoji in after - before:
-                trans.add_emoji(emoji)
+                self.sql.add_emoji(trans, emoji)
             for emoji in before - after:
-                trans.remove_emoji(emoji)
+                self.sql.remove_emoji(trans, emoji)
 

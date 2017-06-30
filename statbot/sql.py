@@ -278,10 +278,9 @@ class DiscordSqlHandler:
                 })
         trans.execute(ins)
 
-        print(self)
-        self.upsert_guild(message.guild)
-        self.upsert_channel(message.channel)
-        self.upsert_user(message.author)
+        self.upsert_guild(trans, message.guild)
+        self.upsert_channel(trans, message.channel)
+        self.upsert_user(trans, message.author)
 
     def edit_message(self, trans, before, after):
         self.logger.info(f"Updating message {after.id}")
@@ -305,9 +304,9 @@ class DiscordSqlHandler:
                 .where(self.tb_messages.c.message_id == message.id)
         trans.execute(upd)
 
-        self.upsert_guild(message.guild)
-        self.upsert_channel(message.channel)
-        self.upsert_user(message.author)
+        self.upsert_guild(trans, message.guild)
+        self.upsert_channel(trans, message.channel)
+        self.upsert_user(trans, message.author)
 
     # Typing
     def typing(self, trans, channel, user, when):
@@ -322,9 +321,9 @@ class DiscordSqlHandler:
                 })
         trans.execute(ins)
 
-        self.upsert_guild(channel.guild)
-        self.upsert_channel(channel)
-        self.upsert_user(user)
+        self.upsert_guild(trans, channel.guild)
+        self.upsert_channel(trans, channel)
+        self.upsert_user(trans, user)
 
     # Reactions
     def add_reaction(self, trans, reaction, user):
@@ -340,9 +339,9 @@ class DiscordSqlHandler:
                 })
         trans.execute(ins)
 
-        self.upsert_guild(reaction.message.guild)
-        self.upsert_channel(reaction.message.channel)
-        self.upsert_user(user)
+        self.upsert_guild(trans, reaction.message.guild)
+        self.upsert_channel(trans, reaction.message.channel)
+        self.upsert_user(trans, user)
 
     def remove_reaction(self, trans, reaction, user):
         self.logger.info(f"Deleting reaction for user {user.id} on message {reaction.message.id}")
@@ -353,9 +352,9 @@ class DiscordSqlHandler:
                 .where(self.tb_reactions.c.user_id == user.id)
         trans.execute(delet)
 
-        self.upsert_guild(reaction.message.guild)
-        self.upsert_channel(reaction.message.channel)
-        self.upsert_user(user)
+        self.upsert_guild(trans, reaction.message.guild)
+        self.upsert_channel(trans, reaction.message.channel)
+        self.upsert_user(trans, user)
 
     def clear_reactions(self, trans, message):
         self.logger.info(f"Deleting all reactions on message {message.id}")
@@ -461,7 +460,7 @@ class DiscordSqlHandler:
         trans.execute(upd)
         self.channel_cache[channel.id] = values
 
-    def update_channel(self, trans channel):
+    def update_channel(self, trans, channel):
         if channel.id in self.channel_cache.keys():
             self._update_channel(trans, channel)
         else:
