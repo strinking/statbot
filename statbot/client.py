@@ -31,11 +31,10 @@ class EventIngestionClient(discord.Client):
     )
 
     def __init__(self, config, logger=null_logger, sql_logger=null_logger):
+        super().__init__()
         self.config = config
         self.logger = logger
         self.sql = DiscordSqlHandler(config['url'], sql_logger)
-
-        super().__init__()
         self.ready = False
 
     def run(self):
@@ -117,6 +116,9 @@ class EventIngestionClient(discord.Client):
         self.logger.info("Recording activity in the following guilds:")
         for id in self.config['guilds']:
             self.logger.info(f"* {id}")
+
+        self.logger.info("Setting presence to invisible")
+        self.change_presence(status=discord.Status.invisible)
 
         # All done setting up
         self.logger.info("")
