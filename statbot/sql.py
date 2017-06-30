@@ -467,7 +467,7 @@ class DiscordSqlHandler:
         self.channel_cache[channel.id] = values
 
     def _update_channel(self, trans, channel):
-        self.logger.info(f"Updating channel {channel.id} in guild {guild.id}")
+        self.logger.info(f"Updating channel {channel.id} in guild {channel.guild.id}")
         values = self._channel_values(channel)
         upd = self.tb_channel_lookup \
                 .update() \
