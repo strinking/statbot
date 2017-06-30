@@ -1,5 +1,5 @@
 # Configuration
-/config.json
+/config*.json
 /docker-compose.yaml
 
 # Artifacts
