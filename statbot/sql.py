@@ -63,6 +63,7 @@ class DiscordSqlHandler:
     __slots__ = (
         'db',
         'meta',
+        'conn',
         'logger',
 
         'tb_messages',
@@ -86,6 +87,7 @@ class DiscordSqlHandler:
         logger.info(f"Opening database: '{addr}'")
         self.db = create_engine(addr)
         self.meta = MetaData(self.db)
+        self.conn = self.db.connect()
         self.logger = logger
 
         # Primary tables
@@ -163,6 +165,13 @@ class DiscordSqlHandler:
 
         # Create tables
         self.meta.create_all(self.db)
+
+    # Transaction logic
+    def transaction(self):
+        return _Transaction(self)
+
+    def execute(self, *args, **kwargs):
+        self.conn.execute(*args, **kwargs)
 
     # Value builders
     @staticmethod
@@ -244,7 +253,7 @@ class DiscordSqlHandler:
                         index_where=(self.tb_guild_lookup.c.guild_id == guild.id),
                         set_=values,
                 )
-        self.db.execute(ups)
+        self.execute(ups)
         self.guild_cache[guild.id] = values
 
     # Message
@@ -269,7 +278,7 @@ class DiscordSqlHandler:
                     'channel_id': message.channel.id,
                     'guild_id': message.guild.id,
                 })
-        self.db.execute(ins)
+        self.execute(ins)
 
         self.upsert_guild(message.guild)
         self.upsert_channel(message.channel)
@@ -285,7 +294,7 @@ class DiscordSqlHandler:
                     'embeds': embeds_to_json(after.embeds),
                 }) \
                 .where(self.tb_messages.c.message_id == after.id)
-        self.db.execute(upd)
+        self.execute(upd)
 
     def delete_message(self, message):
         self.logger.info(f"Deleting message {message.id}")
@@ -295,7 +304,7 @@ class DiscordSqlHandler:
                     'is_deleted': True,
                 }) \
                 .where(self.tb_messages.c.message_id == message.id)
-        self.db.execute(upd)
+        self.execute(upd)
 
         self.upsert_guild(message.guild)
         self.upsert_channel(message.channel)
@@ -312,7 +321,7 @@ class DiscordSqlHandler:
                     'channel_id': channel.id,
                     'guild_id': channel.guild.id,
                 })
-        self.db.execute(ins)
+        self.execute(ins)
 
         self.upsert_guild(channel.guild)
         self.upsert_channel(channel)
@@ -330,7 +339,7 @@ class DiscordSqlHandler:
                     'channel_id': reaction.message.channel.id,
                     'guild_id': reaction.message.guild.id,
                 })
-        self.db.execute(ins)
+        self.execute(ins)
 
         self.upsert_guild(reaction.message.guild)
         self.upsert_channel(reaction.message.channel)
@@ -344,7 +353,7 @@ class DiscordSqlHandler:
                 .where(self.tb_reactions.c.message_id == reaction.message.id) \
                 .where(self.tb_reactions.c.emoji_id == get_emoji_id(reaction.emoji)) \
                 .where(self.tb_reactions.c.user_id == user.id)
-        self.db.execute(delet)
+        self.execute(delet)
 
         self.upsert_guild(reaction.message.guild)
         self.upsert_channel(reaction.message.channel)
@@ -356,7 +365,7 @@ class DiscordSqlHandler:
         delet = self.tb_reactions \
                 .delete() \
                 .where(self.tb_reactions.c.message_id == reaction.message.id)
-        self.db.execute(delet)
+        self.execute(delet)
 
     # Pins (TODO)
     def add_pin(self, announce, message):
@@ -373,7 +382,7 @@ class DiscordSqlHandler:
                     'channel_id': message.channel.id,
                     'guild_id': message.guild.id,
                 })
-        self.db.execute(ins)
+        self.execute(ins)
 
     def remove_pin(self, announce, message):
         raise NotImplementedError
@@ -383,7 +392,7 @@ class DiscordSqlHandler:
                 .delete() \
                 .where(self.tb_pins.c.pin_id == announce.id) \
                 .where(self.tb_pins.c.message_id == message.id)
-        self.db.execute(delet)
+        self.execute(delet)
 
     # Roles
     def add_role(self, role):
@@ -396,7 +405,7 @@ class DiscordSqlHandler:
         ins = self.tb_role_lookup \
                 .insert() \
                 .values(values)
-        self.db.execute(ins)
+        self.execute(ins)
         self.role_cache[role.id] = values
 
         self.upsert_guild(role.guild)
@@ -407,7 +416,7 @@ class DiscordSqlHandler:
                 .update() \
                 .values(is_deleted=True) \
                 .where(self.tb_role_lookup.c.role_id == role.id)
-        self.db.execute(upd)
+        self.execute(upd)
         self.role_cache.pop(role.id, None)
 
         self.upsert_guild(role.guild)
@@ -426,7 +435,7 @@ class DiscordSqlHandler:
                         index_where=(self.tb_role_lookup.c.role_id == role.id),
                         set_=values,
                 )
-        self.db.execute(ups)
+        self.execute(ups)
         self.role_cache[role.id] = values
 
         self.upsert_guild(role.guild)
@@ -442,7 +451,7 @@ class DiscordSqlHandler:
         ins = self.tb_channel_lookup \
                 .insert() \
                 .values(values)
-        self.db.execute(ins)
+        self.execute(ins)
         self.channel_cache[channel.id] = values
 
     def _update_channel(self, channel):
@@ -452,7 +461,7 @@ class DiscordSqlHandler:
                 .update() \
                 .where(self.tb_channel_lookup.c.channel_id == channel.id) \
                 .values(values)
-        self.db.execute(upd)
+        self.execute(upd)
         self.channel_cache[channel.id] = values
 
     def update_channel(self, channel):
@@ -467,7 +476,7 @@ class DiscordSqlHandler:
                 .update() \
                 .values(is_deleted=True) \
                 .where(self.tb_channel_lookup.c.channel_id == channel.id)
-        self.db.execute(upd)
+        self.execute(upd)
         self.channel_cache.pop(channel.id, None)
 
     def upsert_channel(self, channel):
@@ -484,7 +493,7 @@ class DiscordSqlHandler:
                         index_where=(self.tb_channel_lookup.c.channel_id == channel.id),
                         set_=values,
                 )
-        self.db.execute(ups)
+        self.execute(ups)
         self.channel_cache[channel.id] = values
 
     # Users
@@ -498,7 +507,7 @@ class DiscordSqlHandler:
         ins = self.tb_user_lookup \
                 .insert() \
                 .values(values)
-        self.db.execute(ins)
+        self.execute(ins)
         self.user_cache[user.id] = values
 
     def _update_user(self, user):
@@ -508,7 +517,7 @@ class DiscordSqlHandler:
                 .update() \
                 .where(self.tb_user_lookup.c.user_id == user.id) \
                 .values(values)
-        self.db.execute(upd)
+        self.execute(upd)
         self.user_cache[user.id] = values
 
     def update_user(self, user):
@@ -523,7 +532,7 @@ class DiscordSqlHandler:
                 .update() \
                 .values(is_deleted=True) \
                 .where(self.tb_user_lookup.c.user_id == user.id)
-        self.db.execute(upd)
+        self.execute(upd)
         self.user_cache.pop(user.id, None)
 
     def upsert_user(self, user):
@@ -539,7 +548,7 @@ class DiscordSqlHandler:
                         index_where=(self.tb_user_lookup.c.user_id == user.id),
                         set_=values,
                 )
-        self.db.execute(ups)
+        self.execute(ups)
         self.user_cache[user.id] = values
 
     # Emojis
@@ -554,7 +563,7 @@ class DiscordSqlHandler:
         ins = self.tb_emoji_lookup \
                 .insert() \
                 .values(value)
-        self.db.execute(ins)
+        self.execute(ins)
         self.emoji_cache[id] = values
 
     def remove_emoji(self, emoji):
@@ -564,7 +573,7 @@ class DiscordSqlHandler:
                 .update() \
                 .values(is_deleted=True) \
                 .where(self.tb_emoji_lookup.c.emoji_id == id)
-        self.db.execute(upd)
+        self.execute(upd)
         self.emoji_cache.pop(id, None)
 
     def upsert_emoji(self, emoji):
@@ -581,6 +590,6 @@ class DiscordSqlHandler:
                         index_where=(self.tb_emoji_lookup.c.emoji_id == id),
                         set_=values,
                     )
-        self.db.execute(ups)
+        self.execute(ups)
         self.emoji_cache[id] = values
 
