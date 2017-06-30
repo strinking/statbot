@@ -37,9 +37,6 @@ if __name__ == '__main__':
     argparser.add_argument('-q', '--quiet', '--no-stdout',
             dest='stdout', action='store_false',
             help="Don't output to standard out.")
-    argparser.add_argument('-l', '--include-log',
-            dest='loglist', type=str, nargs='*',
-            help="Specify which logs you want outputted.")
     argparser.add_argument('-d', '--debug',
             dest='debug', action='store_true',
             help="Set logging level to debug.")
@@ -67,34 +64,17 @@ if __name__ == '__main__':
     sql_logger = get_logger('statbot.sql')
     del get_logger
 
-    # Enable specified logs
-    if args.loglist is None:
-        loggers = [main_logger, event_logger, crawler_logger, sql_logger]
-        if args.debug:
-            loggers.append(discord_logger)
-    else:
-        logger_names = {
-            'discord': discord_logger,
-            'main': main_logger,
-            'event': event_logger,
-            'crawler': crawler_logger,
-            'sql': sql_logger,
-        }
-        try:
-            loggers = [logger_names[logname] for logname in args.loglist]
-        except KeyError:
-            print(f"No such logger: {logname}")
-            exit(1)
-
-    # Map to outputs
-    for logger in loggers:
-        logger.addHandler(log_hndl)
+    # Map logging to outputs
+    main_logger.addHandler(log_hndl)
+    if args.debug:
+        discord_logger.addHandler(log_hndl)
 
     if args.stdout:
         log_out_hndl = logging.StreamHandler(sys.stdout)
         log_out_hndl.setFormatter(log_fmtr)
-        for logger in loggers:
-            logger.addHandler(log_out_hndl)
+        main_logger.addHandler(log_out_hndl)
+        if args.debug:
+            discord_logger.addHandler(log_out_hndl)
 
     # Get and verify configuration
     config, valid = load_config(args.config_file, main_logger)
