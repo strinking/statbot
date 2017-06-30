@@ -14,6 +14,7 @@ from sqlalchemy import ARRAY, Boolean, BigInteger, Column, DateTime
 from sqlalchemy import Integer, String, Table, Unicode, UnicodeText
 from sqlalchemy import MetaData, create_engine
 from sqlalchemy.dialects.postgresql import insert as p_insert
+from threading import RLock
 import unicodedata
 
 from .util import embeds_to_json, get_emoji_id
@@ -35,6 +36,7 @@ class DiscordSqlHandler:
         'db',
         'meta',
         'logger',
+        'lock',
 
         'tb_messages',
         'tb_reactions',
@@ -58,6 +60,7 @@ class DiscordSqlHandler:
         self.db = create_engine(addr)
         self.meta = MetaData(self.db)
         self.logger = logger
+        self.lock = threading.RLock()
 
         # Primary tables
         self.tb_messages = Table('messages', self.meta,
