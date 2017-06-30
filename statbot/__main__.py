@@ -61,10 +61,10 @@ if __name__ == '__main__':
         return logger
 
     discord_logger = get_logger('discord', logging.INFO)
-    main_logger = get_logger('main')
-    event_logger = get_logger('event')
-    crawler_logger = get_logger('crawler')
-    sql_logger = get_logger('sql')
+    main_logger = get_logger('statbot')
+    event_logger = get_logger('statbot.event')
+    crawler_logger = get_logger('statbot.crawler')
+    sql_logger = get_logger('statbot.sql')
     del get_logger
 
     # Enable specified logs
