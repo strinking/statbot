@@ -18,6 +18,7 @@ __all__ = [
 ]
 
 LOG_FULL_MESSAGES = False
+LOG_IGNORED_EVENTS = False
 
 from .sql import DiscordSqlHandler
 from .util import get_emoji_name, null_logger
@@ -46,16 +47,16 @@ class EventIngestionClient(discord.Client):
             self.logger.warn("Can't log message, not ready yet!")
             return False
         elif not hasattr(message, 'guild'):
-            self.logger.debug("Message not from a guild.")
-            self.logger.debug("Ignoring message.")
+            self._log_ignored("Message not from a guild.")
+            self._log_ignored("Ignoring message.")
             return False
         elif getattr(message.guild, 'id', None) not in self.config['guilds']:
-            self.logger.debug("Message from a guild we don't care about.")
-            self.logger.debug("Ignoring message.")
+            self._log_ignored("Message from a guild we don't care about.")
+            self._log_ignored("Ignoring message.")
             return False
         elif message.type != discord.MessageType.default:
-            self.logger.debug("Special type of message receieved.")
-            self.logger.debug("Ignoring message.")
+            self._log_ignored("Special type of message receieved.")
+            self._log_ignored("Ignoring message.")
         else:
             return True
 
@@ -64,11 +65,11 @@ class EventIngestionClient(discord.Client):
             self.logger.warn("Can't log event, not ready yet!")
             return False
         elif not hasattr(channel, 'guild'):
-            self.logger.debug("Channel not in a guild.")
-            self.logger.debug("Ignoring message.")
+            self._log_ignored("Channel not in a guild.")
+            self._log_ignored("Ignoring message.")
         elif getattr(channel.guild, 'id', None) not in self.config['guilds']:
-            self.logger.debug("Event from a guild we don't care about.")
-            self.logger.debug("Ignoring message.")
+            self._log_ignored("Event from a guild we don't care about.")
+            self._log_ignored("Ignoring message.")
             return False
         else:
             return True
@@ -78,8 +79,8 @@ class EventIngestionClient(discord.Client):
             self.logger.warn("Can't log event, not ready yet!")
             return False
         elif getattr(guild, 'id', None) not in self.config['guilds']:
-            self.logger.debug("Event from a guild we don't care about.")
-            self.logger.debug("Ignoring message.")
+            self._log_ignored("Event from a guild we don't care about.")
+            self._log_ignored("Ignoring message.")
             return False
         else:
             return True
@@ -110,6 +111,10 @@ class EventIngestionClient(discord.Client):
 
         self.logger.info(f"{name} {action} {emote} (total {count}) on message id {id}")
 
+    def _log_ignored(self, message):
+        if LOG_IGNORED_EVENTS:
+            self.logger.debug(message)
+
     async def on_ready(self):
         # Print welcome string
         self.logger.info(f"Logged in as {self.user.name} ({self.user.id})")
@@ -126,7 +131,7 @@ class EventIngestionClient(discord.Client):
         self.ready = True
 
     async def on_message(self, message):
-        self.logger.debug(f"Message id {message.id} created")
+        self._log_ignored(f"Message id {message.id} created")
         if not self._accept_message(message):
             return
 
@@ -134,7 +139,7 @@ class EventIngestionClient(discord.Client):
         self.sql.add_message(message)
 
     async def on_message_edit(self, before, after):
-        self.logger.debug(f"Message id {after.id} edited")
+        self._log_ignored(f"Message id {after.id} edited")
         if not self._accept_message(after):
             return
 
@@ -142,7 +147,7 @@ class EventIngestionClient(discord.Client):
         self.sql.edit_message(before, after)
 
     async def on_message_delete(self, message):
-        self.logger.debug(f"Message id {message.id} deleted")
+        self._log_ignored(f"Message id {message.id} deleted")
         if not self._accept_message(message):
             return
 
@@ -150,7 +155,7 @@ class EventIngestionClient(discord.Client):
         self.sql.delete_message(message)
 
     async def on_typing(self, channel, user, when):
-        self.logger.debug(f"User id {user.id} is typing")
+        self._log_ignored(f"User id {user.id} is typing")
         if not self._accept_channel(channel):
             return
 
@@ -158,7 +163,7 @@ class EventIngestionClient(discord.Client):
         self.sql.typing(channel, user, when)
 
     async def on_reaction_add(self, reaction, user):
-        self.logger.debug(f"Reaction {reaction.emoji} added")
+        self._log_ignored(f"Reaction {reaction.emoji} added")
         if not self._accept_message(reaction.message):
             return
 
@@ -167,7 +172,7 @@ class EventIngestionClient(discord.Client):
         #self.sql.add_reaction(reaction, user)
 
     async def on_reaction_remove(self, reaction, user):
-        self.logger.debug(f"Reaction {reaction.emoji} removed")
+        self._log_ignored(f"Reaction {reaction.emoji} removed")
         if not self._accept_message(reaction.message):
             return
 
@@ -176,7 +181,7 @@ class EventIngestionClient(discord.Client):
         #self.sql.delete_reaction(reaction, user)
 
     async def on_reaction_clear(self, message, reactions):
-        self.logger.debug(f"Reactions from {message.id} cleared")
+        self._log_ignored(f"Reactions from {message.id} cleared")
         if not self._accept_message(message):
             return
 
@@ -185,7 +190,7 @@ class EventIngestionClient(discord.Client):
         #self.sql.clear_reactions(message)
 
     async def on_guild_channel_create(self, channel):
-        self.logger.debug(f"Channel was created in guild {channel.guild.id}")
+        self._log_ignored(f"Channel was created in guild {channel.guild.id}")
         if not self._accept_channel(channel):
             return
 
@@ -193,7 +198,7 @@ class EventIngestionClient(discord.Client):
         self.sql.add_channel(channel)
 
     async def on_guild_channel_delete(self, channel):
-        self.logger.debug(f"Channel was deleted in guild {channel.guild.id}")
+        self._log_ignored(f"Channel was deleted in guild {channel.guild.id}")
         if not self._accept_channel(channel):
             return
 
@@ -201,7 +206,7 @@ class EventIngestionClient(discord.Client):
         self.sql.remove_channel(channel)
 
     async def on_guild_channel_update(self, before, after):
-        self.logger.debug(f"Channel was updated in guild {after.guild.id}")
+        self._log_ignored(f"Channel was updated in guild {after.guild.id}")
         if not self._accept_channel(after):
             return
 
@@ -213,7 +218,7 @@ class EventIngestionClient(discord.Client):
         self.sql.update_channel(before, after)
 
     async def on_guild_channel_pins_update(self, channel, last_pin):
-        self.logger.debug(f"Channel {channel.id} got a pin update")
+        self._log_ignored(f"Channel {channel.id} got a pin update")
         if not self._accept_channel(channel):
             return
 
@@ -221,7 +226,7 @@ class EventIngestionClient(discord.Client):
         self.logger.warn("TODO: handling for on_guild_channel_pins_update")
 
     async def on_member_join(self, member):
-        self.logger.debug(f"Member {member.id} joined guild {member.guild.id}")
+        self._log_ignored(f"Member {member.id} joined guild {member.guild.id}")
         if not self._accept_guild(member.guild):
             return
 
@@ -229,7 +234,7 @@ class EventIngestionClient(discord.Client):
         self.sql.add_user(member)
 
     async def on_member_remove(self, member):
-        self.logger.debug(f"Member {member.id} left guild {member.guild.id}")
+        self._log_ignored(f"Member {member.id} left guild {member.guild.id}")
         if not self._accept_guild(member.guild):
             return
 
@@ -237,7 +242,7 @@ class EventIngestionClient(discord.Client):
         self.sql.remove_user(member)
 
     async def on_member_update(self, before, after):
-        self.logger.debug(f"Member {after.id} was updated in guild {after.guild.id}")
+        self._log_ignored(f"Member {after.id} was updated in guild {after.guild.id}")
         if not self._accept_guild(after.guild):
             return
 
@@ -245,7 +250,7 @@ class EventIngestionClient(discord.Client):
         before.status = after.status
         before.game = after.game
         if before == after:
-            self.logger.debug("It was only a status change")
+            self._log_ignored("It was only a status change")
             return
 
         if before.name != after.name:
@@ -256,7 +261,7 @@ class EventIngestionClient(discord.Client):
         self.sql.update_user(after)
 
     async def on_guild_role_create(self, role):
-        self.logger.debug(f"Role {role.id} was created in guild {role.guild.id}")
+        self._log_ignored(f"Role {role.id} was created in guild {role.guild.id}")
         if not self._accept_guild(role.guild):
             return
 
@@ -264,7 +269,7 @@ class EventIngestionClient(discord.Client):
         self.sql.add_role(role)
 
     async def on_guild_role_delete(self, role):
-        self.logger.debug(f"Role {role.id} was created in guild {role.guild.id}")
+        self._log_ignored(f"Role {role.id} was created in guild {role.guild.id}")
         if not self._accept_guild(role.guild):
             return
 
@@ -272,7 +277,7 @@ class EventIngestionClient(discord.Client):
         self.sql.remove_role(role)
 
     async def on_guild_role_update(self, before, after):
-        self.logger.debug(f"Role {after.id} was created in guild {after.guild.id}")
+        self._log_ignored(f"Role {after.id} was created in guild {after.guild.id}")
         if not self._accept_guild(after.guild):
             return
 
