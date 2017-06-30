@@ -344,7 +344,7 @@ class DiscordSqlHandler:
         self.upsert_emoji(reaction.emoji)
 
     def remove_reaction(self, reaction, user):
-        self.logger.info(f"Deleting reaction for user {user.id} on message {message.id}")
+        self.logger.info(f"Deleting reaction for user {user.id} on message {reaction.message.id}")
         delet = self.tb_reactions \
                 .delete() \
                 .where(self.tb_reactions.c.message_id == reaction.message.id) \
