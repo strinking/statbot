@@ -230,7 +230,7 @@ class EventIngestionClient(discord.Client):
         self.logger.info(f"Channel #{before.name}{changed} was changed in {after.guild.name}")
 
         with self.sql.transaction():
-            self.sql.update_channel(before, after)
+            self.sql.update_channel(after)
 
     async def on_guild_channel_pins_update(self, channel, last_pin):
         self.logger.debug(f"Channel {channel.id} got a pin update")
