@@ -169,6 +169,7 @@ class DiscordSqlHandler:
 
         # Create tables
         self.meta.create_all(self.db)
+        self.logger.info("Created all tables.")
 
     # Transaction logic
     def transaction(self):
