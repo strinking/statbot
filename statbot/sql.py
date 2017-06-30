@@ -36,6 +36,8 @@ class _Transaction:
         self.trans = None
 
     def __enter__(self):
+        self.logger.debug("Acquiring lock for SQL handler...")
+        self.sql.lock.acquire()
         self.logger.debug("Starting transaction...")
         self.trans = self.sql.conn.begin()
         return self.sql
@@ -48,6 +50,7 @@ class _Transaction:
             self.logger.error("Exception occurred in 'with' scope!")
             self.logger.debug("Rolling back transaction...")
             self.trans.rollback()
+        self.sql.lock.release()
 
 class DiscordSqlHandler:
     '''
