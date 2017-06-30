@@ -31,6 +31,24 @@ LOG_FILE_MODE = 'w'
 LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 LOG_DATE_FORMAT = "[%d/%m/%Y %H:%M]"
 
+class StderrTee:
+    def __init__(self, filename, mode):
+        self.fh = open(filename, mode)
+        self.stderr = sys.stderr
+
+    def __del__(self):
+        sys.stderr = self.stderr
+        self.fh.close()
+
+    def write(self, data):
+        self.fh.write(data)
+        self.stderr.write(data)
+
+ERR_FILE = 'errors.log'
+ERR_FILE_MODE = 'w'
+
+sys.stderr = StderrTee(ERR_FILE, ERR_FILE_MODE)
+
 if __name__ == '__main__':
     # Parse arguments
     argparser = argparse.ArgumentParser(description='Bot to track posting data')
