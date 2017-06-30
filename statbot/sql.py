@@ -35,20 +35,17 @@ class _Transaction:
         self.trans = None
 
     def __enter__(self):
-        ## DEBUG
-        self.logger.info("Starting transaction...")
+        self.logger.debug("Starting transaction...")
         self.trans = self.sql.conn.begin()
         return self.sql
 
     def __exit__(self, type, value, traceback):
         if (type, value, traceback) == (None, None, None):
-            ## DEBUG
-            self.logger.info("Committing transaction...")
+            self.logger.debug("Committing transaction...")
             self.trans.commit()
         else:
             self.logger.error("Exception occurred in 'with' scope!")
-            ## DEBUG
-            self.logger.info("Rolling back transaction...")
+            self.logger.debug("Rolling back transaction...")
             self.trans.rollback()
 
 class DiscordSqlHandler:
