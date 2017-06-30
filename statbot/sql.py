@@ -293,7 +293,7 @@ class DiscordSqlHandler:
                 .where(self.tb_messages.c.message_id == after.id)
         self.execute(upd)
 
-    def delete_message(self, message):
+    def remove_message(self, message):
         self.logger.info(f"Deleting message {message.id}")
         upd = self.tb_messages \
                 .update() \
@@ -343,7 +343,7 @@ class DiscordSqlHandler:
         self.upsert_user(user)
         self.upsert_emoji(reaction.emoji)
 
-    def delete_reaction(self, reaction, user):
+    def remove_reaction(self, reaction, user):
         self.logger.info(f"Deleting reaction for user {user.id} on message {message.id}")
         delet = self.tb_reactions \
                 .delete() \

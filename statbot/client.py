@@ -151,7 +151,7 @@ class EventIngestionClient(discord.Client):
         self._log(message, 'deleted')
 
         with self.sql.transaction():
-            self.sql.delete_message(message)
+            self.sql.remove_message(message)
 
     async def on_typing(self, channel, user, when):
         self.logger.debug(f"User id {user.id} is typing")
@@ -181,7 +181,7 @@ class EventIngestionClient(discord.Client):
         self._log_react(reaction, user, 'removed a reaction of ')
 
         with self.sql.transaction():
-            self.sql.delete_reaction(reaction, user)
+            self.sql.remove_reaction(reaction, user)
 
     async def on_reaction_clear(self, message, reactions):
         self.logger.debug(f"Reactions from {message.id} cleared")
