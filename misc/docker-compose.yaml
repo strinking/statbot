@@ -6,12 +6,12 @@ PostgreSQL:
   environment:
     - DEBUG=false
 
-    - PG_USERNAME=your_username
-    - PG_PASSWORD=your_password
+    - PG_USERNAME=root
+    - PG_PASSWORD=root
 
-    - DB_USER=
-    - DB_PASS=
-    - DB_NAME=
+    - DB_USER=username
+    - DB_PASS=password
+    - DB_NAME=statbot
     - DB_TEMPLATE=
 
     - DB_EXTENSION=
@@ -21,7 +21,4 @@ PostgreSQL:
     - REPLICATION_PASS=
     - REPLICATION_SSLMODE=
   volumes:
-    - /srv/docker/postgresql:/var/lib/postgresql
-
-# I also needed to do ALTER USER 'name' PASSWORD 'password'.
-
+    - ./docker/postgresql:/var/lib/postgresql

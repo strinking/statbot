@@ -1,10 +1,14 @@
 # Configuration
-/config.json
+/config*.json
 /docker-compose.yaml
 
 # Artifacts
 __pycache__
 *.py[cdo]
+
+# Database
+docker/
+postgresql/
 
 # Logging
 *.log
