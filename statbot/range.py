@@ -41,6 +41,18 @@ __all__ = [
     'MultiRange',
 ]
 
+def order(x, y):
+    '''
+    Returns these two objects such that the one with smaller value
+    is first. If both are equivalent, the order in which they are
+    returned is unspecified.
+    '''
+
+    if x < y:
+        return (x, y)
+    else:
+        return (y, x)
+
 class AbstractRange:
     @abc.abstractmethod
     def min(self):
@@ -86,33 +98,29 @@ class AbstractRange:
     def __bool__(self):
         pass
 
-    # Default implementations
-    def __ne__(self, other):
-        return not (self == other)
-
-    def __le__(self, other):
-        if not isinstance(other, AbstractRange):
-            raise TypeError(f"expected type 'AbstractRange', not '{type(other)!r}'")
-
-        return self.min() <= other.min()
-
     def __lt__(self, other):
         if not isinstance(other, AbstractRange):
-            raise TypeError(f"expected type 'AbstractRange', not '{type(other)!r}'")
+            raise TypeError(f"expected AbstractRange, not '{type(other)!r}'")
 
         return self.min() < other.min()
 
-    def __ge__(self, other):
+    def __le__(self, other):
         if not isinstance(other, AbstractRange):
-            raise TypeError(f"expected type 'AbstractRange', not '{type(other)!r}'")
+            raise TypeError(f"expected AbstractRange, not '{type(other)!r}'")
 
-        return self.min() >= other.min()
+        return self.min() <= other.min()
 
     def __gt__(self, other):
         if not isinstance(other, AbstractRange):
-            raise TypeError(f"expected type 'AbstractRange', not '{type(other)!r}'")
+            raise TypeError(f"expected AbstractRange, not '{type(other)!r}'")
 
         return self.min() > other.min()
+
+    def __ge__(self, other):
+        if not isinstance(other, AbstractRange):
+            raise TypeError(f"expected AbstractRange, not '{type(other)!r}'")
+
+        return self.min() >= other.min()
 
 class Range(AbstractRange):
     '''
@@ -138,6 +146,19 @@ class Range(AbstractRange):
 
     def max(self):
         return self.end
+
+    def __or__(self, other):
+        if isinstance(other, Range):
+            x, y = order(self, other)
+            if x.end >= y.begin:
+                return Range(x.begin, y.end)
+            else:
+                return MultiRange(x, y)
+        elif isinstance(other, MultiRange):
+            ranges = other.ranges + [self]
+            return MultiRange(*ranges)
+        else:
+            raise TypeError(f"cannot create union with unknown type: {type(other)!r}")
 
     def __contains__(self, item):
         return self.begin <= item <= self.end
@@ -165,10 +186,26 @@ class MultiRange(AbstractRange):
     '''
 
     __slots__ = (
+        'ranges',
     )
 
     def __init__(self, *ranges):
-        self.ranges = ranges
+        for range in ranges:
+            if not isinstance(range, Range):
+                raise TypeError(f"MultiRange only supports Range objects, not {type(range)!r}.")
+
+        self.ranges = sorted(ranges)
+        self._merge()
+
+    def _merge(self):
+        '''
+        Assumes "ranges" is sorted.
+        This method walks through each range, merging it with its neighbors if
+        they overlap.
+        '''
+
+        # TODO
+        pass
 
     def min(self):
         if self.ranges:
@@ -182,8 +219,24 @@ class MultiRange(AbstractRange):
         else:
             return None
 
-    def __contains__(self, item):
+    def __or__(self, other):
+        # TODO
         pass
+
+    def __contains__(self, item):
+        begin = 0
+        end = len(self.ranges) - 1
+
+        while begin < end:
+            mid = (end - begin) // 2
+            range = self.ranges[mid]
+            if item > range.max():
+                begin = mid
+            elif item < range.min():
+                end = mid
+            else:
+                return True
+        return False
 
     def __eq__(self, other):
         if isinstance(other, Range):
