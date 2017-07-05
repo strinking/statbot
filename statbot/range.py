@@ -10,9 +10,8 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
+import abc
 import bisect
-import collections.abc
-import heapq
 
 '''
 This module contains the definitions for two classes: Range and MultiRange.
@@ -32,178 +31,88 @@ It is available as a precreated instance called NULL_RANGE.
 AllRange is a helper class that creates a Range that contains all members.
 It is available as a precreated instance called alll_range.
 
-They both implement the python Set abstract base class, allowing a large
-number of operations to be conveniently performed on them.
+They all implement the AbstractRange base class, guaranteeing a certain set of
+operations that can be performed on them.
 '''
 
 __all__ = [
     'AbstractRange',
-    'NullRange',
-    'NULL_RANGE',
-    'AllRange',
-    'ALL_RANGE',
-
     'Range',
     'MultiRange',
 ]
 
-class AbstractRange(collections.abc.Set):
-    @collections.abc.abstractmethod
+class AbstractRange:
+    @abc.abstractmethod
     def min(self):
         '''
-        Returns the smallest value in the set.
+        Returns the smallest value in the range.
         '''
 
         pass
 
-    @collections.abc.abstractmethod
+    @abc.abstractmethod
     def max(self):
         '''
-        Returns the largest value in the set.
+        Returns the largest value in the range.
         '''
 
         pass
 
-class NullRange(collections.abc.Set):
-    '''
-    A range of values with no members in it.
-    If you want an instance of this class use NULL_RANGE.
-    '''
+    @abc.abstractmethod
+    def __or__(self, other):
+        '''
+        Returns the union between the two ranges.
+        '''
 
-    # Membership
-    def __contains__(self, item):
-        return False
+        pass
 
-    # Iteration
-    def __iter__(self):
-        return iter(())
+    @abc.abstractmethod
+    def __contains__(self, x):
+        '''
+        Determines if a value is within the range.
+        '''
 
-    def __len__(self):
-        return 0
+        pass
 
-    # Equality
+    @abc.abstractmethod
     def __eq__(self, other):
-        return len(other) == 0
+        pass
 
+    @abc.abstractmethod
+    def __hash__(self):
+        pass
+
+    @abc.abstractmethod
+    def __bool__(self):
+        pass
+
+    # Default implementations
     def __ne__(self, other):
         return not (self == other)
 
-    # Subset
     def __le__(self, other):
-        return True
+        if not isinstance(other, AbstractRange):
+            raise TypeError(f"expected type 'AbstractRange', not '{type(other)!r}'")
+
+        return self.min() <= other.min()
 
     def __lt__(self, other):
-        return True
+        if not isinstance(other, AbstractRange):
+            raise TypeError(f"expected type 'AbstractRange', not '{type(other)!r}'")
 
-    # Superset
-    def __gt__(self, other):
-        return False
-
-    def __ge__(self, other):
-        return (self == other)
-
-    # Intersection
-    def __and__(self, other):
-        return self
-
-    # Union
-    def __or__(self, other):
-        return other
-
-    # Difference
-    def __sub__(self, other):
-        return self
-
-    # Complement
-    def __xor__(self, other):
-        return other
-
-    # Disjoint
-    def isdisjoint(self, other):
-        return True
-
-    # Misc
-    def __hash__(self):
-        return 0
-
-    def __bool__(self):
-        return True
-
-NULL_RANGE = NullRange()
-
-class AllRange(collections.abc.Set):
-    '''
-    A range of values with every possible member in it.
-    If you want an instance of this class use ALL_RANGE.
-
-    Note that some methods, like getting the length or
-    attempting to iterate will raise a ValueError, or
-    a NotImplementedError.
-    '''
-
-    # Membership
-    def __contains__(self, item):
-        return True
-
-    # Iteration
-    def __iter__(self):
-        raise ValueError("Set uncountably large")
-
-    def __len__(self):
-        raise ValueError("Set uncountably large")
-
-    # Equality
-    def __eq__(self, other):
-        return isinstance(other, AllRange)
-
-    def __ne__(self, other):
-        return not (self == other)
-
-    # Subset
-    def __le__(self, other):
-        return (self == other)
-
-    def __lt__(self, other):
-        return False
-
-    # Superset
-    def __gt__(self, other):
-        return True
+        return self.min() < other.min()
 
     def __ge__(self, other):
-        return True
+        if not isinstance(other, AbstractRange):
+            raise TypeError(f"expected type 'AbstractRange', not '{type(other)!r}'")
 
-    # Intersection
-    def __and__(self, other):
-        return other
+        return self.min() >= other.min()
 
-    # Union
-    def __or__(self, other):
-        return self
+    def __gt__(self, other):
+        if not isinstance(other, AbstractRange):
+            raise TypeError(f"expected type 'AbstractRange', not '{type(other)!r}'")
 
-    # Difference
-    def __sub__(self, other):
-        # This would require making a separate
-        # class, and I don't need this functionality
-        raise NotImplementedError
-
-    # Complement
-    def __xor__(self, other):
-        # Ditto
-        raise NotImplementedError
-
-    # Disjoint
-    def isdisjoint(self, other):
-        return False
-
-    # Misc
-    def __hash__(self):
-        return 1
-
-    def __bool__(self):
-        return True
-
-ALL_RANGE = AllRange()
+        return self.min() > other.min()
 
 class Range(AbstractRange):
     '''
