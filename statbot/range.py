@@ -133,31 +133,15 @@ class Range(AbstractRange):
         self.begin = begin
         self.end = end
 
-    # Range methods
     def min(self):
-        '''
-        Returns the smallest value in the set.
-        '''
         return self.begin
 
     def max(self):
-        '''
-        Returns the largest value in the set.
-        '''
         return self.end
 
-    # Membership
     def __contains__(self, item):
         return self.begin <= item <= self.end
 
-    # Iteration
-    def __iter__(self):
-        raise ValueError("cannot meaningfully iterate over an unknown type")
-
-    def __len__(self):
-        raise ValueError("cannot determine length of a range over an unknown type")
-
-    # Equality
     def __eq__(self, other):
         if isinstance(other, Range):
             return (self.begin == other.begin) and (self.end == other.end)
@@ -166,70 +150,52 @@ class Range(AbstractRange):
         else:
             return False
 
-    def __ne__(self, other):
-        return not (self == other)
-
-    # Subset
-    def __le__(self, other):
-        if isinstance(other, AbstractRange):
-            return (self.begin <= other.min()) and (self.end >= other.max())
-        else:
-            raise TypeError(f'must be an AbstractRange, not a {type(other)}')
-
-    def __lt__(self, other):
-        if isinstance(other, AbstractRange):
-            return (self.begin < other.min()) and (self.end > other.max())
-        else:
-            raise TypeError(f'must be an AbstractRange, not a {type(other)}')
-
-    # Superset
-    def __gt__(self, other):
-        if isinstance(other, AbstractRange):
-            return (self.begin > other.min()) and (self.end < other.max())
-        else:
-            raise TypeError(f'must be an AbstractRange, not a {type(other)}')
-
-    def __ge__(self, other):
-        if isinstance(other, AbstractRange):
-            return (self.begin >= other.min()) and (self.end <= other.max())
-        else:
-            raise TypeError(f'must be an AbstractRange, not a {type(other)}')
-
-    # Intersection
-    def __and__(self, other):
-        if isinstance(other, Range):
-            begin = max(self.begin, other.begin)
-            end = min(self.end, other.end)
-            if begin >= end:
-                return Range(begin, end)
-            else:
-                return NullRange()
-        elif isinstance(other, MultiRange):
-            return other & self
-        else:
-            raise TypeError(f'must be an AbstractRange, not {type(other)}')
-
-    # Union
-    def __or__(self, other):
-        pass
-
-    # Difference
-    def __sub__(self, other):
-        pass
-
-    # Complement
-    def __xor__(self, other):
-        pass
-
-    # Disjoint
-    def isdisjoint(self, other):
-        pass
-
-    # Misc
     def __hash__(self):
         return hash(self.begin) ^ hash(self.end)
 
     def __bool__(self):
         # Ranges always have at least one item in them
         return True
+
+class MultiRange(AbstractRange):
+    '''
+    A range of values, with support of discontinous jumps and other holes
+    from the beginning to the end. This is implemented as a sorted list of
+    Range objects.
+    '''
+
+    __slots__ = (
+    )
+
+    def __init__(self, *ranges):
+        self.ranges = ranges
+
+    def min(self):
+        if self.ranges:
+            return self.ranges[0].min()
+        else:
+            return None
+
+    def max(self):
+        if self.ranges:
+            return self.ranges[-1].max()
+        else:
+            return None
+
+    def __contains__(self, item):
+        pass
+
+    def __eq__(self, other):
+        if isinstance(other, Range):
+            return (len(self.ranges) == 1) and (self.ranges[0] == other)
+        elif isinstance(other, MultiRange):
+            return self.ranges == other.ranges
+        else:
+            return False
+
+    def __hash__(self):
+        return hash(self.ranges)
+
+    def __bool__(self):
+        return bool(self.ranges)
 
