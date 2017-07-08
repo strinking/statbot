@@ -183,6 +183,12 @@ class Range(AbstractRange):
         # Ranges always have at least one item in them
         return True
 
+    def __repr__(self):
+        return f"<Range object: [{self.begin!r}, {self.end!r}]>"
+
+    def __str__(self):
+        return f"[{self.begin}, {self.end}]"
+
 class MultiRange(AbstractRange):
     '''
     A range of values, with support of discontinous jumps and other holes
@@ -288,3 +294,12 @@ class MultiRange(AbstractRange):
     def __bool__(self):
         return bool(self.ranges)
 
+    def __repr__(self):
+        leng = len(self.ranges)
+        if leng > 4:
+            return f"<MultiRange object: {leng} chunks>"
+        else:
+            return f"<MultiRange object: {self}>"
+
+    def __str__(self):
+            return ' u '.join(str(range) for range in self.ranges)
