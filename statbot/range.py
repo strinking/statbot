@@ -163,8 +163,7 @@ class Range(AbstractRange):
             else:
                 return MultiRange(x, y)
         elif isinstance(other, MultiRange):
-            ranges = other.ranges + [self]
-            return MultiRange(*ranges)
+            return other | self
         else:
             raise TypeError(f"cannot create union with unknown type: {type(other)!r}")
 
