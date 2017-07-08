@@ -25,12 +25,6 @@ MultiRange is a sorted group of Ranges, allowing for a large, non-contiguous
 set of values. Some operations on a Range will return this value if the result
 isn't contiguous.
 
-NullRange is a helper class that creates a Range that contains no members.
-It is available as a precreated instance called NULL_RANGE.
-
-AllRange is a helper class that creates a Range that contains all members.
-It is available as a precreated instance called alll_range.
-
 They all implement the AbstractRange base class, guaranteeing a certain set of
 operations that can be performed on them.
 '''
@@ -147,6 +141,9 @@ class Range(AbstractRange):
     def max(self):
         return self.end
 
+    def __contains__(self, item):
+        return self.begin <= item <= self.end
+
     def __or__(self, other):
         if isinstance(other, Range):
             x, y = order(self, other)
@@ -159,9 +156,6 @@ class Range(AbstractRange):
             return MultiRange(*ranges)
         else:
             raise TypeError(f"cannot create union with unknown type: {type(other)!r}")
-
-    def __contains__(self, item):
-        return self.begin <= item <= self.end
 
     def __eq__(self, other):
         if isinstance(other, Range):
@@ -204,24 +198,30 @@ class MultiRange(AbstractRange):
         they overlap.
         '''
 
-        # TODO
-        pass
+        new_ranges = []
+        last = None
+
+        for current in self.ranges:
+            if last is None:
+                last = current
+                continue
+
+            if last.end >= current.begin:
+                last = Range(last.begin, current.end)
+            else:
+                new_ranges.append(last)
+                last = current
+
+        if last:
+            new_ranges.appen(last)
+
+        self.ranges = new_ranges
 
     def min(self):
-        if self.ranges:
-            return self.ranges[0].min()
-        else:
-            return None
+        return self.ranges[0].min() if self.ranges else None
 
     def max(self):
-        if self.ranges:
-            return self.ranges[-1].max()
-        else:
-            return None
-
-    def __or__(self, other):
-        # TODO
-        pass
+        return self.ranges[-1].max() if self.ranges else None
 
     def __contains__(self, item):
         begin = 0
@@ -237,6 +237,16 @@ class MultiRange(AbstractRange):
             else:
                 return True
         return False
+
+    def __or__(self, other):
+        # TODO
+        pass
+
+    def add(self, range):
+        if type(range) != Range:
+            raise TypeError(f"expected Range, not '{type(range)!r}'")
+
+        pass
 
     def __eq__(self, other):
         if isinstance(other, Range):
