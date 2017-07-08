@@ -234,7 +234,7 @@ class MultiRange(AbstractRange):
                 last = current
 
         if last:
-            new_ranges.appen(last)
+            new_ranges.append(last)
 
         self.ranges = new_ranges
 
@@ -251,7 +251,7 @@ class MultiRange(AbstractRange):
         begin = 0
         end = len(self.ranges) - 1
 
-        while begin < end:
+        while end > begin:
             mid = (end - begin) // 2
             range = self.ranges[mid]
             if item > range.max():
@@ -264,8 +264,8 @@ class MultiRange(AbstractRange):
 
     def __or__(self, other):
         if isinstance(other, Range):
-            result = other.clone()
-            result.add(self)
+            result = self.clone()
+            result.add(other)
             return result
         elif isinstance(other, MultiRange):
             new_ranges = heapq.merge(self.ranges, other.ranges)
