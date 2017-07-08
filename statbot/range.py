@@ -10,8 +10,8 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
+from bisect import insort
 import abc
-import bisect
 
 '''
 This module contains the definitions for two classes: Range and MultiRange.
@@ -246,7 +246,8 @@ class MultiRange(AbstractRange):
         if type(range) != Range:
             raise TypeError(f"expected Range, not '{type(range)!r}'")
 
-        pass
+        insort(self.ranges, range)
+        self._merge()
 
     def __eq__(self, other):
         if isinstance(other, Range):
