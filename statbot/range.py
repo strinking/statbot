@@ -65,6 +65,14 @@ class AbstractRange:
         pass
 
     @abc.abstractmethod
+    def clone(self):
+        '''
+        Returns a copy of the current object.
+        '''
+
+        pass
+
+    @abc.abstractmethod
     def __or__(self, other):
         '''
         Returns the union between the two ranges.
@@ -140,6 +148,9 @@ class Range(AbstractRange):
 
     def max(self):
         return self.end
+
+    def clone(self):
+        return Range(self.begin, self.end)
 
     def __contains__(self, item):
         return self.begin <= item <= self.end
@@ -222,6 +233,9 @@ class MultiRange(AbstractRange):
 
     def max(self):
         return self.ranges[-1].max() if self.ranges else None
+
+    def clone(self):
+        return MultiRange(*[range.clone() for range in self.ranges])
 
     def __contains__(self, item):
         begin = 0
