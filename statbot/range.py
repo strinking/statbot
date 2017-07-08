@@ -10,8 +10,9 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
-from bisect import insort
 import abc
+import bisect
+import heapq
 
 '''
 This module contains the definitions for two classes: Range and MultiRange.
@@ -193,12 +194,16 @@ class MultiRange(AbstractRange):
         'ranges',
     )
 
-    def __init__(self, *ranges):
+    def __init__(self, *ranges, _direct=None):
         for range in ranges:
             if not isinstance(range, Range):
                 raise TypeError(f"MultiRange only supports Range objects, not {type(range)!r}.")
 
-        self.ranges = sorted(ranges)
+        if _direct is None:
+            self.ranges = sorted(ranges)
+        else:
+            self.ranges = _direct
+
         self._merge()
 
     def _merge(self):
@@ -252,14 +257,21 @@ class MultiRange(AbstractRange):
         return False
 
     def __or__(self, other):
-        # TODO
-        pass
+        if isinstance(other, Range):
+            result = other.clone()
+            result.add(self)
+            return result
+        elif isinstance(other, MultiRange):
+            new_ranges = heapq.merge(self.ranges, other.ranges)
+            return MultiRange(*(), _direct=list(new_ranges))
+        else:
+            raise TypeError(f"cannot create union with unknown type: {type(other)!r}")
 
     def add(self, range):
         if type(range) != Range:
             raise TypeError(f"expected Range, not '{type(range)!r}'")
 
-        insort(self.ranges, range)
+        bisect.insort(self.ranges, range)
         self._merge()
 
     def __eq__(self, other):
