@@ -136,7 +136,7 @@ class AbstractRange:
         return self.min() >= other.min()
 
 
-class NullRange:
+class NullRange(AbstractRange):
     '''
     Represents a range with no items in it.
     '''
@@ -171,9 +171,15 @@ class NullRange:
     def __bool__(self):
         return False
 
+    def __repr__(self):
+        return '<NullRange object>'
+
+    def __str__(self):
+        return '[]'
+
 NULL_RANGE = NullRange()
 
-class PointRange:
+class PointRange(AbstractRange):
     '''
     A range that stores only a single point in it.
     Essentially a Range wrapper for a value.
@@ -225,6 +231,12 @@ class PointRange:
 
     def __bool__(self):
         return True
+
+    def __repr__(self):
+        return f'<PointRange object: {self.value}>'
+
+    def __str__(self):
+        return f'[{self.value}, {self.value}]'
 
 class Range(AbstractRange):
     '''
