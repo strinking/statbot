@@ -26,6 +26,13 @@ MultiRange is a sorted group of Ranges, allowing for a large, non-contiguous
 set of values. Some operations on a Range will return this value if the result
 isn't contiguous.
 
+NullRange is a "range" that represents a range with no items in it. A
+pre-constructed can be retrieved from the constant NULL_RANGE.
+
+PointRange basically wraps a single data point, storing it as a range with only
+that one item. It behaves equivalently to a Range with the beginning and end
+points as the same value.
+
 They all implement the AbstractRange base class, guaranteeing a certain set of
 operations that can be performed on them.
 '''
@@ -34,6 +41,9 @@ __all__ = [
     'AbstractRange',
     'Range',
     'MultiRange',
+    'NullRange',
+    'PointRange',
+    'NULL_RANGE',
 ]
 
 def order(x, y):
@@ -124,6 +134,97 @@ class AbstractRange:
             raise TypeError(f"expected AbstractRange, not '{type(other)!r}'")
 
         return self.min() >= other.min()
+
+
+class NullRange:
+    '''
+    Represents a range with no items in it.
+    '''
+
+    def __init__(self):
+        pass
+
+    def min(self):
+        return None
+
+    def max(self):
+        return None
+
+    def clone(self):
+        return NullRange()
+
+    def __or__(self, other):
+        if not isinstance(other, AbstractRange):
+            raise TypeError(f"expected AbstractRange, not '{type(other)!r}'")
+
+        return other.clone()
+
+    def __contains__(self, x):
+        return False
+
+    def __eq__(self, other):
+        return isinstance(other, NullRange)
+
+    def __hash__(self):
+        return 0
+
+    def __bool__(self):
+        return False
+
+NULL_RANGE = NullRange()
+
+class PointRange:
+    '''
+    A range that stores only a single point in it.
+    Essentially a Range wrapper for a value.
+    '''
+
+    __slots__ = (
+        'value',
+    )
+
+    def __init__(self, value):
+        self.value = value
+
+    def min(self):
+        return self.value
+
+    def max(self):
+        return self.value
+
+    def clone(self):
+        return PointRange(self.value)
+
+    def to_single_range(self):
+        return Range(self.value, self.value)
+
+    def __or__(self, other):
+        if not isinstance(other, AbstractRange):
+            raise TypeError(f"expected AbstractRange, not '{type(other)!r}'")
+
+        if self.value in other:
+            return other.clone()
+        else:
+            return other | self.to_single_range()
+
+    def __contains__(self, x):
+        return self.value == x
+
+    def __eq__(self, other):
+        if isinstance(other, PointRange):
+            return self.value == other.value
+        elif isinstance(other, Range):
+            return self.value == other.begin == other.end
+        elif isinstance(other, MultiRange):
+            return len(other.ranges) == 1 and self == other.ranges[0]
+        else:
+            return False
+
+    def __hash__(self):
+        return hash(self.value)
+
+    def __bool__(self):
+        return True
 
 class Range(AbstractRange):
     '''
