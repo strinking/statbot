@@ -360,20 +360,30 @@ class MultiRange(AbstractRange):
     def clone(self):
         return MultiRange(*[range.clone() for range in self.ranges])
 
-    def __contains__(self, item):
-        begin = 0
-        end = len(self.ranges) - 1
+    def _check_prev(self, item, index):
+        if index == 0:
+            # Special case for first range
+            return False
 
-        while end > begin:
-            mid = (end - begin) // 2
-            range = self.ranges[mid]
-            if item > range.max():
-                begin = mid
-            elif item < range.min():
-                end = mid
-            else:
-                return True
-        return False
+        # Normal case
+        # This is equivalent to "return item in range"
+        range = self.ranges[index - 1]
+        return item <= range.max()
+
+    def __contains__(self, item):
+        index = bisect.bisect_left(self.ranges, item)
+        if index >= len(self.ranges):
+            # Special case for last range
+            return self._check_prev(item, index)
+
+        range = self.ranges[index]
+        if range.min() > item:
+            # Not this range, the previous one
+            return self._check_prev(item, index)
+        else:
+            # This range, see if it's in it
+            # Equivalent to "return item in range"
+            return item <= range.max()
 
     def __or__(self, other):
         if isinstance(other, Range):
