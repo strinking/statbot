@@ -361,11 +361,10 @@ class MultiRange(AbstractRange):
         return MultiRange(*[range.clone() for range in self.ranges])
 
     def _check_prev(self, item, index):
+        # Special case for first range
         if index == 0:
-            # Special case for first range
             return False
 
-        # Normal case
         # This is equivalent to "return item in range"
         range = self.ranges[index - 1]
         return item <= range.max()
@@ -376,12 +375,11 @@ class MultiRange(AbstractRange):
             # Special case for last range
             return self._check_prev(item, index)
 
+        # Check if the item is in this range or the previous one
         range = self.ranges[index]
         if range.min() > item:
-            # Not this range, the previous one
             return self._check_prev(item, index)
         else:
-            # This range, see if it's in it
             # Equivalent to "return item in range"
             return item <= range.max()
 
