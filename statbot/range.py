@@ -340,6 +340,10 @@ class MultiRange(AbstractRange):
                 last = current
                 continue
 
+            if current.end < last.end:
+                # Skip items that are a subset of what we already have
+                continue
+
             if last.end >= current.begin:
                 last = Range(last.begin, current.end)
             else:
