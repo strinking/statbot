@@ -111,30 +111,24 @@ class AbstractRange:
     def __bool__(self):
         pass
 
-    def __lt__(self, other):
-        if not isinstance(other, AbstractRange):
-            raise TypeError(f"expected AbstractRange, not '{type(other)!r}'")
+    @staticmethod
+    def _get_val(other):
+        if isinstance(other, AbstractRange):
+            return other.min()
+        else:
+            return other
 
-        return self.min() < other.min()
+    def __lt__(self, other):
+        return self.min() < self._get_val(other)
 
     def __le__(self, other):
-        if not isinstance(other, AbstractRange):
-            raise TypeError(f"expected AbstractRange, not '{type(other)!r}'")
-
-        return self.min() <= other.min()
+        return self.min() <= self._get_val(other)
 
     def __gt__(self, other):
-        if not isinstance(other, AbstractRange):
-            raise TypeError(f"expected AbstractRange, not '{type(other)!r}'")
-
-        return self.min() > other.min()
+        return self.min() > self._get_val(other)
 
     def __ge__(self, other):
-        if not isinstance(other, AbstractRange):
-            raise TypeError(f"expected AbstractRange, not '{type(other)!r}'")
-
-        return self.min() >= other.min()
-
+        return self.min() >= self._get_val(other)
 
 class NullRange(AbstractRange):
     '''
