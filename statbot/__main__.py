@@ -58,9 +58,16 @@ if __name__ == '__main__':
     argparser.add_argument('-d', '--debug',
             dest='debug', action='store_true',
             help="Set logging level to debug.")
+    argparser.add_argument('-T', '--test',
+            dest='test', action='store_true',
+            help="Run all the tests and then quit.")
     argparser.add_argument('config_file',
             help="Specify a configuration file to use. Keep it secret!")
     args = argparser.parse_args()
+
+    if args.test:
+        # TODO run tests
+        exit(status)
 
     # Set up logging
     log_fmtr = logging.Formatter(LOG_FORMAT, datefmt=LOG_DATE_FORMAT)
