@@ -82,6 +82,14 @@ class TestPointRange(unittest.TestCase):
         self.assertTrue(PointRange(0))
         self.assertTrue(PointRange('beta'))
 
+    def test_union(self):
+        self.assertEqual(PointRange(1) | PointRange(1), PointRange(1))
+        self.assertEqual(PointRange(1) | PointRange(1), Range(1, 1))
+        self.assertEqual(PointRange(1) | PointRange(2), MultiRange(Range(1, 1), Range(2, 2)))
+        self.assertEqual(PointRange(1) | Range(2, 5), MultiRange(Range(1, 1), Range(2, 5)))
+        self.assertEqual(PointRange(1) | Range(0, 2), Range(0, 2))
+        self.assertEqual(Range(0, 2) | PointRange(1), Range(0, 2))
+
 class TestRange(unittest.TestCase):
     def test_contains(self):
         r = Range(2, 5)
