@@ -23,6 +23,12 @@ pip3 install SQLAlchemy psycopg2
 
 Since discord.py 1.0.0 is not in the pip repos, you cannot use the `requirements.txt` file as-is.
 
+### Testing
+You can run the test suite by invoking the following from the command line:
+```sh
+python3 -m unittest [tests you want to run]
+```
+
 ### Execution
 After preparing a configuration file, (see `misc/sample_config.json`)
 you can call the program as follows:
