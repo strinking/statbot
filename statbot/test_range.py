@@ -237,7 +237,25 @@ class TestMultiRange(unittest.TestCase):
         self.assertNotIn(22.5, m)
 
     def test_minmax(self):
-        pass
+        m = MultiRange()
+        self.assertEqual(None, m.min())
+        self.assertEqual(None, m.max())
+
+        m = MultiRange(Range(0, 1))
+        self.assertEqual(0, m.min())
+        self.assertEqual(1, m.max())
+
+        m = MultiRange(Range(0, 1), Range(8, 9))
+        self.assertEqual(0, m.min())
+        self.assertEqual(9, m.max())
+
+        m = MultiRange(Range(8, 9), Range(0, 1))
+        self.assertEqual(0, m.min())
+        self.assertEqual(9, m.max())
+
+        m = MultiRange(Range(0, 1), Range(-5, -2), Range(4, 6))
+        self.assertEqual(-5, m.min())
+        self.assertEqual(6, m.max())
 
     def test_equals(self):
         pass
