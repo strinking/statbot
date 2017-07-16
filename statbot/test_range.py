@@ -133,6 +133,17 @@ class TestRange(unittest.TestCase):
         self.assertTrue(Range(3, 5))
         self.assertTrue(Range(0, 0))
 
+    def test_union(self):
+        self.assertEqual(Range(0, 2) | Range(3, 4), MultiRange(Range(0, 2), Range(3, 4)))
+        self.assertEqual(Range(3, 4) | Range(0, 2), MultiRange(Range(0, 2), Range(3, 4)))
+        self.assertEqual(Range(0, 2) | Range(2, 4), Range(0, 4))
+        self.assertEqual(Range(0, 3) | Range(1, 4), Range(0, 4))
+        self.assertEqual(Range(1, 4) | Range(0, 3), Range(0, 4))
+        self.assertEqual(Range(0, 1) | Range(0, 2), Range(0, 2))
+        self.assertEqual(Range(0, 2) | Range(0, 1), Range(0, 2))
+        self.assertEqual(Range(2, 8) | Range(4, 6), Range(2, 8))
+        self.assertEqual(Range(4, 6) | Range(2, 8), Range(2, 8))
+
 class TestMultiRange(unittest.TestCase):
     pass
 
