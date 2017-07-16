@@ -258,10 +258,22 @@ class TestMultiRange(unittest.TestCase):
         self.assertEqual(6, m.max())
 
     def test_equals(self):
-        pass
+        self.assertEqual(MultiRange(), MultiRange())
+        self.assertEqual(MultiRange(Range(0, 1)), MultiRange(Range(0, 1)))
+        self.assertEqual(
+                MultiRange(Range(-1, 0), Range(1, 2)),
+                MultiRange(Range(1, 2), Range(-1, 0)))
+        self.assertEqual(
+                MultiRange(Range(0, 1), Range(2, 3), Range(9, 10)),
+                MultiRange(Range(9, 10), Range(0, 1), Range(2, 3)))
+        self.assertEqual(
+                MultiRange(Range(0, 1), Range(1, 2), Range(2, 3)),
+                MultiRange(Range(0, 3)))
 
     def test_bool(self):
-        pass
+        self.assertTrue(MultiRange(Range(0, 0)))
+        self.assertTrue(MultiRange(Range(1, 3), Range(5, 7)))
+        self.assertFalse(MultiRange())
 
     def test_union(self):
         pass
