@@ -26,7 +26,7 @@ Since discord.py 1.0.0 is not in the pip repos, you cannot use the `requirements
 ### Testing
 You can run the test suite by invoking the following from the command line:
 ```sh
-python3 -m unittest [tests you want to run]
+python3 -m unittest
 ```
 
 ### Execution
