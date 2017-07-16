@@ -196,6 +196,46 @@ class TestMultiRange(unittest.TestCase):
         self.assertIn(5, m)
         self.assertNotIn(6, m)
 
+        m = MultiRange(Range(-1, 0), Range(3, 3), Range(6, 9))
+        self.assertNotIn(-2, m)
+        self.assertIn(-1, m)
+        self.assertIn(0, m)
+        self.assertNotIn(2, m)
+        self.assertIn(3, m)
+        self.assertNotIn(4, m)
+        self.assertNotIn(5, m)
+        self.assertIn(6, m)
+        self.assertIn(8, m)
+        self.assertIn(9, m)
+        self.assertNotIn(10, m)
+
+        m = MultiRange(Range(1, 2), Range(3, 4), Range(5, 6),
+                Range(7, 8), Range(9, 10), Range(11, 12), Range(13, 14),
+                Range(15, 16), Range(17, 18), Range(19, 20), Range(21, 22))
+        self.assertNotIn(0, m)
+        self.assertIn(1, m)
+        self.assertNotIn(2.5, m)
+        self.assertIn(3, m)
+        self.assertNotIn(4.5, m)
+        self.assertIn(5, m)
+        self.assertNotIn(6.5, m)
+        self.assertIn(7, m)
+        self.assertNotIn(8.5, m)
+        self.assertIn(9, m)
+        self.assertNotIn(10.5, m)
+        self.assertIn(11, m)
+        self.assertNotIn(12.5, m)
+        self.assertIn(13, m)
+        self.assertNotIn(14.5, m)
+        self.assertIn(15, m)
+        self.assertNotIn(16.5, m)
+        self.assertIn(17, m)
+        self.assertNotIn(18.5, m)
+        self.assertIn(19, m)
+        self.assertNotIn(20.5, m)
+        self.assertIn(21, m)
+        self.assertNotIn(22.5, m)
+
     def test_minmax(self):
         pass
 
