@@ -13,13 +13,7 @@
 from range import *
 import unittest
 
-__all__ = [
-    'run_tests',
-]
-
 class TestNullRange(unittest.TestCase):
     pass
 
-def run_tests():
-    pass
 
