@@ -270,7 +270,7 @@ class Range(AbstractRange):
         if isinstance(other, Range):
             x, y = order(self, other)
             if x.end >= y.begin:
-                return Range(x.begin, y.end)
+                return Range(x.begin, max(x.end, y.end))
             else:
                 return MultiRange(x, y)
         elif isinstance(other, MultiRange):
