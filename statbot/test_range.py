@@ -169,13 +169,32 @@ class TestMultiRange(unittest.TestCase):
         self.assertEqual(MultiRange(Range(0, 1), Range(0, 2)), MultiRange(Range(0, 2)))
         self.assertEqual(MultiRange(Range(0, 2), Range(0, 1)), MultiRange(Range(0, 2)))
         self.assertEqual(MultiRange(Range(0, 1), Range(0, 2), Range(0, 3)), MultiRange(Range(0, 3)))
+        self.assertEqual(MultiRange(Range(0, 2), Range(0, 3), Range(0, 1)), MultiRange(Range(0, 3)))
         self.assertEqual(MultiRange(Range(1, 5), Range(1, 5)), MultiRange(Range(1, 5)))
 
         self.assertEqual(MultiRange(Range(1, 3), Range(5, 8)), MultiRange(Range(1, 3), Range(5, 8)))
         self.assertEqual(MultiRange(Range(1, 3), Range(5, 8)), MultiRange(Range(5, 8), Range(1, 3)))
 
     def test_contains(self):
-        pass
+        m = MultiRange()
+        self.assertNotIn(0, m)
+        self.assertNotIn(2, m)
+
+        m = MultiRange(Range(0, 3))
+        self.assertNotIn(-1, m)
+        self.assertIn(0, m)
+        self.assertIn(2, m)
+        self.assertNotIn(4, m)
+
+        m = MultiRange(Range(0, 1), Range(3, 5))
+        self.assertNotIn(-1, m)
+        self.assertIn(0, m)
+        self.assertIn(1, m)
+        self.assertNotIn(2, m)
+        self.assertIn(3, m)
+        self.assertIn(4, m)
+        self.assertIn(5, m)
+        self.assertNotIn(6, m)
 
     def test_minmax(self):
         pass
