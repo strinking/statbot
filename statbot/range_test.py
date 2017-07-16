@@ -10,8 +10,20 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
-from range import *
+from .range import *
 import unittest
+
+class TestMisc(unittest.TestCase):
+    def test_types(self):
+        r = Range(0, 3)
+        m = MultiRange()
+        p = PointRange(-3)
+        n = NullRange()
+
+        self.assertIsInstance(r, AbstractRange)
+        self.assertIsInstance(m, AbstractRange)
+        self.assertIsInstance(p, AbstractRange)
+        self.assertIsInstance(n, AbstractRange)
 
 class TestNullRange(unittest.TestCase):
     def test_contains(self):
@@ -35,19 +47,16 @@ class TestNullRange(unittest.TestCase):
 class TestPointRange(unittest.TestCase):
     def test_contains(self):
         r = PointRange(5)
-
         self.assertIn(5, r)
         self.assertNotIn(2, r)
 
     def test_minmax(self):
         r = PointRange(-2)
-
         self.assertEqual(r.min(), r.max())
         self.assertEqual(-2, r.min())
 
     def test_equals(self):
         r = PointRange('e')
-
         self.assertEqual(PointRange('e'), r)
         self.assertNotEqual(PointRange('a'), r)
         self.assertNotEqual(NULL_RANGE, r)
@@ -56,15 +65,49 @@ class TestPointRange(unittest.TestCase):
         self.assertTrue(PointRange(0))
         self.assertTrue(PointRange('beta'))
 
-class TestMisc(unittest.TestCase):
-    def test_types(self):
-        r = Range(0, 3)
-        m = MultiRange()
-        p = PointRange(-3)
-        n = NullRange()
+class TestRange(unittest.TestCase):
+    def test_contains(self):
+        r = Range(2, 5)
+        self.assertNotIn(1, r)
+        self.assertIn(2, r)
+        self.assertIn(4, r)
+        self.assertIn(5, r)
+        self.assertNotIn(8, r)
 
-        self.assertIsInstance(r, AbstractRange)
-        self.assertIsInstance(m, AbstractRange)
-        self.assertIsInstance(p, AbstractRange)
-        self.assertIsInstance(n, AbstractRange)
+        r = Range(-2, 0)
+        self.assertNotIn(-3, r)
+        self.assertIn(-2, r)
+        self.assertIn(-1, r)
+        self.assertIn(0, r)
+        self.assertNotIn(1, r)
+
+        r = Range(10, 10)
+        self.assertNotIn(0, r)
+        self.assertNotIn(9, r)
+        self.assertIn(10, r)
+        self.assertNotIn(11, r)
+
+    def test_minmax(self):
+        r = Range(4, 7)
+        self.assertEqual(4, r.min())
+        self.assertEqual(7, r.max())
+        self.assertNotEqual(r.min(), r.max())
+
+        r = Range(8, 8)
+        self.assertEqual(8, r.min())
+        self.assertEqual(8, r.max())
+        self.assertEqual(r.min(), r.max())
+
+    def test_equality(self):
+        r = Range(3, 8)
+        self.assertEqual(r, Range(3, 8))
+        self.assertNotEqual(r, Range(2, 8))
+        self.assertNotEqual(r, NULL_RANGE)
+
+    def test_bool(self):
+        self.assertTrue(Range(3, 5))
+        self.assertTrue(Range(0, 0))
+
+class TestMultiRange(unittest.TestCase):
+    pass
 
