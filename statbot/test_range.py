@@ -14,6 +14,12 @@ from .range import *
 import unittest
 
 class TestMisc(unittest.TestCase):
+    def test_equals(self):
+        self.assertEqual(Range(1, 4), Range(1, 4))
+        self.assertEqual(PointRange(0), PointRange(0))
+        self.assertEqual(MultiRange(), MultiRange())
+        self.assertEqual(NullRange(), NullRange())
+
     def test_types(self):
         r = Range(0, 3)
         m = MultiRange()
@@ -154,6 +160,20 @@ class TestRange(unittest.TestCase):
         self.assertEqual(NULL_RANGE | Range(0, 1), Range(0, 1))
 
 class TestMultiRange(unittest.TestCase):
+    def test_merge(self):
+        self.assertEqual(MultiRange(Range(0, 1), Range(1, 2)), MultiRange(Range(0, 2)))
+        self.assertEqual(MultiRange(Range(1, 2), Range(0, 1)), MultiRange(Range(0, 2)))
+        self.assertEqual(MultiRange(Range(0, 1), Range(0, 1)), MultiRange(Range(0, 1)))
+        self.assertEqual(MultiRange(Range(0, 3), Range(1, 4)), MultiRange(Range(0, 4)))
+
+        self.assertEqual(MultiRange(Range(0, 1), Range(0, 2)), MultiRange(Range(0, 2)))
+        self.assertEqual(MultiRange(Range(0, 2), Range(0, 1)), MultiRange(Range(0, 2)))
+        self.assertEqual(MultiRange(Range(0, 1), Range(0, 2), Range(0, 3)), MultiRange(Range(0, 3)))
+        self.assertEqual(MultiRange(Range(1, 5), Range(1, 5)), MultiRange(Range(1, 5)))
+
+        self.assertEqual(MultiRange(Range(1, 3), Range(5, 8)), MultiRange(Range(1, 3), Range(5, 8)))
+        self.assertEqual(MultiRange(Range(1, 3), Range(5, 8)), MultiRange(Range(5, 8), Range(1, 3)))
+
     def test_contains(self):
         pass
 
