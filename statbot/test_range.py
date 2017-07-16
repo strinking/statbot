@@ -123,7 +123,7 @@ class TestRange(unittest.TestCase):
         self.assertEqual(8, r.max())
         self.assertEqual(r.min(), r.max())
 
-    def test_equality(self):
+    def test_equals(self):
         r = Range(3, 8)
         self.assertEqual(r, Range(3, 8))
         self.assertNotEqual(r, Range(2, 8))
@@ -144,6 +144,31 @@ class TestRange(unittest.TestCase):
         self.assertEqual(Range(2, 8) | Range(4, 6), Range(2, 8))
         self.assertEqual(Range(4, 6) | Range(2, 8), Range(2, 8))
 
+        self.assertEqual(Range(0, 2) | PointRange(3), MultiRange(Range(0, 2), Range(3, 3)))
+        self.assertEqual(PointRange(3) | Range(0, 2), MultiRange(Range(0, 2), Range(3, 3)))
+        self.assertEqual(Range(0, 3) | PointRange(2), Range(0, 3))
+        self.assertEqual(PointRange(2) | Range(0, 3), Range(0, 3))
+        self.assertEqual(Range(0, 3) | PointRange(3), Range(0, 3))
+        self.assertEqual(PointRange(3) | Range(0, 3), Range(0, 3))
+        self.assertEqual(Range(0, 1) | NULL_RANGE, Range(0, 1))
+        self.assertEqual(NULL_RANGE | Range(0, 1), Range(0, 1))
+
 class TestMultiRange(unittest.TestCase):
-    pass
+    def test_contains(self):
+        pass
+
+    def test_minmax(self):
+        pass
+
+    def test_equals(self):
+        pass
+
+    def test_bool(self):
+        pass
+
+    def test_union(self):
+        pass
+
+    def test_add(self):
+        pass
 
