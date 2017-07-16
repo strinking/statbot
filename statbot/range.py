@@ -264,6 +264,9 @@ class Range(AbstractRange):
         return self.begin <= item <= self.end
 
     def __or__(self, other):
+        if isinstance(other, PointRange):
+            other = other.to_single_range()
+
         if isinstance(other, Range):
             x, y = order(self, other)
             if x.end >= y.begin:
@@ -272,6 +275,8 @@ class Range(AbstractRange):
                 return MultiRange(x, y)
         elif isinstance(other, MultiRange):
             return other | self
+        elif isinstance(other, NullRange):
+            return self.clone()
         else:
             raise TypeError(f"cannot create union with unknown type: {type(other)!r}")
 
@@ -280,6 +285,8 @@ class Range(AbstractRange):
             return (self.begin == other.begin) and (self.end == other.end)
         elif isinstance(other, MultiRange):
             return other == self
+        elif isinstance(other, PointRange):
+            return (self.begin == self.end) and (self.begin == other.value)
         else:
             return False
 
@@ -382,6 +389,9 @@ class MultiRange(AbstractRange):
             return item <= range.max()
 
     def __or__(self, other):
+        if isinstance(other, PointRange):
+            other = other.to_single_range()
+
         if isinstance(other, Range):
             result = self.clone()
             result.add(other)
@@ -389,6 +399,8 @@ class MultiRange(AbstractRange):
         elif isinstance(other, MultiRange):
             new_ranges = heapq.merge(self.ranges, other.ranges)
             return MultiRange(*(), _direct=list(new_ranges))
+        elif isinstance(other, NullRange):
+            return self.clone()
         else:
             raise TypeError(f"cannot create union with unknown type: {type(other)!r}")
 
@@ -400,7 +412,7 @@ class MultiRange(AbstractRange):
         self._merge()
 
     def __eq__(self, other):
-        if isinstance(other, Range):
+        if isinstance(other, Range) or isinstance(other, PointRange):
             return (len(self.ranges) == 1) and (self.ranges[0] == other)
         elif isinstance(other, MultiRange):
             return self.ranges == other.ranges
