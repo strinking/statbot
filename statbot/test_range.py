@@ -44,6 +44,23 @@ class TestNullRange(unittest.TestCase):
         self.assertFalse(NULL_RANGE)
         self.assertFalse(NullRange())
 
+    def test_union(self):
+        r = NullRange()
+        self.assertEqual(NULL_RANGE | r, r)
+        self.assertEqual(r | NULL_RANGE, r)
+
+        r = PointRange(5)
+        self.assertEqual(NULL_RANGE | r, r)
+        self.assertEqual(r | NULL_RANGE, r)
+
+        r = Range(0, 3)
+        self.assertEqual(NULL_RANGE | r, r)
+        self.assertEqual(r | NULL_RANGE, r)
+
+        r = MultiRange(Range(1, 2), Range(5, 8))
+        self.assertEqual(NULL_RANGE | r, r)
+        self.assertEqual(r | NULL_RANGE, r)
+
 class TestPointRange(unittest.TestCase):
     def test_contains(self):
         r = PointRange(5)
