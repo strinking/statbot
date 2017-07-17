@@ -117,11 +117,22 @@ class DiscordHistoryCrawler:
                 except Exception:
                     self.logger.error(f"Error reading messages from channel id {cid}", exc_info=1)
 
+    def _find_chunk(self, latest, mrange):
+        current = latest
+        for range in reversed(mrange.ranges):
+            count = current - range.max()
+            if count >= 0:
+                return (current, min(count, MESSAGE_BATCH_SIZE))
+
+            current = range.min()
+        return (current, MESSAGE_BATCH_SIZE)
+
     async def _read(self, channel, mrange):
-        # TODO determine which message id to get, and how many (or max)
-        before_id = mrange.max()
+        latest_id = self.latest[channel.id]
+        before_id, limit = self._find_chunk(latest_id, mrange)
         before = await self.client.get_message(before_id)
         async for message in channel.history(limit=MESSAGE_BATCH_SIZE):
+            # TODO
             _ingest_message(message)
         mrange.add(Range(_, _))
 
