@@ -107,7 +107,7 @@ if __name__ == '__main__':
     main_logger.info("Starting bot, waiting for discord.py...")
 
     # Create crawler
-    crawler = DiscordHistoryCrawler(client, config, crawler_logger)
+    crawler = DiscordHistoryCrawler(client, sql, config, crawler_logger)
     crawler.start()
 
     # Start main loop
