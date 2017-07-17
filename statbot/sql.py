@@ -182,6 +182,20 @@ class DiscordSqlHandler:
         }
 
     @staticmethod
+    def _message_values(message):
+        return {
+            'message_id': message.id,
+            'is_edited': False,
+            'is_deleted': False,
+            'content': content,
+            'embeds': embeds_to_json(message.embeds),
+            'attachments': len(message.attachments),
+            'user_id': message.author.id,
+            'channel_id': message.channel.id,
+            'guild_id': message.guild.id,
+        }
+
+    @staticmethod
     def _channel_values(channel):
         return {
             'channel_id': channel.id,
@@ -256,26 +270,17 @@ class DiscordSqlHandler:
 
     # Message
     def add_message(self, trans, message):
-        attach_urls = '\n'.join((attach.url for attach in message.attachments))
+        attach_urls = '\n'.join(attach.url for attach in message.attachments)
         if message.content:
             content = '\n'.join((message.content, attach_urls))
         else:
             content = attach_urls
 
         self.logger.info(f"Inserting message {message.id}")
+        values = self._message_values(message)
         ins = self.tb_messages \
                 .insert() \
-                .values({
-                    'message_id': message.id,
-                    'is_edited': False,
-                    'is_deleted': False,
-                    'content': content,
-                    'embeds': embeds_to_json(message.embeds),
-                    'attachments': len(message.attachments),
-                    'user_id': message.author.id,
-                    'channel_id': message.channel.id,
-                    'guild_id': message.guild.id,
-                })
+                .values(values)
         trans.execute(ins)
 
         self.upsert_guild(trans, message.guild)
@@ -307,6 +312,16 @@ class DiscordSqlHandler:
         self.upsert_guild(trans, message.guild)
         self.upsert_channel(trans, message.channel)
         self.upsert_user(trans, message.author)
+
+    def insert_message(self, trans, message):
+        self.logger.info(f"Inserting message {message.id}")
+        values = self._message_values(message)
+        ins = p_insert(self.tb_messages) \
+                .values(values) \
+                .on_conflict_do_nothing(index_elements=['message_id'])
+        trans.execute(ins)
+
+        # Don't upsert any metadata
 
     # Typing
     def typing(self, trans, channel, user, when):
