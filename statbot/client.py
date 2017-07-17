@@ -13,12 +13,8 @@
 import discord
 
 __all__ = [
-    'LOG_FULL_MESSAGES',
     'EventIngestionClient',
 ]
-
-LOG_FULL_MESSAGES = False
-LOG_IGNORED_EVENTS = False
 
 from .sql import DiscordSqlHandler
 from .util import get_emoji_name, null_logger
@@ -29,6 +25,8 @@ class EventIngestionClient(discord.Client):
         'logger',
         'sql',
         'ready',
+        '_log_full_messages',
+        '_log_ignored_events',
     )
 
     def __init__(self, config, logger=null_logger, sql_logger=null_logger):
@@ -37,6 +35,9 @@ class EventIngestionClient(discord.Client):
         self.logger = logger
         self.sql = DiscordSqlHandler(config['url'], sql_logger)
         self.ready = False
+
+        self._log_full_messages = config.get('log-full-messages', False)
+        self._log_ignored_events = config.get('log-ignored-events', False)
 
     def run(self):
         # Override function to include the token from config
@@ -91,7 +92,7 @@ class EventIngestionClient(discord.Client):
         chan = message.channel.name
 
         self.logger.info(f"Message {action} by {name} in {guild} #{chan}")
-        if LOG_FULL_MESSAGES:
+        if self._log_full_messages:
             self.logger.info("<bom>")
             self.logger.info(message.content)
             self.logger.info("<eom>")
@@ -112,7 +113,7 @@ class EventIngestionClient(discord.Client):
         self.logger.info(f"{name} {action} {emote} (total {count}) on message id {id}")
 
     def _log_ignored(self, message):
-        if LOG_IGNORED_EVENTS:
+        if self._log_ignored_events:
             self.logger.debug(message)
 
     async def on_ready(self):
