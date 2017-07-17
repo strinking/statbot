@@ -316,5 +316,38 @@ class TestMultiRange(unittest.TestCase):
         self.assertEqual(m | m, m)
 
     def test_add(self):
-        pass
+        m = MultiRange()
+
+        m.add(Range(0, 1))
+        self.assertEqual(m, MultiRange(Range(0, 1)))
+
+        m.add(Range(1, 2))
+        self.assertEqual(m, MultiRange(Range(0, 2)))
+
+        m.add(Range(3, 5))
+        self.assertEqual(m, MultiRange(Range(0, 2), Range(3, 5)))
+
+        m.add(Range(5, 6))
+        self.assertEqual(m, MultiRange(Range(0, 2), Range(3, 6)))
+
+        m.add(Range(20, 24))
+        self.assertEqual(m, MultiRange(Range(0, 2), Range(3, 6), Range(20, 24)))
+
+        m.add(Range(20, 21))
+        self.assertEqual(m, MultiRange(Range(0, 2), Range(3, 6), Range(20, 24)))
+
+        m.add(Range(15, 16))
+        self.assertEqual(m, MultiRange(Range(0, 2), Range(3, 6), Range(15, 16), Range(20, 24)))
+
+        m.add(Range(13, 15))
+        self.assertEqual(m, MultiRange(Range(0, 2), Range(3, 6), Range(13, 16), Range(20, 24)))
+
+        m.add(Range(2, 4))
+        self.assertEqual(m, MultiRange(Range(0, 6), Range(13, 16), Range(20, 24)))
+
+        m.add(Range(5, 9))
+        self.assertEqual(m, MultiRange(Range(0, 9), Range(13, 16), Range(20, 24)))
+
+        m.add(Range(28, 30))
+        self.assertEqual(m, MultiRange(Range(0, 9), Range(13, 16), Range(20, 24), Range(28, 30)))
 
