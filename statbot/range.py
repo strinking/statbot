@@ -183,7 +183,10 @@ class Range(AbstractRange):
         'end',
     )
 
-    def __init__(self, begin, end):
+    def __init__(self, begin, end=None):
+        if end is None:
+            end = begin
+
         if type(begin) != type(end):
             raise TypeError("type of both endpoints aren't the same")
         elif begin > end:
