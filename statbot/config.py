@@ -64,6 +64,39 @@ def check(cfg, logger=null_logger):
         if type(cfg['url']) != str:
             logger.error("Configuration field 'url' is not a string")
             return False
+
+        if type(cfg.get('logger')) != dict:
+            logger.warning("Populating configuration field 'logger' with defaults")
+            cfg['logger'] = {
+                'full-messages': False,
+                'ignored-events': False,
+            }
+
+        if type(cfg['logger']['full-messages']) != bool:
+            logger.error("Configuration field 'logger.full-messages' is not a bool")
+            return False
+        if type(cfg['logger']['ignored-events']) != bool:
+            logger.error("Configuration field 'logger.ignored-events' is not a bool")
+            return False
+
+        if type(cfg.get('serial')) != dict:
+            logger.warning("Populating configuration field 'serial' with defaults")
+            cfg['serial'] = {
+                'filename': 'progress.pickle',
+                'periodic-save': 3600,
+                'backup': True,
+            }
+
+        if type(cfg['serial']['filename']) != str:
+            logger.error("Configuration field 'serial.filename' is not a string")
+            return False
+        if type(cfg['serial']['periodic-save']) != int:
+            logger.error("Configuration field 'serial.periodic-save' is not an int")
+            return False
+        if type(cfg['serial']['backup']) != bool:
+            logger.error("Configuration field 'serial.backup' is not a bool")
+            return False
+
     except KeyError as err:
         logger.error(f"Configuration missing field: {err}")
         return False
