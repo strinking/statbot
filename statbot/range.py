@@ -157,7 +157,12 @@ class NullRange(AbstractRange):
         return False
 
     def __eq__(self, other):
-        return isinstance(other, NullRange)
+        if isinstance(other, NullRange):
+            return True
+        elif isinstance(other, AbstractRange):
+            return other.min() is None and other.max() is None
+        else:
+            return False
 
     def __hash__(self):
         return 0
@@ -416,6 +421,8 @@ class MultiRange(AbstractRange):
             return (len(self.ranges) == 1) and (self.ranges[0] == other)
         elif isinstance(other, MultiRange):
             return self.ranges == other.ranges
+        elif isinstance(other, NullRange):
+            return len(self.ranges) == 0
         else:
             return False
 
@@ -429,6 +436,8 @@ class MultiRange(AbstractRange):
         leng = len(self.ranges)
         if leng > 4:
             return f"<MultiRange object: {leng} chunks>"
+        elif leng == 0:
+            return "<MultiRange object: []>"
         else:
             return f"<MultiRange object: {self}>"
 
