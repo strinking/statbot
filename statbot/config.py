@@ -58,9 +58,6 @@ def check(cfg, logger=null_logger):
         if type(cfg['token']) != str:
             logger.error("Configuration field 'token' is not a string")
             return False
-        if type(cfg['bot']) != bool:
-            logger.error("Configuration field 'bot' is not a bool")
-            return False
         if type(cfg['url']) != str:
             logger.error("Configuration field 'url' is not a string")
             return False
