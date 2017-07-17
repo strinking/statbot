@@ -1,5 +1,5 @@
 ## statbot
-A [Discord](https://discordapp.com) bot/selfbot that reads in posts from a given set
+A [Discord](https://discordapp.com) bot that reads in posts from a given set
 of servers and stores it in a SQL database. This application has two parts: the
 listener, which ingests raw data as it arrives, and the crawler, which walks
 through past history of Discord messages and adds them.

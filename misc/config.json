@@ -11,8 +11,7 @@
         129409120491092041,
         1290192091029091120
     ],
-    "token": "your_discord_token_here",
-    "bot": true,
+    "token": "bot-discord-token-here",
 
     "url": "postgresql://username:password@localhost:5432/statbot"
 }

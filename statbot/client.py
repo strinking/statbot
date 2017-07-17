@@ -34,7 +34,7 @@ class EventIngestionClient(discord.Client):
 
     def run(self):
         # Override function to include the token from config
-        return super().run(self.config['token'], bot=self.config['bot'])
+        return super().run(self.config['token'])
 
     async def _accept_message(self, message):
         await self.wait_until_ready()
