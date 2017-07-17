@@ -96,11 +96,11 @@ class DiscordHistoryCrawler:
         self.client.add_listener(self, 'on_guild_channel_create')
         self.client.add_listener(self, 'on_guild_channel_delete')
         self.client.add_listener(self, 'on_guild_channel_update')
-        self.client.loop.create_task(self.serialize())
+        self.client.loop.create_task(self.serializer())
         self.client.loop.create_task(self.producer())
         self.client.loop.create_task(self.consumer())
 
-    async def serialize(self):
+    async def serializer(self):
         # Delay first save
         await asyncio.sleep(5)
 
