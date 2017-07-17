@@ -33,6 +33,7 @@ class DiscordHistoryCrawler:
         self.client = client
         self.config = config
         self.logger = logger
+        self.progress = None
 
         self._load()
 
@@ -59,6 +60,9 @@ class DiscordHistoryCrawler:
             del self.progress[channel.id]
 
     def start(self):
+        self.client.add_listener(self, 'on_guild_channel_create')
+        self.client.add_listener(self, 'on_guild_channel_delete')
+        self.client.add_listener(self, 'on_guild_channel_update')
         self.client.loop.create_task(self.run())
         self.client.loop.create_task(self.serialize())
 
@@ -68,6 +72,34 @@ class DiscordHistoryCrawler:
 
         while True:
             pass
+
+    @staticmethod
+    def _channel_ok(channel):
+        return channel.guild.id in self.config['guilds'] \
+                and channel.permissions_for(channel.guild.me).read_message_history
+
+    async def on_guild_channel_create(self, channel):
+        if not self._channel_ok(channel):
+            return
+
+        self.logger.info(f"Adding #{channel.name} to tracked channels")
+        self.progress.setdefault(channel.id, MultiRange())
+
+    async def on_guild_channel_delete(self, channel):
+        self.logger.info(f"Removing #{channel.name} from tracked channels")
+        self.progress.pop(channel.id, None)
+
+    async def on_guild_channel_update(self, before, after):
+        if not self._channel_ok(before):
+            return
+
+        if self._channel_ok(after):
+            self.logger.info(f"Updating #{channel.name} - adding to list")
+            self.progress.setdefault(channel.id, MultiRange())
+        else:
+            self.logger.info(f"Updating #{channel.name} - removing from list")
+            self.progress.pop(channel.id, None)
+
 
     async def serialize(self):
         # Delay first save
