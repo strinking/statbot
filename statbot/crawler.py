@@ -112,12 +112,15 @@ class DiscordHistoryCrawler:
                 if os.path.exists(filename):
                     try:
                         os.rename(filename, filename + '.bak')
-                    except Exception:
-                        self.logger.error(f"Error backing up {filename}!", exc_info=1)
+                    except:
+                        self.logger.error(f"Error moving to {filename}.bak!", exc_info=1)
 
             self.logger.info(f"Serializing progress to {filename}...")
-            with open(filename, 'wb') as fh:
-                pickle.dump(self.progress, fh)
+            try:
+                with open(filename, 'wb') as fh:
+                    pickle.dump(self.progress, fh)
+            except:
+                self.logger.error(f"Error writing to data file!", exc_info=1)
 
             # Sleep until next save
             await asyncio.sleep(self.config['serial']['periodic-save'])
@@ -137,7 +140,7 @@ class DiscordHistoryCrawler:
                     channel = self.channels[cid]
                     mrange = self.progress[cid]
                     await self._read(channel, mrange)
-                except Exception:
+                except:
                     self.logger.error(f"Error reading messages from channel id {cid}", exc_info=1)
 
     async def _read(self, channel, mrange):
