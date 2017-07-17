@@ -29,10 +29,6 @@ isn't contiguous.
 NullRange is a "range" that represents a range with no items in it. A
 pre-constructed can be retrieved from the constant NULL_RANGE.
 
-PointRange basically wraps a single data point, storing it as a range with only
-that one item. It behaves equivalently to a Range with the beginning and end
-points as the same value.
-
 They all implement the AbstractRange base class, guaranteeing a certain set of
 operations that can be performed on them.
 '''
@@ -42,7 +38,6 @@ __all__ = [
     'Range',
     'MultiRange',
     'NullRange',
-    'PointRange',
     'NULL_RANGE',
 ]
 
@@ -178,65 +173,6 @@ class NullRange(AbstractRange):
 
 NULL_RANGE = NullRange()
 
-class PointRange(AbstractRange):
-    '''
-    A range that stores only a single point in it.
-    Essentially a Range wrapper for a value.
-    '''
-
-    __slots__ = (
-        'value',
-    )
-
-    def __init__(self, value):
-        self.value = value
-
-    def min(self):
-        return self.value
-
-    def max(self):
-        return self.value
-
-    def clone(self):
-        return PointRange(self.value)
-
-    def to_single_range(self):
-        return Range(self.value, self.value)
-
-    def __or__(self, other):
-        if not isinstance(other, AbstractRange):
-            raise TypeError(f"expected AbstractRange, not '{type(other)!r}'")
-
-        if self.value in other:
-            return other.clone()
-        else:
-            return other | self.to_single_range()
-
-    def __contains__(self, x):
-        return self.value == x
-
-    def __eq__(self, other):
-        if isinstance(other, PointRange):
-            return self.value == other.value
-        elif isinstance(other, Range):
-            return self.value == other.begin == other.end
-        elif isinstance(other, MultiRange):
-            return len(other.ranges) == 1 and self == other.ranges[0]
-        else:
-            return False
-
-    def __hash__(self):
-        return hash(self.value)
-
-    def __bool__(self):
-        return True
-
-    def __repr__(self):
-        return f'<PointRange object: {self.value}>'
-
-    def __str__(self):
-        return f'[{self.value}, {self.value}]'
-
 class Range(AbstractRange):
     '''
     A contiguous range of values, from a given starting to a given ending point.
@@ -269,9 +205,6 @@ class Range(AbstractRange):
         return self.begin <= item <= self.end
 
     def __or__(self, other):
-        if isinstance(other, PointRange):
-            other = other.to_single_range()
-
         if isinstance(other, Range):
             x, y = order(self, other)
             if x.end >= y.begin:
@@ -290,8 +223,6 @@ class Range(AbstractRange):
             return (self.begin == other.begin) and (self.end == other.end)
         elif isinstance(other, MultiRange):
             return other == self
-        elif isinstance(other, PointRange):
-            return (self.begin == self.end) and (self.begin == other.value)
         else:
             return False
 
@@ -394,9 +325,6 @@ class MultiRange(AbstractRange):
             return item <= range.max()
 
     def __or__(self, other):
-        if isinstance(other, PointRange):
-            other = other.to_single_range()
-
         if isinstance(other, Range):
             result = self.clone()
             result.add(other)
@@ -417,7 +345,7 @@ class MultiRange(AbstractRange):
         self._merge()
 
     def __eq__(self, other):
-        if isinstance(other, Range) or isinstance(other, PointRange):
+        if isinstance(other, Range):
             return (len(self.ranges) == 1) and (self.ranges[0] == other)
         elif isinstance(other, MultiRange):
             return self.ranges == other.ranges

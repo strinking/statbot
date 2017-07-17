@@ -16,19 +16,16 @@ import unittest
 class TestMisc(unittest.TestCase):
     def test_equals(self):
         self.assertEqual(Range(1, 4), Range(1, 4))
-        self.assertEqual(PointRange(0), PointRange(0))
         self.assertEqual(MultiRange(), MultiRange())
         self.assertEqual(NullRange(), NullRange())
 
     def test_types(self):
         r = Range(0, 3)
         m = MultiRange()
-        p = PointRange(-3)
         n = NullRange()
 
         self.assertIsInstance(r, AbstractRange)
         self.assertIsInstance(m, AbstractRange)
-        self.assertIsInstance(p, AbstractRange)
         self.assertIsInstance(n, AbstractRange)
 
 class TestNullRange(unittest.TestCase):
@@ -43,7 +40,6 @@ class TestNullRange(unittest.TestCase):
 
     def test_equals(self):
         self.assertEqual(NULL_RANGE, NullRange())
-        self.assertNotEqual(NULL_RANGE, PointRange(0))
         self.assertNotEqual(NULL_RANGE, None)
 
     def test_bool(self):
@@ -55,10 +51,6 @@ class TestNullRange(unittest.TestCase):
         self.assertEqual(NULL_RANGE | r, r)
         self.assertEqual(r | NULL_RANGE, r)
 
-        r = PointRange(5)
-        self.assertEqual(NULL_RANGE | r, r)
-        self.assertEqual(r | NULL_RANGE, r)
-
         r = Range(0, 3)
         self.assertEqual(NULL_RANGE | r, r)
         self.assertEqual(r | NULL_RANGE, r)
@@ -66,35 +58,6 @@ class TestNullRange(unittest.TestCase):
         r = MultiRange(Range(1, 2), Range(5, 8))
         self.assertEqual(NULL_RANGE | r, r)
         self.assertEqual(r | NULL_RANGE, r)
-
-class TestPointRange(unittest.TestCase):
-    def test_contains(self):
-        r = PointRange(5)
-        self.assertIn(5, r)
-        self.assertNotIn(2, r)
-
-    def test_minmax(self):
-        r = PointRange(-2)
-        self.assertEqual(r.min(), r.max())
-        self.assertEqual(-2, r.min())
-
-    def test_equals(self):
-        r = PointRange('e')
-        self.assertEqual(PointRange('e'), r)
-        self.assertNotEqual(PointRange('a'), r)
-        self.assertNotEqual(NULL_RANGE, r)
-
-    def test_bool(self):
-        self.assertTrue(PointRange(0))
-        self.assertTrue(PointRange('beta'))
-
-    def test_union(self):
-        self.assertEqual(PointRange(1) | PointRange(1), PointRange(1))
-        self.assertEqual(PointRange(1) | PointRange(1), Range(1, 1))
-        self.assertEqual(PointRange(1) | PointRange(2), MultiRange(Range(1, 1), Range(2, 2)))
-        self.assertEqual(PointRange(1) | Range(2, 5), MultiRange(Range(1, 1), Range(2, 5)))
-        self.assertEqual(PointRange(1) | Range(0, 2), Range(0, 2))
-        self.assertEqual(Range(0, 2) | PointRange(1), Range(0, 2))
 
 class TestRange(unittest.TestCase):
     def test_contains(self):
@@ -150,12 +113,12 @@ class TestRange(unittest.TestCase):
         self.assertEqual(Range(2, 8) | Range(4, 6), Range(2, 8))
         self.assertEqual(Range(4, 6) | Range(2, 8), Range(2, 8))
 
-        self.assertEqual(Range(0, 2) | PointRange(3), MultiRange(Range(0, 2), Range(3, 3)))
-        self.assertEqual(PointRange(3) | Range(0, 2), MultiRange(Range(0, 2), Range(3, 3)))
-        self.assertEqual(Range(0, 3) | PointRange(2), Range(0, 3))
-        self.assertEqual(PointRange(2) | Range(0, 3), Range(0, 3))
-        self.assertEqual(Range(0, 3) | PointRange(3), Range(0, 3))
-        self.assertEqual(PointRange(3) | Range(0, 3), Range(0, 3))
+        self.assertEqual(Range(0, 2) | Range(3, 3), MultiRange(Range(0, 2), Range(3, 3)))
+        self.assertEqual(Range(3, 3) | Range(0, 2), MultiRange(Range(0, 2), Range(3, 3)))
+        self.assertEqual(Range(0, 3) | Range(2, 2), Range(0, 3))
+        self.assertEqual(Range(2, 2) | Range(0, 3), Range(0, 3))
+        self.assertEqual(Range(0, 3) | Range(3, 3), Range(0, 3))
+        self.assertEqual(Range(3, 3) | Range(0, 3), Range(0, 3))
         self.assertEqual(Range(0, 1) | NULL_RANGE, Range(0, 1))
         self.assertEqual(NULL_RANGE | Range(0, 1), Range(0, 1))
 
