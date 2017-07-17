@@ -9,6 +9,7 @@ __pycache__
 # Database
 docker/
 postgresql/
+*.pickle
 
 # Logging
 *.log
