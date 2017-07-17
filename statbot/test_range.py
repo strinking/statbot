@@ -276,7 +276,44 @@ class TestMultiRange(unittest.TestCase):
         self.assertFalse(MultiRange())
 
     def test_union(self):
-        pass
+        m = MultiRange()
+        self.assertEqual(m | Range(0, 1), MultiRange(Range(0, 1)))
+        self.assertEqual(m | MultiRange(Range(0, 1)), MultiRange(Range(0, 1)))
+        self.assertEqual(m, NULL_RANGE)
+        self.assertEqual(m | m, m)
+
+        m = MultiRange(Range(0, 1))
+        self.assertEqual(m | Range(1, 2), MultiRange(Range(0, 2)))
+        self.assertEqual(Range(1, 2) | m, MultiRange(Range(0, 2)))
+        self.assertEqual(m | m, m)
+
+        m = MultiRange(Range(1, 2), Range(5, 6))
+        self.assertEqual(m | Range(2, 3), MultiRange(Range(1, 3), Range(5, 6)))
+        self.assertEqual(m | Range(3, 4), MultiRange(Range(1, 2), Range(3, 4), Range(5, 6)))
+        self.assertEqual(m | Range(0, 1), MultiRange(Range(0, 2), Range(5, 6)))
+        self.assertEqual(m | Range(2, 5), MultiRange(Range(1, 6)))
+        self.assertEqual(m | Range(2, 6), MultiRange(Range(1, 6)))
+        self.assertEqual(m | Range(1, 5), MultiRange(Range(1, 6)))
+        self.assertEqual(Range(2, 3) | m, MultiRange(Range(1, 3), Range(5, 6)))
+        self.assertEqual(Range(3, 4) | m, MultiRange(Range(1, 2), Range(3, 4), Range(5, 6)))
+        self.assertEqual(Range(0, 1) | m, MultiRange(Range(0, 2), Range(5, 6)))
+        self.assertEqual(Range(2, 5) | m, MultiRange(Range(1, 6)))
+        self.assertEqual(Range(2, 6) | m, MultiRange(Range(1, 6)))
+        self.assertEqual(Range(1, 5) | m, MultiRange(Range(1, 6)))
+        self.assertEqual(m | m, m)
+
+        m = MultiRange(Range(0, 1), Range(4, 5), Range(8, 9))
+        self.assertEqual(m | Range(0, 1), MultiRange(Range(0, 1), Range(4, 5), Range(8, 9)))
+        self.assertEqual(m | Range(0, 4), MultiRange(Range(0, 5), Range(8, 9)))
+        self.assertEqual(m | Range(5, 8), MultiRange(Range(0, 1), Range(4, 9)))
+        self.assertEqual(m | Range(8, 9), MultiRange(Range(0, 1), Range(4, 5), Range(8, 9)))
+        self.assertEqual(m | Range(7, 8), MultiRange(Range(0, 1), Range(4, 5), Range(7, 9)))
+        self.assertEqual(Range(0, 1) | m, MultiRange(Range(0, 1), Range(4, 5), Range(8, 9)))
+        self.assertEqual(Range(0, 4) | m, MultiRange(Range(0, 5), Range(8, 9)))
+        self.assertEqual(Range(5, 8) | m, MultiRange(Range(0, 1), Range(4, 9)))
+        self.assertEqual(Range(8, 9) | m, MultiRange(Range(0, 1), Range(4, 5), Range(8, 9)))
+        self.assertEqual(Range(7, 8) | m, MultiRange(Range(0, 1), Range(4, 5), Range(7, 9)))
+        self.assertEqual(m | m, m)
 
     def test_add(self):
         pass
