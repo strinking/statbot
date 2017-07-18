@@ -43,14 +43,14 @@ class DiscordHistoryCrawler:
                 and channel.permissions_for(channel.guild.me).read_message_history
 
     @staticmethod
-    async def _get_lastest(channel):
+    async def _get_latest(channel):
         async for message in channel.history(limit=1):
             return message
         return None
 
     @staticmethod
     def _find_chunk(latest, mrange):
-        current = latest
+        current = latest.id
         for range in reversed(mrange.ranges):
             count = current - range.max()
             if count >= 0:
@@ -86,7 +86,7 @@ class DiscordHistoryCrawler:
                 for channel in guild.text_channels:
                     if channel.permissions_for(guild.me).read_message_history:
                         self.channels[channel.id] = channel
-                        self.latest = await self._get_latest(channel)
+                        self.latest[channel.id] = await self._get_latest(channel)
                         self.progress.setdefault(channel.id, MultiRange())
 
         for channel in set(self.progress.keys()) - set(self.channels.keys()):
@@ -102,6 +102,8 @@ class DiscordHistoryCrawler:
         self.client.loop.create_task(self.consumer())
 
     async def serializer(self):
+        self.logger.info("Serializer coroutine started!")
+
         # Delay first save
         await asyncio.sleep(5)
 
@@ -127,6 +129,8 @@ class DiscordHistoryCrawler:
             await asyncio.sleep(self.config['serial']['periodic-save'])
 
     async def producer(self):
+        self.logger.info("Producer coroutine started!")
+
         # Setup
         await self.client.wait_until_ready()
         await self._init_channels()
@@ -143,22 +147,30 @@ class DiscordHistoryCrawler:
                     await self._read(channel, mrange)
                 except:
                     self.logger.error(f"Error reading messages from channel id {cid}", exc_info=1)
+                    exit(1)
 
     async def _read(self, channel, mrange):
         latest_id = self.latest[channel.id]
         before_id, limit = self._find_chunk(latest_id, mrange)
-        before = await self.client.get_message(before_id)
+        before = await channel.get_message(before_id)
+        if not limit:
+            return
 
-        self.logger.info(f"Reading through channel {channel.id} starting at {before_id} (limit: {limit})")
+        self.logger.info(f"Reading through channel {channel.id} (#{channel.name}),")
+        self.logger.info(f"starting at {before_id} (limit: {limit})")
         prev_id = before_id
         messages = await channel.history(before=before, limit=limit).flatten()
+        if not messages:
+            return
 
-        await self.queue.push(messages)
+        await self.queue.put(messages)
         self.logger.info(f"Queued {limit} messages for ingestion")
 
         mrange.add(Range(messages[-1].id, before_id))
 
     async def consumer(self):
+        self.logger.info("Consumer coroutine started!")
+
         while True:
             messages = await self.queue.get()
             self.logger.info("Got group of messages from queue")
