@@ -16,7 +16,6 @@ __all__ = [
     'EventIngestionClient',
 ]
 
-from .sql import DiscordSqlHandler
 from .util import get_emoji_name, null_logger
 
 class EventIngestionClient(discord.Client):
@@ -26,11 +25,11 @@ class EventIngestionClient(discord.Client):
         'sql',
     )
 
-    def __init__(self, config, logger=null_logger, sql_logger=null_logger):
+    def __init__(self, config, sql, logger=null_logger):
         super().__init__()
         self.config = config
         self.logger = logger
-        self.sql = DiscordSqlHandler(config['url'], sql_logger)
+        self.sql = sql
 
     def run(self):
         # Override function to include the token from config
