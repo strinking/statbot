@@ -153,18 +153,22 @@ class DiscordHistoryCrawler:
         latest_id = self.latest[channel.id]
         before_id, limit = self._find_chunk(latest_id, mrange)
         before = await channel.get_message(before_id)
+
         if not limit:
+            self.logger.debug("Nothing found in this chunk. Skipping")
             return
 
-        self.logger.info(f"Reading through channel {channel.id} (#{channel.name}),")
-        self.logger.info(f"starting at {before_id} (limit: {limit})")
+        timestamp = discord.utils.snowflake_time(before_id)
+        self.logger.info(f"Reading through channel {channel.id} (#{channel.name}):")
+        self.logger.info(f"Starting at {limit} items past {before_id} ({timestamp})")
         prev_id = before_id
         messages = await channel.history(before=before, limit=limit).flatten()
-        if not messages:
-            return
 
-        await self.queue.put(messages)
-        self.logger.info(f"Queued {limit} messages for ingestion")
+        if messages:
+            await self.queue.put(messages)
+            self.logger.info(f"Queued {limit} messages for ingestion")
+        else:
+            self.logger.info("No messages found in this range.")
 
         mrange.add(Range(messages[-1].id, before_id))
 
