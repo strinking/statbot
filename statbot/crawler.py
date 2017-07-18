@@ -93,9 +93,10 @@ class DiscordHistoryCrawler:
             del self.progress[channel.id]
 
     def start(self):
-        self.client.add_listener(self, 'on_guild_channel_create')
-        self.client.add_listener(self, 'on_guild_channel_delete')
-        self.client.add_listener(self, 'on_guild_channel_update')
+        self.client.hooks['on_guild_channel_create'] = self._channel_create_hook
+        self.client.hooks['on_guild_channel_delete'] = self._channel_delete_hook
+        self.client.hooks['on_guild_channel_update'] = self._channel_update_hook
+
         self.client.loop.create_task(self.serializer())
         self.client.loop.create_task(self.producer())
         self.client.loop.create_task(self.consumer())
@@ -171,18 +172,18 @@ class DiscordHistoryCrawler:
 
             await self.queue.task_done()
 
-    async def on_guild_channel_create(self, channel):
+    async def _channel_create_hook(self, channel):
         if not self._channel_ok(channel):
             return
 
         self.logger.info(f"Adding #{channel.name} to tracked channels")
         self.progress.setdefault(channel.id, MultiRange())
 
-    async def on_guild_channel_delete(self, channel):
+    async def _channel_delete_hook(self, channel):
         self.logger.info(f"Removing #{channel.name} from tracked channels")
         self.progress.pop(channel.id, None)
 
-    async def on_guild_channel_update(self, before, after):
+    async def _channel_update_hook(self, before, after):
         if not self._channel_ok(before):
             return
 

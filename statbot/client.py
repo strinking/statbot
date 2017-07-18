@@ -23,6 +23,7 @@ class EventIngestionClient(discord.Client):
         'config',
         'logger',
         'sql',
+        'hooks',
     )
 
     def __init__(self, config, sql, logger=null_logger):
@@ -30,6 +31,11 @@ class EventIngestionClient(discord.Client):
         self.config = config
         self.logger = logger
         self.sql = sql
+        self.hooks = {
+            'on_guild_channel_create': None,
+            'on_guild_channel_delete': None,
+            'on_guild_channel_update': None,
+        }
 
     def run(self):
         # Override function to include the token from config
@@ -202,6 +208,11 @@ class EventIngestionClient(discord.Client):
         with self.sql.transaction() as trans:
             self.sql.add_channel(trans, channel)
 
+        hook = self.hooks['on_guild_channel_create']
+        if hook:
+            self.logger.debug(f"Found hook {hook!r}, calling it")
+            await hook(channel)
+
     async def on_guild_channel_delete(self, channel):
         self._log_ignored(f"Channel was deleted in guild {channel.guild.id}")
         if not await self._accept_channel(channel):
@@ -211,6 +222,11 @@ class EventIngestionClient(discord.Client):
 
         with self.sql.transaction() as trans:
             self.sql.remove_channel(trans, channel)
+
+        hook = self.hooks['on_guild_channel_delete']
+        if hook:
+            self.logger.debug(f"Found hook {hook!r}, calling it")
+            await hook(channel)
 
     async def on_guild_channel_update(self, before, after):
         self._log_ignored(f"Channel was updated in guild {after.guild.id}")
@@ -225,6 +241,11 @@ class EventIngestionClient(discord.Client):
 
         with self.sql.transaction() as trans:
             self.sql.update_channel(trans, after)
+
+        hook = self.hooks['on_guild_channel_update']
+        if hook:
+            self.logger.debug(f"Found hook {hook!r}, calling it")
+            await hook(before, after)
 
     async def on_guild_channel_pins_update(self, channel, last_pin):
         self._log_ignored(f"Channel {channel.id} got a pin update")
