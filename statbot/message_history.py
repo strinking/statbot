@@ -23,9 +23,9 @@ class MessageHistory(MultiRange):
     def find_first_hole(self, start, max_size):
         current = start
         for range in reversed(self.ranges):
-            count = start - range.max()
-            if count > 0:
-                return (current, min(count, max_size))
+            if start > range.max():
+                limit = current - range.max()
+                return (current, min(limit, max_size))
 
             current = range.min()
         return (current, max_size)
