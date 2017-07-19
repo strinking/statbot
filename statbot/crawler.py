@@ -48,17 +48,6 @@ class DiscordHistoryCrawler:
             return message
         return None
 
-    @staticmethod
-    def _find_chunk(latest, mrange):
-        current = latest.id
-        for range in reversed(mrange.ranges):
-            count = current - range.max()
-            if count >= 0:
-                return (current, min(count, MESSAGE_BATCH_SIZE))
-
-            current = range.min()
-        return (current, MESSAGE_BATCH_SIZE)
-
     def __init__(self, client, sql, config, logger=null_logger):
         self.client = client
         self.sql = sql
@@ -99,7 +88,7 @@ class DiscordHistoryCrawler:
 
         self.client.loop.create_task(self.serializer())
         self.client.loop.create_task(self.producer())
-        self.client.loop.create_task(self.consumer())
+        #self.client.loop.create_task(self.consumer())
 
     async def serializer(self):
         self.logger.info("Serializer coroutine started!")
@@ -150,8 +139,8 @@ class DiscordHistoryCrawler:
                     exit(1)
 
     async def _read(self, channel, mrange):
-        latest_id = self.latest[channel.id]
-        before_id, limit = self._find_chunk(latest_id, mrange)
+        latest = self.latest[channel.id]
+        before_id, limit = mrange.find_first_hole(latest.id, MESSAGE_BATCH_SIZE)
         before = await channel.get_message(before_id)
 
         if not limit:
