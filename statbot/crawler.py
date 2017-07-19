@@ -144,6 +144,10 @@ class DiscordHistoryCrawler:
         before_id, limit = mhist.find_first_hole(latest.id, MESSAGE_BATCH_SIZE)
         before = await channel.get_message(before_id)
 
+        if not limit:
+            self.logger.debug(f"Skipping #{channel.name}, this channel has been exhausted.")
+            return
+
         timestamp = discord.utils.snowflake_time(before_id)
         self.logger.info(f"Reading through channel {channel.id} (#{channel.name}):")
         self.logger.info(f"Requesting {limit} items from before {before_id} ({timestamp})")
@@ -155,8 +159,12 @@ class DiscordHistoryCrawler:
             return
 
         await self.queue.put(messages)
-        self.logger.info(f"Queued {limit} messages for ingestion")
+        self.logger.info(f"Queued {len(messages)} messages for ingestion")
         mhist.add(Range(messages[-1].id, before_id))
+
+        if len(messages) < limit:
+            # This channel is exhausted
+            mhist.finished = True
 
     async def consumer(self):
         self.logger.info("Consumer coroutine started!")
