@@ -25,6 +25,7 @@ __all__ = [
 
 MESSAGE_BATCH_SIZE = 256
 ASYNC_QUEUE_SIZE   = 32
+CPU_YIELD_DELAY    = 0.5
 
 class DiscordHistoryCrawler:
     __slots__ = (
@@ -34,6 +35,7 @@ class DiscordHistoryCrawler:
         'logger',
         'channels',
         'latest',
+        'finished',
         'progress',
         'queue',
     )
@@ -56,6 +58,7 @@ class DiscordHistoryCrawler:
         self.logger = logger
         self.channels = {} # {channel_id : channel}
         self.latest = {} # {channel_id : Optional[Message]}
+        self.finished = set() # {channel_id}
         self.progress = {} # {channel_id : MessageHistory}
         self.queue = asyncio.Queue(ASYNC_QUEUE_SIZE)
 
@@ -78,6 +81,9 @@ class DiscordHistoryCrawler:
                         self.channels[channel.id] = channel
                         self.latest[channel.id] = await self._get_latest(channel)
                         self.progress.setdefault(channel.id, MessageHistory())
+
+                        if self.progress[channel.id].finished:
+                            self.finished.add(channel.id)
 
         for channel in set(self.progress.keys()) - set(self.channels.keys()):
             del self.progress[channel.id]
@@ -130,6 +136,12 @@ class DiscordHistoryCrawler:
             # dict of channels may change size during
             # an iteration
             for cid in tuple(self.progress.keys()):
+                await asyncio.sleep(CPU_YIELD_DELAY)
+
+                if cid in self.finished:
+                    # Skip channels that are already finished
+                    continue
+
                 # Do round-robin between all the channels
                 try:
                     channel = self.channels[cid]
@@ -144,9 +156,7 @@ class DiscordHistoryCrawler:
         before_id, limit = mhist.find_first_hole(latest.id, MESSAGE_BATCH_SIZE)
         before = await channel.get_message(before_id)
 
-        if not limit:
-            self.logger.debug(f"Skipping #{channel.name}, this channel has been exhausted.")
-            return
+        assert limit, "Exhausted channel still in list"
 
         timestamp = discord.utils.snowflake_time(before_id)
         self.logger.info(f"Reading through channel {channel.id} (#{channel.name}):")
@@ -165,6 +175,7 @@ class DiscordHistoryCrawler:
         if len(messages) < limit:
             # This channel is exhausted
             mhist.finished = True
+            self.finished.add(channel.id)
 
     async def consumer(self):
         self.logger.info("Consumer coroutine started!")
