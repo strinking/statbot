@@ -144,10 +144,6 @@ class DiscordHistoryCrawler:
         before_id, limit = mhist.find_first_hole(latest.id, MESSAGE_BATCH_SIZE)
         before = await channel.get_message(before_id)
 
-        if not limit:
-            self.logger.debug("Nothing found in this chunk. Skipping")
-            return
-
         timestamp = discord.utils.snowflake_time(before_id)
         self.logger.info(f"Reading through channel {channel.id} (#{channel.name}):")
         self.logger.info(f"Starting at {limit} items past {before_id} ({timestamp})")
