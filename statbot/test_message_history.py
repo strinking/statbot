@@ -51,4 +51,15 @@ class TestFindFirstHole(unittest.TestCase):
         self.assertEqual(start, 35)
         self.assertEqual(count, 4)
 
+    def test_aligned(self):
+        mhist = MessageHistory(Range(18, 35))
+        start, count = mhist.find_first_hole(35, 10)
+        self.assertLessEqual(count, 10)
+        self.assertEqual(start, 18)
+        self.assertEqual(count, 10)
+
+        start, count = mhist.find_first_hole(18, 10)
+        self.assertLessEqual(count, 10)
+        self.assertEqual(start, 18)
+        self.assertEqual(count, 10)
 
