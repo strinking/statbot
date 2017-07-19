@@ -18,17 +18,14 @@ __all__ = [
 
 class MessageHistory(MultiRange):
     __slots__ = (
-        'finished',
+        'first',
     )
 
     def __init__(self, *ranges):
         super().__init__(*ranges)
-        self.finished = False
+        self.first = None
 
     def find_first_hole(self, start, max_size):
-        if self.finished:
-            return (start, 0)
-
         current = start
         for range in reversed(self.ranges):
             if start > range.max():
@@ -36,19 +33,18 @@ class MessageHistory(MultiRange):
                 return (current, min(limit, max_size))
 
             current = range.min()
-        return (current, max_size)
+
+        if self.first and current <= self.first:
+            return (current, 0)
+        else:
+            return (current, max_size)
 
     def __repr__(self):
-        if self.finished:
-            state = ' (finished)'
-        else:
-            state = ''
-
         leng = len(self.ranges)
         if leng > 4:
-            return f"<MessageHistory object: {leng} chunks{state}>"
+            return f"<MessageHistory object: {self.first}, {leng} chunks>"
         elif leng == 0:
-            return f"<MessageHistory object: []{state}>"
+            return f"<MessageHistory object: {self.first}, []>"
         else:
-            return f"<MessageHistory object: {self}{state}>"
+            return f"<MessageHistory object: {self.first}, {self}>"
 

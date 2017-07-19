@@ -58,7 +58,6 @@ class DiscordHistoryCrawler:
         self.logger = logger
         self.channels = {} # {channel_id : channel}
         self.latest = {} # {channel_id : Optional[Message]}
-        self.finished = set() # {channel_id}
         self.progress = {} # {channel_id : MessageHistory}
         self.queue = asyncio.Queue(ASYNC_QUEUE_SIZE)
 
@@ -81,9 +80,6 @@ class DiscordHistoryCrawler:
                         self.channels[channel.id] = channel
                         self.latest[channel.id] = await self._get_latest(channel)
                         self.progress.setdefault(channel.id, MessageHistory())
-
-                        if self.progress[channel.id].finished:
-                            self.finished.add(channel.id)
 
         for channel in set(self.progress.keys()) - set(self.channels.keys()):
             del self.progress[channel.id]
@@ -135,12 +131,9 @@ class DiscordHistoryCrawler:
             # tuple() is necessary since the underlying
             # dict of channels may change size during
             # an iteration
-            for cid in tuple(self.progress.keys()):
+            #for cid in tuple(self.progress.keys()):
+            for cid in [tuple(self.progress.keys())[0]]:
                 await asyncio.sleep(CPU_YIELD_DELAY)
-
-                if cid in self.finished:
-                    # Skip channels that are already finished
-                    continue
 
                 # Do round-robin between all the channels
                 try:
@@ -156,7 +149,9 @@ class DiscordHistoryCrawler:
         before_id, limit = mhist.find_first_hole(latest.id, MESSAGE_BATCH_SIZE)
         before = await channel.get_message(before_id)
 
-        assert limit, "Exhausted channel still in list"
+        if not limit:
+            self.logger.debug("No more messages to read from this channel.")
+            return
 
         timestamp = discord.utils.snowflake_time(before_id)
         self.logger.info(f"Reading through channel {channel.id} (#{channel.name}):")
@@ -170,12 +165,13 @@ class DiscordHistoryCrawler:
 
         await self.queue.put(messages)
         self.logger.info(f"Queued {len(messages)} messages for ingestion")
-        mhist.add(Range(messages[-1].id, before_id))
+        earliest = messages[-1].id
+        mhist.add(Range(earliest, before_id))
 
         if len(messages) < limit:
             # This channel is exhausted
-            mhist.finished = True
-            self.finished.add(channel.id)
+            self.logger.info(f"#{channel.name} is now exhausted")
+            mhist.first = earliest
 
     async def consumer(self):
         self.logger.info("Consumer coroutine started!")
