@@ -187,7 +187,7 @@ class DiscordSqlHandler:
             'message_id': message.id,
             'is_edited': False,
             'is_deleted': False,
-            'content': content,
+            'content': message.content,
             'embeds': embeds_to_json(message.embeds),
             'attachments': len(message.attachments),
             'user_id': message.author.id,
