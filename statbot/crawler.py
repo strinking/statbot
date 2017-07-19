@@ -146,7 +146,7 @@ class DiscordHistoryCrawler:
 
         timestamp = discord.utils.snowflake_time(before_id)
         self.logger.info(f"Reading through channel {channel.id} (#{channel.name}):")
-        self.logger.info(f"Starting at {limit} items past {before_id} ({timestamp})")
+        self.logger.info(f"Requesting {limit} items from before {before_id} ({timestamp})")
         prev_id = before_id
         messages = await channel.history(before=before, limit=limit).flatten()
 
