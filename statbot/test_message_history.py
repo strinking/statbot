@@ -11,8 +11,44 @@
 #
 
 from .message_history import MessageHistory
+from .range import Range
 import unittest
 
-class TestMessageHistory(unittest.TestCase):
-    pass
+class TestFindFirstHole(unittest.TestCase):
+    def test_empty(self):
+        mhist = MessageHistory()
+        start, count = mhist.find_first_hole(20, 10)
+        self.assertLessEqual(count, 10)
+        self.assertEqual(start, 20)
+        self.assertEqual(count, 10)
+
+        start, count = mhist.find_first_hole(100, 10)
+        self.assertLessEqual(count, 10)
+        self.assertEqual(start, 100)
+        self.assertEqual(count, 10)
+
+    def test_continuous(self):
+        mhist = MessageHistory(Range(5, 18))
+        start, count = mhist.find_first_hole(50, 10)
+        self.assertLessEqual(count, 10)
+        self.assertEqual(start, 50)
+        self.assertEqual(count, 10)
+
+        start, count = mhist.find_first_hole(20, 10)
+        self.assertLessEqual(count, 10)
+        self.assertEqual(start, 20)
+        self.assertEqual(count, 2)
+
+    def test_one_hole(self):
+        mhist = MessageHistory(Range(4, 12), Range(23, 31))
+        start, count = mhist.find_first_hole(50, 10)
+        self.assertLessEqual(count, 10)
+        self.assertEqual(start, 50)
+        self.assertEqual(count, 10)
+
+        start, count = mhist.find_first_hole(35, 10)
+        self.assertLessEqual(count, 10)
+        self.assertEqual(start, 35)
+        self.assertEqual(count, 4)
+
 
