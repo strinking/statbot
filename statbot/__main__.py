@@ -10,10 +10,13 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
+from pprint import pprint
 import argparse
 import asyncio
 import json
 import logging
+import os
+import pickle
 import sys
 
 from .client import EventIngestionClient
@@ -60,6 +63,9 @@ if __name__ == '__main__':
     argparser.add_argument('-d', '--debug',
             dest='debug', action='store_true',
             help="Set logging level to debug.")
+    argparser.add_argument('-D', '--dump-pickle',
+            dest='dump_pickle', action='store_true',
+            help="Dump pickle object to stdout before running.")
     argparser.add_argument('config_file',
             help="Specify a configuration file to use. Keep it secret!")
     args = argparser.parse_args()
@@ -101,6 +107,15 @@ if __name__ == '__main__':
     if not valid:
         main_logger.error("Configuration file was invalid.")
         exit(1)
+
+    # Dump pickle data if option is set
+    if args.dump_pickle:
+        if os.path.exists(config['serial']['filename']):
+            with open(config['serial']['filename'], 'rb') as fh:
+                obj = pickle.load(fh)
+            pprint(obj)
+        else:
+            print("No pickle data yet.")
 
     # Create SQL handler
     sql = DiscordSqlHandler(config['url'], sql_logger)
