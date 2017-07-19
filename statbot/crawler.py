@@ -15,7 +15,8 @@ import discord
 import pickle
 import os
 
-from .range import MultiRange, Range
+from .message_history import MessageHistory
+from .range import Range
 from .util import null_logger
 
 __all__ = [
@@ -55,7 +56,7 @@ class DiscordHistoryCrawler:
         self.logger = logger
         self.channels = {} # {channel_id : channel}
         self.latest = {} # {channel_id : Optional[Message]}
-        self.progress = {} # {channel_id : MultiRange}
+        self.progress = {} # {channel_id : MessageHistory}
         self.queue = asyncio.Queue(ASYNC_QUEUE_SIZE)
 
         self._load()
@@ -132,15 +133,15 @@ class DiscordHistoryCrawler:
                 # Do round-robin between all the channels
                 try:
                     channel = self.channels[cid]
-                    mrange = self.progress[cid]
-                    await self._read(channel, mrange)
+                    mhist = self.progress[cid]
+                    await self._read(channel, mhist)
                 except:
                     self.logger.error(f"Error reading messages from channel id {cid}", exc_info=1)
                     exit(1)
 
-    async def _read(self, channel, mrange):
+    async def _read(self, channel, mhist):
         latest = self.latest[channel.id]
-        before_id, limit = mrange.find_first_hole(latest.id, MESSAGE_BATCH_SIZE)
+        before_id, limit = mhist.find_first_hole(latest.id, MESSAGE_BATCH_SIZE)
         before = await channel.get_message(before_id)
 
         if not limit:
@@ -153,13 +154,13 @@ class DiscordHistoryCrawler:
         prev_id = before_id
         messages = await channel.history(before=before, limit=limit).flatten()
 
-        if messages:
-            await self.queue.put(messages)
-            self.logger.info(f"Queued {limit} messages for ingestion")
-        else:
+        if not messages:
             self.logger.info("No messages found in this range.")
+            return
 
-        mrange.add(Range(messages[-1].id, before_id))
+        await self.queue.put(messages)
+        self.logger.info(f"Queued {limit} messages for ingestion")
+        mhist.add(Range(messages[-1].id, before_id))
 
     async def consumer(self):
         self.logger.info("Consumer coroutine started!")
