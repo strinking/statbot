@@ -91,7 +91,7 @@ class DiscordHistoryCrawler:
 
         self.client.loop.create_task(self.serializer())
         self.client.loop.create_task(self.producer())
-        #self.client.loop.create_task(self.consumer())
+        self.client.loop.create_task(self.consumer())
 
     async def serializer(self):
         self.logger.info("Serializer coroutine started!")
@@ -131,8 +131,7 @@ class DiscordHistoryCrawler:
             # tuple() is necessary since the underlying
             # dict of channels may change size during
             # an iteration
-            #for cid in tuple(self.progress.keys()):
-            for cid in [tuple(self.progress.keys())[0]]:
+            for cid in tuple(self.progress.keys()):
                 await asyncio.sleep(CPU_YIELD_DELAY)
 
                 # Do round-robin between all the channels
