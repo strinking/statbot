@@ -17,8 +17,8 @@ __all__ = [
 ]
 
 class MessageHistory(MultiRange):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, *ranges):
+        super().__init__(*ranges)
 
     def find_first_hole(self, start, max_size):
         for range in reversed(self.ranges):
