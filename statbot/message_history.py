@@ -24,7 +24,7 @@ class MessageHistory(MultiRange):
         current = start
         for range in reversed(self.ranges):
             count = start - range.max()
-            if count >= 0:
+            if count > 0:
                 return (current, min(count, max_size))
 
             current = range.min()
