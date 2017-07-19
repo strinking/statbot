@@ -30,3 +30,6 @@ class MessageHistory(MultiRange):
             current = range.min()
         return (current, max_size)
 
+    def __repr__(self):
+        return super().__repr__(self).replace('MultiRange', 'MessageHistory')
+
