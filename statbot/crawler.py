@@ -77,7 +77,7 @@ class DiscordHistoryCrawler:
                     if channel.permissions_for(guild.me).read_message_history:
                         self.channels[channel.id] = channel
                         self.latest[channel.id] = await self._get_latest(channel)
-                        self.progress.setdefault(channel.id, MultiRange())
+                        self.progress.setdefault(channel.id, MessageHistory())
 
         for channel in set(self.progress.keys()) - set(self.channels.keys()):
             del self.progress[channel.id]
