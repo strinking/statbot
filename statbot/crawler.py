@@ -10,6 +10,7 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
+from datetime import datetime
 import asyncio
 import discord
 import pickle
@@ -23,6 +24,8 @@ __all__ = [
     'DiscordHistoryCrawler',
 ]
 
+NOW_ID = discord.utils.time_snowflake(datetime.now())
+
 MESSAGE_BATCH_SIZE = 256
 ASYNC_QUEUE_SIZE   = 32
 CPU_YIELD_DELAY    = 0.5
@@ -34,7 +37,6 @@ class DiscordHistoryCrawler:
         'config',
         'logger',
         'channels',
-        'latest',
         'finished',
         'progress',
         'queue',
@@ -45,19 +47,12 @@ class DiscordHistoryCrawler:
         return channel.guild.id in self.config['guilds'] \
                 and channel.permissions_for(channel.guild.me).read_message_history
 
-    @staticmethod
-    async def _get_latest(channel):
-        async for message in channel.history(limit=1):
-            return message
-        return None
-
     def __init__(self, client, sql, config, logger=null_logger):
         self.client = client
         self.sql = sql
         self.config = config
         self.logger = logger
         self.channels = {} # {channel_id : channel}
-        self.latest = {} # {channel_id : Optional[Message]}
         self.progress = {} # {channel_id : MessageHistory}
         self.queue = asyncio.Queue(ASYNC_QUEUE_SIZE)
 
@@ -78,7 +73,6 @@ class DiscordHistoryCrawler:
                 for channel in guild.text_channels:
                     if channel.permissions_for(guild.me).read_message_history:
                         self.channels[channel.id] = channel
-                        self.latest[channel.id] = await self._get_latest(channel)
                         self.progress.setdefault(channel.id, MessageHistory())
 
         for channel in set(self.progress.keys()) - set(self.channels.keys()):
@@ -150,28 +144,24 @@ class DiscordHistoryCrawler:
             await asyncio.sleep(CPU_YIELD_DELAY)
 
     async def _read(self, channel, mhist):
-        latest = self.latest[channel.id]
-        before_id, limit = mhist.find_first_hole(latest.id, MESSAGE_BATCH_SIZE)
-        before = await channel.get_message(before_id)
+        start_id, limit = mhist.find_first_hole(NOW_ID, MESSAGE_BATCH_SIZE)
 
         if not limit:
             self.logger.debug("No more messages to read from this channel.")
             return
 
-        timestamp = discord.utils.snowflake_time(before_id)
+        start = discord.utils.snowflake_time(start_id)
         self.logger.info(f"Reading through channel {channel.id} (#{channel.name}):")
-        self.logger.info(f"Requesting {limit} items from before {before_id} ({timestamp})")
-        prev_id = before_id
-        messages = await channel.history(before=before, limit=limit).flatten()
+        self.logger.info(f"Requesting {limit} items from before {start_id} ({start})")
+        prev_id = start_id
+        messages = await channel.history(before=start, limit=limit).flatten()
 
-        if not messages:
-            self.logger.info("No messages found in this range.")
-            return
+        assert messages, "No messages found in this range"
 
         await self.queue.put(messages)
         self.logger.info(f"Queued {len(messages)} messages for ingestion")
         earliest = messages[-1].id
-        mhist.add(Range(earliest, before_id))
+        mhist.add(Range(earliest, start_id))
 
         if len(messages) < limit:
             # This channel has been exhausted
