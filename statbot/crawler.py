@@ -130,7 +130,6 @@ class DiscordHistoryCrawler:
             # dict of channels may change size during
             # an iteration
             for cid in tuple(self.progress.keys()):
-
                 # Do round-robin between all the channels
                 try:
                     channel = self.channels[cid]
@@ -140,7 +139,6 @@ class DiscordHistoryCrawler:
                     if type(ex) == SystemExit:
                         raise ex
                     self.logger.error(f"Error reading messages from channel id {cid}", exc_info=1)
-
             await asyncio.sleep(CPU_YIELD_DELAY)
 
     async def _read(self, channel, mhist):
