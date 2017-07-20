@@ -145,7 +145,6 @@ class DiscordHistoryCrawler:
 
     async def _read(self, channel, mhist):
         start_id, limit = mhist.find_first_hole(NOW_ID, MESSAGE_BATCH_SIZE)
-        self.logger.debug(f"Next range to inspect: {start_id} -{limit}")
         if not limit:
             self.logger.debug("No more messages to read from this channel.")
             return
@@ -156,9 +155,10 @@ class DiscordHistoryCrawler:
         messages = await channel.history(before=start, limit=limit).flatten()
         assert messages, "No messages found in this range"
 
-        await self.queue.put(messages)
-        self.logger.info(f"Queued {len(messages)} messages for ingestion")
         earliest = messages[-1].id
+        messages = list(filter(lambda m: m.id not in mhist, messages))
+        if messages: await self.queue.put(messages)
+        self.logger.info(f"Queued {len(messages)} messages for ingestion")
         mhist.add(Range(earliest, start_id))
 
         if len(messages) < limit:
