@@ -168,8 +168,8 @@ class DiscordHistoryCrawler:
         mhist.add(Range(earliest, before_id))
 
         if len(messages) < limit:
-            # This channel is exhausted
-            self.logger.info(f"#{channel.name} is now exhausted")
+            # This channel has been exhausted
+            self.logger.info(f"#{channel.name} has now been exhausted")
             mhist.first = earliest
 
     async def consumer(self):
