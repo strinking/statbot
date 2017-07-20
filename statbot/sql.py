@@ -321,7 +321,9 @@ class DiscordSqlHandler:
                 .on_conflict_do_nothing(index_elements=['message_id'])
         trans.execute(ins)
 
-        # Don't upsert any metadata
+        self.upsert_guild(trans, message.guild)
+        self.upsert_channel(trans, message.channel)
+        self.upsert_user(trans, message.author)
 
     # Typing
     def typing(self, trans, channel, user, when):
