@@ -144,15 +144,15 @@ class DiscordHistoryCrawler:
             await asyncio.sleep(CPU_YIELD_DELAY)
 
     async def _read(self, channel, mhist):
-        start_id, limit = mhist.find_first_hole(NOW_ID, MESSAGE_BATCH_SIZE)
-        if not limit:
+        start_id = mhist.find_first_hole(NOW_ID)
+        if start_id is None:
             self.logger.debug("No more messages to read from this channel.")
             return
 
         start = discord.utils.snowflake_time(start_id)
         self.logger.info(f"Reading through channel {channel.id} (#{channel.name}):")
-        self.logger.info(f"Requesting {limit} items from before {start_id} ({start})")
-        messages = await channel.history(before=start, limit=limit).flatten()
+        self.logger.info(f"Starting from {start_id} ({start})")
+        messages = await channel.history(before=start, limit=MESSAGE_BATCH_SIZE).flatten()
         assert messages, "No messages found in this range"
 
         earliest = messages[-1].id
@@ -161,7 +161,7 @@ class DiscordHistoryCrawler:
         self.logger.info(f"Queued {len(messages)} messages for ingestion")
         mhist.add(Range(earliest, start_id))
 
-        if len(messages) < limit:
+        if len(messages) < MESSAGE_BATCH_SIZE:
             # This channel has been exhausted
             self.logger.info(f"#{channel.name} has now been exhausted")
             mhist.first = earliest
