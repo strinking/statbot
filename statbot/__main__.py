@@ -110,12 +110,14 @@ if __name__ == '__main__':
 
     # Dump pickle data if option is set
     if args.dump_pickle:
+        print("Pickle dump:")
         if os.path.exists(config['serial']['filename']):
             with open(config['serial']['filename'], 'rb') as fh:
                 obj = pickle.load(fh)
             pprint(obj)
         else:
-            print("No pickle data yet.")
+            print("(No pickle data yet.)")
+        exit()
 
     # Create SQL handler
     sql = DiscordSqlHandler(config['url'], sql_logger)
