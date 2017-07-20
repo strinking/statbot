@@ -107,14 +107,18 @@ class DiscordHistoryCrawler:
                 if os.path.exists(filename):
                     try:
                         os.rename(filename, filename + '.bak')
-                    except:
+                    except Exception as ex:
+                        if type(ex) == SystemExit:
+                            raise ex
                         self.logger.error(f"Error moving to {filename}.bak!", exc_info=1)
 
             self.logger.info(f"Serializing progress to {filename}...")
             try:
                 with open(filename, 'wb') as fh:
                     pickle.dump(self.progress, fh)
-            except:
+            except Exception as ex:
+                if type(ex) == SystemExit:
+                    raise ex
                 self.logger.error(f"Error writing to data file!", exc_info=1)
 
             # Sleep until next save
@@ -138,7 +142,9 @@ class DiscordHistoryCrawler:
                     channel = self.channels[cid]
                     mhist = self.progress[cid]
                     await self._read(channel, mhist)
-                except:
+                except Exception as ex:
+                    if type(ex) == SystemExit:
+                        raise ex
                     self.logger.error(f"Error reading messages from channel id {cid}", exc_info=1)
 
             await asyncio.sleep(CPU_YIELD_DELAY)
@@ -183,7 +189,9 @@ class DiscordHistoryCrawler:
                 with self.sql.transaction() as trans:
                     for message in messages:
                         self.sql.insert_message(trans, message)
-            except Exception:
+            except Exception as ex:
+                if type(ex) == SystemExit:
+                    raise ex
                 self.logger.error(f"Error writing message id {message.id}", exc_info=1)
 
             self.queue.task_done()
