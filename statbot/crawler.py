@@ -186,7 +186,7 @@ class DiscordHistoryCrawler:
             except Exception:
                 self.logger.error(f"Error writing message id {message.id}", exc_info=1)
 
-            await self.queue.task_done()
+            self.queue.task_done()
 
     async def _channel_create_hook(self, channel):
         if not self._channel_ok(channel):
