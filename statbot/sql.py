@@ -10,13 +10,14 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
-from sqlalchemy import ARRAY, Boolean, BigInteger, Column, DateTime
+from sqlalchemy import ARRAY, Boolean, BigInteger, Column, DateTime, Enum
 from sqlalchemy import Integer, String, Table, Unicode, UnicodeText
 from sqlalchemy import MetaData, create_engine
 from sqlalchemy.dialects.postgresql import insert as p_insert
+import discord
 import unicodedata
 
-from .util import embeds_to_json, get_emoji_id
+from .util import embeds_to_json, get_emoji_id, get_null_id
 
 __all__ = [
     'DiscordSqlHandler',
@@ -123,9 +124,15 @@ class DiscordSqlHandler:
         # Lookup tables
         self.tb_guild_lookup = Table('guild_lookup', self.meta,
                 Column('guild_id', BigInteger, primary_key=True),
+                Column('owner_id', BigInteger),
                 Column('name', Unicode),
-                Column('channels', ARRAY(BigInteger)),
-                Column('region',  String))
+                Column('icon', String),
+                Column('region',  Enum(discord.VoiceRegion)),
+                Column('afk_channel_id', BigInteger, nullable=True),
+                Column('afk_timeout', Integer),
+                Column('mfa_level', Boolean),
+                Column('verification_level', Enum(discord.VerificationLevel)),
+                Column('explicit_content_filter', Enum(discord.ContentFilter)))
         self.tb_channel_lookup = Table('channel_lookup', self.meta,
                 Column('channel_id', BigInteger, primary_key=True),
                 Column('name', String),
@@ -176,9 +183,15 @@ class DiscordSqlHandler:
     def _guild_values(guild):
         return {
             'guild_id': guild.id,
+            'owner_id': guild.owner.id,
             'name': guild.name,
-            'channels': [channel.id for channel in guild.channels],
-            'region': str(guild.region),
+            'icon': guild.icon,
+            'region': guild.region,
+            'afk_channel_id': get_null_id(guild.afk_channel),
+            'afk_timeout': guild.afk_timeout,
+            'mfa_level': bool(guild.mfa_level),
+            'verification_level': guild.verification_level,
+            'explicit_content_filter': guild.explicit_content_filter,
         }
 
     @staticmethod
