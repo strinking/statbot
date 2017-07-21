@@ -94,6 +94,31 @@ def check(cfg, logger=null_logger):
             logger.error("Configuration field 'serial.backup' is not a bool")
             return False
 
+        if type(cfg.get('crawler')) != dict:
+            logger.warning("Populating configuration field 'crawler' with defaults")
+            cfg['crawler'] = {
+                'batch-size': 256,
+                'queue-size': 32,
+                'yield-delay': 0.5,
+                'long-delay': 120,
+            }
+
+        if type(cfg['crawler']['batch-size']) not in (float, int):
+            logger.error("Configuration field 'crawler.batch-size' is not a number")
+            return False
+        if type(cfg['crawler']['yield-delay']) not in (float, int):
+            logger.error("Configuration field 'crawler.yield-delay' is not a number")
+            return False
+        if cfg['crawler']['yield-delay'] <= 0:
+            logger.error("Configuration field 'crawler.yield-delay' is zero or negative")
+            return False
+        if type(cfg['crawler']['long-delay']) not in (float, int):
+            logger.error("Configuration field 'crawler.long-delay' is not a number")
+            return False
+        if cfg['crawler']['long-delay'] <= 0:
+            logger.error("Configuration field 'crawler.long-delay' is zero or negative")
+            return False
+
     except KeyError as err:
         logger.error(f"Configuration missing field: {err}")
         return False

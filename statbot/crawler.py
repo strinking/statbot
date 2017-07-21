@@ -26,10 +26,6 @@ __all__ = [
 
 NOW_ID = discord.utils.time_snowflake(datetime.now())
 
-MESSAGE_BATCH_SIZE = 256
-ASYNC_QUEUE_SIZE   = 32
-CPU_YIELD_DELAY    = 0.5
-
 class DiscordHistoryCrawler:
     __slots__ = (
         'client',
@@ -54,7 +50,7 @@ class DiscordHistoryCrawler:
         self.logger = logger
         self.channels = {} # {channel_id : channel}
         self.progress = {} # {channel_id : MessageHistory}
-        self.queue = asyncio.Queue(ASYNC_QUEUE_SIZE)
+        self.queue = asyncio.Queue(self.config['crawler']['queue-size'])
 
         self._load()
 
@@ -125,32 +121,39 @@ class DiscordHistoryCrawler:
         await self.client.wait_until_ready()
         await self._init_channels()
 
+        yield_delay = self.config['crawler']['yield-delay']
+        long_delay = self.config['crawler']['long-delay']
+
         while True:
             # tuple() is necessary since the underlying
             # dict of channels may change size during
             # an iteration
+            all_empty = True
             for cid in tuple(self.progress.keys()):
                 # Do round-robin between all the channels
                 try:
                     channel = self.channels[cid]
                     mhist = self.progress[cid]
-                    await self._read(channel, mhist)
+                    read = await self._read(channel, mhist)
+                    if read:
+                        all_empty = False
                 except Exception as ex:
                     if type(ex) == SystemExit:
                         raise ex
                     self.logger.error(f"Error reading messages from channel id {cid}", exc_info=1)
-            await asyncio.sleep(CPU_YIELD_DELAY)
+            await asyncio.sleep(long_delay if all_empty else yield_delay)
 
     async def _read(self, channel, mhist):
         start_id = mhist.find_first_hole(NOW_ID)
         if start_id is None:
-            self.logger.debug("No more messages to read from this channel.")
-            return
+            # No more messages in this channel
+            return False
 
         start = discord.utils.snowflake_time(start_id)
+        limit = self.config['crawler']['batch-size']
         self.logger.info(f"Reading through channel {channel.id} (#{channel.name}):")
         self.logger.info(f"Starting from {start_id} ({start})")
-        messages = await channel.history(before=start, limit=MESSAGE_BATCH_SIZE).flatten()
+        messages = await channel.history(before=start, limit=limit).flatten()
         assert messages, "No messages found in this range"
 
         earliest = messages[-1].id
@@ -159,10 +162,11 @@ class DiscordHistoryCrawler:
         self.logger.info(f"Queued {len(messages)} messages for ingestion")
         mhist.add(Range(earliest, start_id))
 
-        if len(messages) < MESSAGE_BATCH_SIZE:
+        if len(messages) < limit:
             # This channel has been exhausted
             self.logger.info(f"#{channel.name} has now been exhausted")
             mhist.first = earliest
+        return True
 
     async def consumer(self):
         self.logger.info("Consumer coroutine started!")
