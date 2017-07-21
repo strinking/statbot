@@ -13,7 +13,6 @@
 from datetime import datetime
 import asyncio
 import discord
-import pickle
 import os
 
 from .message_history import MessageHistory
@@ -63,7 +62,7 @@ class DiscordHistoryCrawler:
         with open(filename, 'rb') as fh:
             self.progress = pickle.load(fh)
 
-    async def _init_channels(self):
+    def _init_channels(self):
         for guild in self.client.guilds:
             if guild.id in self.config['guilds']:
                 for channel in guild.text_channels:
@@ -79,47 +78,15 @@ class DiscordHistoryCrawler:
         self.client.hooks['on_guild_channel_delete'] = self._channel_delete_hook
         self.client.hooks['on_guild_channel_update'] = self._channel_update_hook
 
-        self.client.loop.create_task(self.serializer())
         self.client.loop.create_task(self.producer())
         self.client.loop.create_task(self.consumer())
-
-    async def serializer(self):
-        self.logger.info("Serializer coroutine started!")
-
-        # Delay first save
-        await asyncio.sleep(5)
-
-        while True:
-            filename = self.config['serial']['filename']
-            if self.config['serial']['backup']:
-                self.logger.info(f"Backing up {filename}...")
-
-                if os.path.exists(filename):
-                    try:
-                        os.rename(filename, filename + '.bak')
-                    except Exception as ex:
-                        if type(ex) == SystemExit:
-                            raise ex
-                        self.logger.error(f"Error moving to {filename}.bak!", exc_info=1)
-
-            self.logger.info(f"Serializing progress to {filename}...")
-            try:
-                with open(filename, 'wb') as fh:
-                    pickle.dump(self.progress, fh)
-            except Exception as ex:
-                if type(ex) == SystemExit:
-                    raise ex
-                self.logger.error(f"Error writing to data file!", exc_info=1)
-
-            # Sleep until next save
-            await asyncio.sleep(self.config['serial']['periodic-save'])
 
     async def producer(self):
         self.logger.info("Producer coroutine started!")
 
         # Setup
         await self.client.wait_until_ready()
-        await self._init_channels()
+        self._init_channels()
 
         yield_delay = self.config['crawler']['yield-delay']
         long_delay = self.config['crawler']['long-delay']

@@ -76,33 +76,9 @@ def check(cfg, logger=null_logger):
             logger.error("Configuration field 'logger.ignored-events' is not a bool")
             return False
 
-        if type(cfg.get('serial')) != dict:
-            logger.warning("Populating configuration field 'serial' with defaults")
-            cfg['serial'] = {
-                'filename': 'progress.pickle',
-                'periodic-save': 3600,
-                'backup': True,
-            }
-
-        if type(cfg['serial']['filename']) != str:
-            logger.error("Configuration field 'serial.filename' is not a string")
-            return False
-        if type(cfg['serial']['periodic-save']) != int:
-            logger.error("Configuration field 'serial.periodic-save' is not an int")
-            return False
-        if type(cfg['serial']['backup']) != bool:
-            logger.error("Configuration field 'serial.backup' is not a bool")
-            return False
-
         if type(cfg.get('crawler')) != dict:
-            logger.warning("Populating configuration field 'crawler' with defaults")
-            cfg['crawler'] = {
-                'batch-size': 256,
-                'queue-size': 32,
-                'yield-delay': 0.5,
-                'long-delay': 120,
-            }
-
+            logger.error("Configuration field 'crawler' not an object")
+            return False
         if type(cfg['crawler']['batch-size']) not in (float, int):
             logger.error("Configuration field 'crawler.batch-size' is not a number")
             return False
