@@ -17,7 +17,6 @@ do, are more likely to modify an existing entry than create/delete one.
 
 ### Guarantees and Requirements
 * Clients should review this document whenever the minor version changes.
-* Clients must not assume that any particular row is present. This is true
 for all tables ane data points.
 * Clients must be able to handle tables with information from multiple guilds.
 * Clients must assume that there will be holes in the chronological history
