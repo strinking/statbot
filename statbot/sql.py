@@ -15,9 +15,13 @@ from sqlalchemy import Integer, String, Table, Unicode, UnicodeText
 from sqlalchemy import MetaData, create_engine
 from sqlalchemy.dialects.postgresql import insert as p_insert
 import discord
+import functools
 import unicodedata
 
-from .util import embeds_to_json, get_emoji_id, get_null_id
+from .orm import DiscordHistoryORM
+from .util import embeds_to_json, get_emoji_id, get_null_id, null_logger
+
+Column = functools.partial(Column, nullable=False)
 
 __all__ = [
     'DiscordSqlHandler',
