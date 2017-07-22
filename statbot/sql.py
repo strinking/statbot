@@ -67,16 +67,21 @@ class DiscordSqlHandler:
         'db',
         'meta',
         'logger',
+        'hist_orm',
 
         'tb_messages',
         'tb_reactions',
         'tb_typing',
         'tb_pins',
+
         'tb_guild_lookup',
         'tb_channel_lookup',
         'tb_user_lookup',
         'tb_emoji_lookup',
         'tb_role_lookup',
+
+        'tb_channel_hist',
+        'tb_audit_hist',
 
         'guild_cache',
         'channel_cache',
@@ -85,7 +90,7 @@ class DiscordSqlHandler:
         'role_cache',
     )
 
-    def __init__(self, addr, logger):
+    def __init__(self, addr, logger=null_logger):
         logger.info(f"Opening database: '{addr}'")
         self.db = create_engine(addr)
         self.meta = MetaData(self.db)
@@ -162,6 +167,10 @@ class DiscordSqlHandler:
                 Column('is_mentionable', Boolean),
                 Column('is_deleted', Boolean),
                 Column('position', Integer))
+
+        # History tables
+        self.hist_orm = DiscordHistoryORM('channel_hist', self.db, self.meta, self.logger)
+        self.tb_channel_hist = hist_orm.table
 
         # Lookup caches
         self.guild_cache = {}
