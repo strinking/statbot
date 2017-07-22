@@ -11,6 +11,7 @@
 #
 
 from sqlalchemy import BigInteger, Column, Table
+from sqlalchemy import ForeignKey
 from sqlalchemy.orm import relationship, sessionmaker
 import functools
 
@@ -39,8 +40,10 @@ class DiscordHistoryORM:
         self.logger = logger
 
         self.table = Table(table_name, meta,
-                Column('channel_id', BigInteger, primary_key=True),
-                Column('first_message_id', BigInteger, nullable=True),
+                Column('channel_id', BigInteger,
+                    ForeignKey('channels.channel_id'), primary_key=True),
+                Column('first_message_id', BigInteger,
+                    ForeignKey('messages.message_id'), nullable=True),
                 Column('ranges',
                     relationship('Range', lazy='dynamic', cascade='all, delete-orphan')))
 

@@ -12,7 +12,7 @@
 
 from sqlalchemy import ARRAY, Boolean, BigInteger, Column, DateTime, Enum
 from sqlalchemy import Integer, String, Table, Unicode, UnicodeText
-from sqlalchemy import MetaData, create_engine
+from sqlalchemy import ForeignKey, MetaData, create_engine
 from sqlalchemy.dialects.postgresql import insert as p_insert
 import discord
 import functools
@@ -107,64 +107,67 @@ class DiscordSqlHandler:
                 Column('content', UnicodeText),
                 Column('embeds', UnicodeText),
                 Column('attachments', Integer),
-                Column('user_id', BigInteger),
-                Column('channel_id', BigInteger),
-                Column('guild_id', BigInteger))
+                Column('user_id', BigInteger, ForeignKey('users.user_id')),
+                Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
+                Column('guild_id', BigInteger), ForeignKey('guilds.guild_id'))
         self.tb_reactions = Table('reactions', self.meta,
-                Column('message_id', BigInteger),
-                Column('emoji_id', BigInteger),
-                Column('user_id', BigInteger),
-                Column('channel_id', BigInteger),
-                Column('guild_id', BigInteger))
+                Column('message_id', BigInteger, ForeignKey('messages.message_id')),
+                Column('emoji_id', BigInteger, ForeignKey('emojis.emoji_id')),
+                Column('user_id', BigInteger, ForeignKey('users.user_id')),
+                Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
+                Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
         self.tb_typing = Table('typing', self.meta,
                 Column('timestamp', DateTime),
-                Column('user_id', BigInteger),
-                Column('channel_id', BigInteger),
-                Column('guild_id', BigInteger))
+                Column('user_id', BigInteger, ForeignKey('users.user_id')),
+                Column('channel_id', BigInteger, ForeignKey('channels.user_id')),
+                Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
         self.tb_pins = Table('pins', self.meta,
                 Column('pin_id', BigInteger, primary_key=True),
-                Column('message_id', BigInteger, primary_key=True),
-                Column('pinner_id', BigInteger),
-                Column('user_id', BigInteger),
-                Column('channel_id', BigInteger),
-                Column('guild_id', BigInteger))
+                Column('message_id', BigInteger,
+                    ForeignKey('messages.message_id'), primary_key=True),
+                Column('pinner_id', BigInteger, ForeignKey('users.user_id')),
+                Column('user_id', BigInteger, ForeignKey('users.user_id')),
+                Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
+                Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
 
         # Lookup tables
-        self.tb_guild_lookup = Table('guild_lookup', self.meta,
+        self.tb_guilds = Table('guilds', self.meta,
                 Column('guild_id', BigInteger, primary_key=True),
-                Column('owner_id', BigInteger),
+                Column('owner_id', BigInteger, ForeignKey('users.user_id')),
                 Column('name', Unicode),
                 Column('icon', String),
                 Column('region',  Enum(discord.VoiceRegion)),
-                Column('afk_channel_id', BigInteger, nullable=True),
+                Column('afk_channel_id', BigInteger,
+                    ForeignKey('channels.channel_id'), nullable=True),
                 Column('afk_timeout', Integer),
                 Column('mfa_level', Boolean),
                 Column('verification_level', Enum(discord.VerificationLevel)),
                 Column('explicit_content_filter', Enum(discord.ContentFilter)))
-        self.tb_channel_lookup = Table('channel_lookup', self.meta,
+        self.tb_channels = Table('channels', self.meta,
                 Column('channel_id', BigInteger, primary_key=True),
                 Column('name', String),
                 Column('is_deleted', Boolean),
-                Column('guild_id', BigInteger))
-        self.tb_user_lookup = Table('user_lookup', self.meta,
+                Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
+        self.tb_users = Table('users', self.meta,
                 Column('user_id', BigInteger, primary_key=True),
                 Column('name', Unicode),
                 Column('discriminator', Integer),
                 Column('is_deleted', Boolean),
                 Column('is_bot', Boolean))
-        self.tb_emoji_lookup = Table('emoji_lookup', self.meta,
+        self.tb_emojis = Table('emojis', self.meta,
                 Column('emoji_id', BigInteger, primary_key=True),
                 Column('name', String),
                 Column('is_deleted', Boolean),
                 Column('category', String),
                 Column('unicode', Unicode(1), nullable=True),
-                Column('guild_id', BigInteger, nullable=True))
-        self.tb_role_lookup = Table('role_lookup', self.meta,
+                Column('guild_id', BigInteger,
+                    ForeignKey('guilds.guild_id')), nullable=True))
+        self.tb_roles = Table('roles', self.meta,
                 Column('role_id', BigInteger, primary_key=True),
                 Column('name', Unicode),
                 Column('color', Integer),
                 Column('raw_permissions', BigInteger),
-                Column('guild_id', BigInteger),
+                Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
                 Column('is_hoisted', Boolean),
                 Column('is_managed', Boolean),
                 Column('is_mentionable', Boolean),
