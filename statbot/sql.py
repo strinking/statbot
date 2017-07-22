@@ -77,12 +77,11 @@ class DiscordSqlHandler:
         'tb_reactions',
         'tb_typing',
         'tb_pins',
-
-        'tb_guild_lookup',
-        'tb_channel_lookup',
-        'tb_user_lookup',
-        'tb_emoji_lookup',
-        'tb_role_lookup',
+        'tb_guilds',
+        'tb_channels',
+        'tb_users',
+        'tb_emojis',
+        'tb_roles',
 
         'tb_channel_hist',
         'tb_audit_hist',
@@ -284,11 +283,11 @@ class DiscordSqlHandler:
             return
 
         self.logger.info(f"Updating lookup data for guild {guild.name}")
-        ups = p_insert(self.tb_guild_lookup) \
+        ups = p_insert(self.tb_guilds) \
                 .values(values) \
                 .on_conflict_do_update(
                         index_elements=['guild_id'],
-                        index_where=(self.tb_guild_lookup.c.guild_id == guild.id),
+                        index_where=(self.tb_guilds.c.guild_id == guild.id),
                         set_=values,
                 )
         trans.conn.execute(ups)
@@ -441,7 +440,7 @@ class DiscordSqlHandler:
 
         self.logger.info(f"Inserting role {role.id}")
         values = self._role_values(role)
-        ins = self.tb_role_lookup \
+        ins = self.tb_roles \
                 .insert() \
                 .values(values)
         trans.execute(ins)
@@ -452,9 +451,9 @@ class DiscordSqlHandler:
     def _update_role(self, trans, role):
         self.logger.info(f"Updating role {role.id} in guild {role.guild.id}")
         values = self._role_values(role)
-        upd = self.tb_role_lookup \
+        upd = self.tb_roles \
                 .update() \
-                .where(self.tb_role_lookup.c.role_id == role.id) \
+                .where(self.tb_roles.c.role_id == role.id) \
                 .values(values)
         trans.execute(upd)
         self.role_cache[role.id] = values
@@ -467,10 +466,10 @@ class DiscordSqlHandler:
 
     def remove_role(self, trans, role):
         self.logger.info(f"Deleting role {role.id}")
-        upd = self.tb_role_lookup \
+        upd = self.tb_roles \
                 .update() \
                 .values(is_deleted=True) \
-                .where(self.tb_role_lookup.c.role_id == role.id)
+                .where(self.tb_roles.c.role_id == role.id)
         trans.execute(upd)
         self.role_cache.pop(role.id, None)
 
@@ -483,11 +482,11 @@ class DiscordSqlHandler:
             return
 
         self.logger.info("Updating lookup data for role {role.name}")
-        ups = p_insert(self.tb_role_lookup) \
+        ups = p_insert(self.tb_roles) \
                 .values(values) \
                 .on_conflict_do_update(
                         index_elements=['role_id'],
-                        index_where=(self.tb_role_lookup.c.role_id == role.id),
+                        index_where=(self.tb_roles.c.role_id == role.id),
                         set_=values,
                 )
         trans.execute(ups)
@@ -503,7 +502,7 @@ class DiscordSqlHandler:
 
         self.logger.info(f"Inserting new channel {channel.id} for guild {guild.id}")
         values = self._channel_values(channel)
-        ins = self.tb_channel_lookup \
+        ins = self.tb_channels \
                 .insert() \
                 .values(values)
         trans.execute(ins)
@@ -512,9 +511,9 @@ class DiscordSqlHandler:
     def _update_channel(self, trans, channel):
         self.logger.info(f"Updating channel {channel.id} in guild {channel.guild.id}")
         values = self._channel_values(channel)
-        upd = self.tb_channel_lookup \
+        upd = self.tb_channels \
                 .update() \
-                .where(self.tb_channel_lookup.c.channel_id == channel.id) \
+                .where(self.tb_channels.c.channel_id == channel.id) \
                 .values(values)
         trans.execute(upd)
         self.channel_cache[channel.id] = values
@@ -527,10 +526,10 @@ class DiscordSqlHandler:
 
     def remove_channel(self, trans, channel):
         self.logger.info(f"Deleting channel {channel.id} in guild {guild.id}")
-        upd = self.tb_channel_lookup \
+        upd = self.tb_channels \
                 .update() \
                 .values(is_deleted=True) \
-                .where(self.tb_channel_lookup.c.channel_id == channel.id)
+                .where(self.tb_channels.c.channel_id == channel.id)
         trans.execute(upd)
         self.channel_cache.pop(channel.id, None)
 
@@ -541,11 +540,11 @@ class DiscordSqlHandler:
             return
 
         self.logger.info(f"Updating lookup data for channel {channel.name}")
-        ups = p_insert(self.tb_channel_lookup) \
+        ups = p_insert(self.tb_channels) \
                 .values(values) \
                 .on_conflict_do_update(
                         index_elements=['channel_id'],
-                        index_where=(self.tb_channel_lookup.c.channel_id == channel.id),
+                        index_where=(self.tb_channels.c.channel_id == channel.id),
                         set_=values,
                 )
         trans.execute(ups)
@@ -559,7 +558,7 @@ class DiscordSqlHandler:
 
         self.logger.info(f"Inserting user {user.id}")
         values = self._user_values(user)
-        ins = self.tb_user_lookup \
+        ins = self.tb_users \
                 .insert() \
                 .values(values)
         trans.execute(ins)
@@ -568,9 +567,9 @@ class DiscordSqlHandler:
     def _update_user(self, trans, user):
         self.logger.info(f"Updating user {user.id}")
         values = self._user_values(user)
-        upd = self.tb_user_lookup \
+        upd = self.tb_users \
                 .update() \
-                .where(self.tb_user_lookup.c.user_id == user.id) \
+                .where(self.tb_users.c.user_id == user.id) \
                 .values(values)
         trans.execute(upd)
         self.user_cache[user.id] = values
@@ -583,10 +582,10 @@ class DiscordSqlHandler:
 
     def remove_user(self, trans, user):
         self.logger.info(f"Removing user {user.id}")
-        upd = self.tb_user_lookup \
+        upd = self.tb_users \
                 .update() \
                 .values(is_deleted=True) \
-                .where(self.tb_user_lookup.c.user_id == user.id)
+                .where(self.tb_users.c.user_id == user.id)
         trans.execute(upd)
         self.user_cache.pop(user.id, None)
 
@@ -596,11 +595,11 @@ class DiscordSqlHandler:
             self.logger.debug(f"User lookup for {user.id} is already up-to-date")
             return
 
-        ups = p_insert(self.tb_user_lookup) \
+        ups = p_insert(self.tb_users) \
                 .values(values) \
                 .on_conflict_do_update(
                         index_elements=['user_id'],
-                        index_where=(self.tb_user_lookup.c.user_id == user.id),
+                        index_where=(self.tb_users.c.user_id == user.id),
                         set_=values,
                 )
         trans.execute(ups)
@@ -617,7 +616,7 @@ class DiscordSqlHandler:
             return
 
         self.logger.info(f"Inserting emoji {id}")
-        ins = self.tb_emoji_lookup \
+        ins = self.tb_emojis \
                 .insert() \
                 .values(value)
         trans.execute(ins)
@@ -628,10 +627,10 @@ class DiscordSqlHandler:
 
         id = get_emoji_id(emoji)
         self.logger.info(f"Deleting emoji {id}")
-        upd = self.tb_emoji_lookup \
+        upd = self.tb_emojis \
                 .update() \
                 .values(is_deleted=True) \
-                .where(self.tb_emoji_lookup.c.emoji_id == id)
+                .where(self.tb_emojis.c.emoji_id == id)
         trans.execute(upd)
         self.emoji_cache.pop(id, None)
 
@@ -644,11 +643,11 @@ class DiscordSqlHandler:
             self.logger.debug(f"Emoji lookup for {id} is already up-to-date")
             return
 
-        ups = p_insert(self.tb_emoji_lookup) \
+        ups = p_insert(self.tb_emojis) \
                 .values(values) \
                 .on_conflict_do_update(
                         index_elements=['emoji_id'],
-                        index_where=(self.tb_emoji_lookup.c.emoji_id == id),
+                        index_where=(self.tb_emojis.c.emoji_id == id),
                         set_=values,
                     )
         trans.execute(ups)
