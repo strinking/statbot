@@ -12,13 +12,15 @@
 
 from sqlalchemy import BigInteger, Column, Table
 from sqlalchemy import ForeignKey
-from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy.orm import backref, relationship, sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
 import functools
 
 from .message_history import MessageHistory
 from .util import null_logger
 
 Column = functools.partial(Column, nullable=False)
+Base = declarative_base()
 
 __all__ = [
     'DiscordHistoryORM',
@@ -29,21 +31,27 @@ class DiscordHistoryORM:
         'db',
         'session',
         'logger',
-        'table',
+        'tb_channel_hist',
+        'tb_ranges_orm',
     )
 
-    def __init__(self, table_name, db, meta, logger=null_logger):
+    def __init__(self, db, meta, logger=null_logger):
         Session = sessionmaker(bind=db)
 
         self.db = db
         self.session = Session()
         self.logger = logger
 
-        self.table = Table(table_name, meta,
+        self.tb_channel_hist = Table('channel_hist', meta,
                 Column('channel_id', BigInteger,
                     ForeignKey('channels.channel_id'), primary_key=True),
                 Column('first_message_id', BigInteger,
                     ForeignKey('messages.message_id'), nullable=True),
-                Column('ranges',
-                    relationship('Range', lazy='dynamic', cascade='all, delete-orphan')))
+                Column('ranges', relationship('range_orm',
+                    lazy='dynamic', cascade='all, delete, delete-orphan')))
+
+        self.tb_range_orm = Table('range_orm', meta,
+                Column('channel_id', BigInteger, ForeignKey('channel_hist.channel_id')),
+                Column('start_message_id', BigInteger),
+                Column('end_message_id', BigInteger))
 

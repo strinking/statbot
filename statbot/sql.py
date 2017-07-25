@@ -161,7 +161,7 @@ class DiscordSqlHandler:
                 Column('category', String),
                 Column('unicode', Unicode(1), nullable=True),
                 Column('guild_id', BigInteger,
-                    ForeignKey('guilds.guild_id')), nullable=True))
+                    ForeignKey('guilds.guild_id'), nullable=True))
         self.tb_roles = Table('roles', self.meta,
                 Column('role_id', BigInteger, primary_key=True),
                 Column('name', Unicode),
@@ -175,8 +175,9 @@ class DiscordSqlHandler:
                 Column('position', Integer))
 
         # History tables
-        self.hist_orm = DiscordHistoryORM('channel_hist', self.db, self.meta, self.logger)
-        self.tb_channel_hist = hist_orm.table
+        self.hist_orm = DiscordHistoryORM(self.db, self.meta, self.logger)
+        self.tb_ranges_orm = hist_orm.tb_ranges_orm
+        self.tb_channel_hist = hist_orm.tb_channel_hist
 
         # Lookup caches
         self.guild_cache = {}
