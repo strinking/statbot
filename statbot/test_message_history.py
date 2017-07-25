@@ -17,64 +17,54 @@ import unittest
 class TestFindFirstHole(unittest.TestCase):
     def test_empty(self):
         mhist = MessageHistory()
-        start, count = mhist.find_first_hole(20, 10)
+        start = mhist.find_first_hole(20)
         self.assertEqual(start, 20)
-        self.assertEqual(count, 10)
 
-        start, count = mhist.find_first_hole(100, 10)
+        start = mhist.find_first_hole(100)
         self.assertEqual(start, 100)
-        self.assertEqual(count, 10)
 
     def test_continuous(self):
         mhist = MessageHistory(Range(5, 18))
-        start, count = mhist.find_first_hole(50, 10)
+        start = mhist.find_first_hole(50)
         self.assertEqual(start, 50)
-        self.assertEqual(count, 10)
 
-        start, count = mhist.find_first_hole(20, 10)
+        start = mhist.find_first_hole(20)
         self.assertEqual(start, 20)
-        self.assertEqual(count, 2)
 
     def test_hole(self):
         mhist = MessageHistory(Range(4, 12), Range(23, 31))
-        start, count = mhist.find_first_hole(50, 10)
+        start = mhist.find_first_hole(50)
         self.assertEqual(start, 50)
-        self.assertEqual(count, 10)
 
-        start, count = mhist.find_first_hole(35, 10)
+        start = mhist.find_first_hole(35)
         self.assertEqual(start, 35)
-        self.assertEqual(count, 4)
 
         mhist = MessageHistory(Range(5, 9), Range(13, 20), Range(31, 38), Range(50, 52))
-        start, count = mhist.find_first_hole(100, 10)
-        self.assertEqual(start, 100)
-        self.assertEqual(count, 10)
+        start = mhist.find_first_hole(10)
+        self.assertEqual(start, 10)
 
-        start, count = mhist.find_first_hole(70, 10)
+        start = mhist.find_first_hole(25)
+        self.assertEqual(start, 25)
+
+        start = mhist.find_first_hole(70)
         self.assertEqual(start, 70)
-        self.assertEqual(count, 10)
 
     def test_aligned(self):
         mhist = MessageHistory(Range(18, 35))
-        start, count = mhist.find_first_hole(35, 10)
+        start = mhist.find_first_hole(35)
         self.assertEqual(start, 18)
-        self.assertEqual(count, 10)
 
-        start, count = mhist.find_first_hole(18, 10)
+        start = mhist.find_first_hole(18)
         self.assertEqual(start, 18)
-        self.assertEqual(count, 10)
 
     def test_aligned_hole(self):
         mhist = MessageHistory(Range(13, 22), Range(30, 35), Range(36, 49))
-        start, count = mhist.find_first_hole(49, 10)
+        start = mhist.find_first_hole(49)
         self.assertEqual(start, 36)
-        self.assertEqual(count, 1)
 
-        start, count = mhist.find_first_hole(35, 10)
+        start = mhist.find_first_hole(35)
         self.assertEqual(start, 30)
-        self.assertEqual(count, 8)
 
-        start, count = mhist.find_first_hole(22, 10)
+        start = mhist.find_first_hole(22)
         self.assertEqual(start, 13)
-        self.assertEqual(count, 10)
 
