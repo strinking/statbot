@@ -175,7 +175,7 @@ class DiscordSqlHandler:
                 Column('position', Integer))
 
         # History tables
-        self.hist_orm = DiscordHistoryORM(self.db, self.meta, self.logger)
+        self.hist_orm = DiscordHistoryORM(self.db, self.logger)
         self.tb_ranges_orm = hist_orm.tb_ranges_orm
         self.tb_channel_hist = hist_orm.tb_channel_hist
 
@@ -188,6 +188,7 @@ class DiscordSqlHandler:
 
         # Create tables
         self.meta.create_all(self.db)
+        self.hist_orm.create_tables()
         self.logger.info("Created all tables.")
 
     # Transaction logic

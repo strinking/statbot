@@ -23,8 +23,39 @@ Column = functools.partial(Column, nullable=False)
 Base = declarative_base()
 
 __all__ = [
-    'DiscordHistoryORM',
+    'DiscordHistory',
 ]
+
+class DiscordHistoryTable(Base):
+    __tablename__ = 'channel_hist'
+
+    channel_id = Column(BigInteger, ForeignKey('channels.channel_id'), primary_key=True)
+    first_message_id = Column(BigInteger, ForeignKey('messages.message_id'), nullable=True)
+    ranges = relationship(
+            'Ranges',
+            cascade='all, delete-orphan')
+
+    def __init__(self, mhist):
+        self.first_message_id = mhist.first
+
+    def __repr__(self):
+        return "<DiscordHistory(channel_id={}, first_message_id={}, ranges={})>".format(
+                self.channel_id, self.first_message_id, self.ranges)
+
+class RangeTable(Base):
+    __tablename__ = 'ranges_orm'
+
+    channel_id = Column(BigInteger, ForeignKey('channel_hist.channel_id'))
+    start_message_id = Column(BigInteger)
+    end_message_id = Column(BigInteger)
+
+    def __init__(self, start, end):
+        self.start_message_id = start
+        self.end_message_id = end
+
+    def __repr__(self):
+        return "<DiscordHistory.Range(start_message_id={}, end_message_id={})>".format(
+                self.start_message_id, self.end_message_id)
 
 class DiscordHistoryORM:
     __slots__ = (
@@ -35,23 +66,16 @@ class DiscordHistoryORM:
         'tb_ranges_orm',
     )
 
-    def __init__(self, db, meta, logger=null_logger):
+    def __init__(self, db, logger=null_logger):
         Session = sessionmaker(bind=db)
 
         self.db = db
         self.session = Session()
         self.logger = logger
 
-        self.tb_channel_hist = Table('channel_hist', meta,
-                Column('channel_id', BigInteger,
-                    ForeignKey('channels.channel_id'), primary_key=True),
-                Column('first_message_id', BigInteger,
-                    ForeignKey('messages.message_id'), nullable=True),
-                Column('ranges', relationship('range_orm',
-                    lazy='dynamic', cascade='all, delete, delete-orphan')))
+        self.tb_channel_hist = DiscordHistoryTable
+        self.tb_ranges_orm = RangeTable
 
-        self.tb_range_orm = Table('range_orm', meta,
-                Column('channel_id', BigInteger, ForeignKey('channel_hist.channel_id')),
-                Column('start_message_id', BigInteger),
-                Column('end_message_id', BigInteger))
+    def create_tables(self):
+        Base.metadata.create_all(self.db)
 
