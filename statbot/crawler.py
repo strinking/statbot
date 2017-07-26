@@ -57,7 +57,13 @@ class DiscordHistoryCrawler:
                 for channel in guild.text_channels:
                     if channel.permissions_for(guild.me).read_message_history:
                         self.channels[channel.id] = channel
-                        self.progress.setdefault(channel.id, MessageHistory())
+                        mhist = self.sql.orm.lookup_message_hist(channel)
+
+                        if mhist is None:
+                            mhist = MessageHistory()
+                            self.sql.orm.insert_message_hist(channel, mhist)
+
+                        self.progress[channel.id] = mhist
 
         for channel in set(self.progress.keys()) - set(self.channels.keys()):
             del self.progress[channel.id]

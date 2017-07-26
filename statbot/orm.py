@@ -34,12 +34,32 @@ class MessageHistoryWrap:
         for range in mhist.ranges:
             self.ranges.append(RangeWrap(cid, range))
 
+    def assign(self, mhist):
+        self.first_message_id = mhist.first
+
+        # Replace existing ranges
+        i = 0
+        for i, (range_wrap, range) in enumerate(zip(self.ranges, mhist.ranges)):
+            range_wrap.assign(range)
+
+        # Delete extra ranges
+        for range_wrap in self.ranges[i:]:
+            self.ranges.remove(range_wrap)
+
+        # Insert remaining ranges
+        for range in mhist.ranges[i:]:
+            self.ranges.append(RangeWrap(self.channel_id, range))
+
     def unwrap(self):
-        return MessageHistory(*(range.unwrap() for range in self.ranges), first=self.first_message_id)
+        ranges = (range.unwrap() for range in self.ranges)
+        return MessageHistory(*ranges, first=self.first_message_id)
 
 class RangeWrap:
     def __init__(self, cid, range):
         self.channel_id = cid
+        self.assign(range)
+
+    def assign(self, range):
         self.start_message_id = range.start
         self.end_message_id = range.end
 
@@ -86,20 +106,23 @@ class ORMHandler:
         })
         mapper(RangeWrap, self.tb_ranges_orm)
 
-    def get_message_hist(self, channel):
-        self.logger.info(f"Getting message history for #{channel.name}")
+    def _lookup_message_hist(self, channel):
+        self.logger.info(f"Looking up message history for #{channel.name}")
 
-        mhist_wrap = self.session.query(MessageHistoryWrap) \
+        return self.session.query(MessageHistoryWrap) \
                 .filter(MessageHistoryWrap.channel_id == channel.id) \
                 .first()
+
+    def lookup_message_hist(self, channel):
+        mhist_wrap = self._lookup_message_hist(channel)
 
         if mhist_wrap is not None:
             return mhist_wrap.unwrap()
         else:
             return None
 
-    def update_message_hist(self, channel, mhist):
-        self.logger.info(f"Updating message history for #{channel.name}: {mhist}")
+    def insert_message_hist(self, channel, mhist):
+        self.logger.info(f"Inserting message history for #{channel.name}: {mhist}")
         mhist_wrap = MessageHistoryWrap(channel.id, mhist)
 
         try:
@@ -107,6 +130,17 @@ class ORMHandler:
             self.session.commit()
         except:
             self.session.rollback()
+            raise
+
+    def update_message_hist(self, channel, mhist):
+        self.logger.info(f"Updating message history for #{channel.name}: {mhist}")
+        mhist_wrap = self._lookup_message_hist(channel)
+        mhist_wrap.assign(mhist)
+
+        try:
+            self.session.commit()
+        except:
+            self.sesion.rollback()
             raise
 
     def delete_message_hist(self, channel):
