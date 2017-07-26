@@ -71,7 +71,7 @@ class DiscordSqlHandler:
         'db',
         'meta',
         'logger',
-        'hist_orm',
+        'orm',
 
         'tb_messages',
         'tb_reactions',
@@ -84,6 +84,7 @@ class DiscordSqlHandler:
         'tb_roles',
 
         'tb_channel_hist',
+        'tb_ranges_orm',
         'tb_audit_hist',
 
         'guild_cache',
