@@ -109,7 +109,7 @@ class DiscordSqlHandler:
                 Column('attachments', Integer),
                 Column('user_id', BigInteger, ForeignKey('users.user_id')),
                 Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
-                Column('guild_id', BigInteger), ForeignKey('guilds.guild_id'))
+                Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
         self.tb_reactions = Table('reactions', self.meta,
                 Column('message_id', BigInteger, ForeignKey('messages.message_id')),
                 Column('emoji_id', BigInteger, ForeignKey('emojis.emoji_id')),
@@ -176,8 +176,8 @@ class DiscordSqlHandler:
 
         # History tables
         self.orm = ORMHandler(self.db, self.meta, self.logger)
-        self.tb_ranges_orm = hist_orm.tb_ranges_orm
-        self.tb_channel_hist = hist_orm.tb_channel_hist
+        self.tb_channel_hist = self.orm.tb_channel_hist
+        self.tb_ranges_orm = self.orm.tb_ranges_orm
 
         # Lookup caches
         self.guild_cache = {}

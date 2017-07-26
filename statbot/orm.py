@@ -16,7 +16,6 @@ from sqlalchemy.orm import relationship, mapper, sessionmaker
 import functools
 
 from .message_history import MessageHistory
-from .range import Range
 from .util import null_logger
 
 Column = functools.partial(Column, nullable=False)
@@ -25,30 +24,27 @@ __all__ = [
     'ORMHandler',
 ]
 
-class MessageHistoryWrap(MessageHistory):
-    __slots__ = (
-        'cid',
-    )
-
+class MessageHistoryWrap:
     def __init__(self, cid, mhist):
-        super().__init__(*mhist.ranges)
+        self.cid = cid
         self.first = mhist.first
-        self.cid = cid
 
-class RangeWrap(Range):
-    __slots__ = (
-        'cid',
-    )
+        # This isn't a list, it's a query object
+        for range in mhist.ranges:
+            self.ranges.append(RangeWrap(range))
 
+class RangeWrap:
     def __init__(self, cid, range):
-        super().__init__(range.start, range.end)
         self.cid = cid
+        self.start = range.start
+        self.end = range.end
 
 class ORMHandler:
     __slots__ = (
         'db',
         'session',
         'logger',
+
         'tb_channel_hist',
         'tb_ranges_orm',
     )
@@ -60,6 +56,8 @@ class ORMHandler:
         self.session = Session()
         self.logger = logger
 
+        self.logger.info("Initializing ORMHandler...")
+
         # Channel history
         self.tb_channel_hist = Table('channel_hist', meta,
                 Column('channel_id', BigInteger,
@@ -68,7 +66,7 @@ class ORMHandler:
                     ForeignKey('messages.message_id'), nullable=True, key='first'))
         self.tb_ranges_orm = Table('ranges_orm', meta,
                 Column('channel_id', BigInteger,
-                    ForeignKey('channel_hist.channel_id'), ondelete='CASCADE', key='cid'),
+                    ForeignKey('channel_hist.channel_id', ondelete='CASCADE'), key='cid'),
                 Column('start_message_id', BigInteger,
                     ForeignKey('messages.message_id', key='start')),
                 Column('end_message_id', BigInteger,
