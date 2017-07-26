@@ -106,7 +106,12 @@ class DiscordHistoryCrawler:
                     self.logger.error(f"Error reading (or syncing) messages from channel id {cid}", exc_info=1)
 
             # Sleep before next cycle
-            await asyncio.sleep(long_delay if all_empty else yield_delay)
+            if all_empty:
+                self.logger.debug("All channels are exhausted, sleeping for a while...")
+                delay = long_delay
+            else:
+                delay = yield_delay
+            await asyncio.sleep(delay)
 
     async def _read(self, channel, mhist):
         start_id = mhist.find_first_hole(NOW_ID)
