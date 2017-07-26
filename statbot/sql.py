@@ -156,7 +156,7 @@ class DiscordSqlHandler:
                 Column('position', Integer),
                 Column('bitrate', Integer),
                 Column('user_limit', Integer),
-                Column('changed_roles', Integer),
+                Column('changed_roles', ARRAY(BigInteger)),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
         self.tb_channels = Table('channels', self.meta,
                 Column('channel_id', BigInteger, primary_key=True),
@@ -263,7 +263,7 @@ class DiscordSqlHandler:
             'position': channel.position,
             'bitrate': channel.bitrate,
             'user_limit': channel.user_limit,
-            'changed_roles': len(channel.changed_roles),
+            'changed_roles': [role.id for role in channel.changed_roles],
             'guild_id': channel.guild.id,
         }
 
