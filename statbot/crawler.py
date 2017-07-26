@@ -66,6 +66,7 @@ class DiscordHistoryCrawler:
 
                             self.progress[channel.id] = mhist
 
+        # Remove deleted channels from tracker
         for channel in set(self.progress.keys()) - set(self.channels.keys()):
             del self.progress[channel.id]
 
@@ -97,9 +98,7 @@ class DiscordHistoryCrawler:
                 try:
                     channel = self.channels[cid]
                     mhist = self.progress[cid]
-                    read = await self._read(channel, mhist)
-                    if read:
-                        all_empty = False
+                    all_empty &= not await self._read(channel, mhist)
                 except Exception as ex:
                     if type(ex) == SystemExit:
                         raise ex
