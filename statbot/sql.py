@@ -33,6 +33,7 @@ class _Transaction:
         'logger',
         'conn',
         'trans',
+        'ok',
     )
 
     def __init__(self, sql):
@@ -40,6 +41,7 @@ class _Transaction:
         self.logger = sql.logger
         self.conn = sql.db.connect()
         self.trans = None
+        self.ok = True
 
     def __enter__(self):
         self.logger.debug("Starting transaction...")
@@ -53,6 +55,7 @@ class _Transaction:
         else:
             self.logger.error("Exception occurred in 'with' scope!")
             self.logger.debug("Rolling back transaction...")
+            self.ok = False
             self.trans.rollback()
 
     def execute(self, *args, **kwargs):
@@ -140,15 +143,14 @@ class DiscordSqlHandler:
                 Column('name', Unicode),
                 Column('icon', String),
                 Column('region', Enum(discord.VoiceRegion)),
-                Column('afk_channel_id', BigInteger,
-                    ForeignKey('voice_channels.voice_channel_id'), nullable=True),
+                Column('afk_channel_id', BigInteger, nullable=True),
                 Column('afk_timeout', Integer),
                 Column('mfa_level', Boolean),
                 Column('verification_level', Enum(discord.VerificationLevel)),
                 Column('explicit_content_filter', Enum(discord.ContentFilter)))
         self.tb_voice_channels = Table('voice_channels', self.meta,
                 Column('voice_channel_id', BigInteger, primary_key=True),
-                Column('name', Unicode);
+                Column('name', Unicode),
                 Column('is_default', Boolean),
                 Column('is_deleted', Boolean),
                 Column('position', Integer),
@@ -254,7 +256,7 @@ class DiscordSqlHandler:
     @staticmethod
     def _voice_channel_values(channel):
         return {
-            'channel_id': channel.id,
+            'voice_channel_id': channel.id,
             'name': channel.name,
             'is_default': channel.is_default(),
             'is_deleted': False,
@@ -344,10 +346,6 @@ class DiscordSqlHandler:
                 .values(values)
         trans.execute(ins)
 
-        self.upsert_guild(trans, message.guild)
-        self.upsert_channel(trans, message.channel)
-        self.upsert_user(trans, message.author)
-
     def edit_message(self, trans, before, after):
         self.logger.info(f"Updating message {after.id}")
         upd = self.tb_messages \
@@ -370,10 +368,6 @@ class DiscordSqlHandler:
                 .where(self.tb_messages.c.message_id == message.id)
         trans.execute(upd)
 
-        self.upsert_guild(trans, message.guild)
-        self.upsert_channel(trans, message.channel)
-        self.upsert_user(trans, message.author)
-
     def insert_message(self, trans, message):
         self.logger.info(f"Inserting message {message.id}")
         values = self._message_values(message)
@@ -381,10 +375,6 @@ class DiscordSqlHandler:
                 .values(values) \
                 .on_conflict_do_nothing(index_elements=['message_id'])
         trans.execute(ins)
-
-        self.upsert_guild(trans, message.guild)
-        self.upsert_channel(trans, message.channel)
-        self.upsert_user(trans, message.author)
 
     # Typing
     def typing(self, trans, channel, user, when):
@@ -398,10 +388,6 @@ class DiscordSqlHandler:
                     'guild_id': channel.guild.id,
                 })
         trans.execute(ins)
-
-        self.upsert_guild(trans, channel.guild)
-        self.upsert_channel(trans, channel)
-        self.upsert_user(trans, user)
 
     # Reactions
     def add_reaction(self, trans, reaction, user):
@@ -417,10 +403,6 @@ class DiscordSqlHandler:
                 })
         trans.execute(ins)
 
-        self.upsert_guild(trans, reaction.message.guild)
-        self.upsert_channel(trans, reaction.message.channel)
-        self.upsert_user(trans, user)
-
     def remove_reaction(self, trans, reaction, user):
         self.logger.info(f"Deleting reaction for user {user.id} on message {reaction.message.id}")
         delet = self.tb_reactions \
@@ -429,10 +411,6 @@ class DiscordSqlHandler:
                 .where(self.tb_reactions.c.emoji_id == get_emoji_id(reaction.emoji)) \
                 .where(self.tb_reactions.c.user_id == user.id)
         trans.execute(delet)
-
-        self.upsert_guild(trans, reaction.message.guild)
-        self.upsert_channel(trans, reaction.message.channel)
-        self.upsert_user(trans, user)
 
     def clear_reactions(self, trans, message):
         self.logger.info(f"Deleting all reactions on message {message.id}")
@@ -482,8 +460,6 @@ class DiscordSqlHandler:
         trans.execute(ins)
         self.role_cache[role.id] = values
 
-        self.upsert_guild(trans, role.guild)
-
     def _update_role(self, trans, role):
         self.logger.info(f"Updating role {role.id} in guild {role.guild.id}")
         values = self._role_values(role)
@@ -509,15 +485,13 @@ class DiscordSqlHandler:
         trans.execute(upd)
         self.role_cache.pop(role.id, None)
 
-        self.upsert_guild(trans, role.guild)
-
     def upsert_role(self, trans, role):
         values = self._role_values(role)
         if self.role_cache.get(role.id) == values:
             self.logger.debug(f"Role lookup for {role.id} is already up-to-date")
             return
 
-        self.logger.info("Updating lookup data for role {role.name}")
+        self.logger.info(f"Updating lookup data for role {role.name}")
         ups = p_insert(self.tb_roles) \
                 .values(values) \
                 .on_conflict_do_update(
@@ -527,8 +501,6 @@ class DiscordSqlHandler:
                 )
         trans.execute(ups)
         self.role_cache[role.id] = values
-
-        self.upsert_guild(trans, role.guild)
 
     # Channels
     def add_channel(self, trans, channel):
@@ -575,7 +547,7 @@ class DiscordSqlHandler:
             self.logger.debug(f"Channel lookup for {channel.id} is already up-to-date")
             return
 
-        self.logger.info(f"Updating lookup data for channel {channel.name}")
+        self.logger.info(f"Updating lookup data for channel #{channel.name}")
         ups = p_insert(self.tb_channels) \
                 .values(values) \
                 .on_conflict_do_update(
@@ -627,11 +599,11 @@ class DiscordSqlHandler:
 
     def upsert_voice_channel(self, trans, channel):
         values = self._voice_channel_values(channel)
-        if self.voice_channel_cache(channel.id) == values:
+        if self.voice_channel_cache.get(channel.id) == values:
             self.logger.debug(f"Voice channel lookup for {channel.id} is already up-to-date")
             return
 
-        self.logger.info(f"Updating lookup data for voice channel {channel.name}")
+        self.logger.info(f"Updating lookup data for voice channel '{channel.name}'")
         ups = p_insert(self.tb_voice_channels) \
                 .values(values) \
                 .on_conflict_do_update(

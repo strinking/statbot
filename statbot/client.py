@@ -111,15 +111,48 @@ class EventIngestionClient(discord.Client):
         if self.config['logger']['ignored-events']:
             self.logger.debug(message)
 
+    def _init_sql(self, trans):
+        self.logger.debug(f"Processing {len(self.users)} users...")
+        for user in self.users:
+            self.sql.upsert_user(trans, user)
+
+        self.logger.debug(f"Processing {len(self.guilds)} guilds...")
+        for guild in self.guilds:
+            self.sql.upsert_guild(trans, guild)
+
+            self.logger.debug(f"Processing {len(guild.channels)} channels...")
+            for channel in guild.channels:
+                if isinstance(channel, discord.VoiceChannel):
+                    self.sql.upsert_voice_channel(trans, channel)
+                else:
+                    self.sql.upsert_channel(trans, channel)
+
+            self.logger.debug(f"Processing {len(guild.roles)} roles...")
+            for role in guild.roles:
+                self.sql.upsert_role(trans, role)
+
+            self.logger.debug(f"Processing {len(guild.emojis)} emojis...")
+            # Emojis not ready yet
+            #for emoji in guild.emojis:
+            #    self.sql.upsert_emoji(trans, emoji)
+
     async def on_ready(self):
         # Print welcome string
         self.logger.info(f"Logged in as {self.user.name} ({self.user.id})")
         self.logger.info("Recording activity in the following guilds:")
         for id in self.config['guilds']:
-            self.logger.info(f"* {id}")
+            guild = self.get_guild(id)
+            self.logger.info(f"* {guild.name} ({id})")
 
         self.logger.info("Setting presence to invisible")
         self.change_presence(status=discord.Status.invisible)
+
+        self.logger.info("Initializing SQL lookup tables...")
+        with self.sql.transaction() as trans:
+            self._init_sql(trans)
+        if not trans.ok:
+            self.logger.error("Error in starter lookup transaction")
+            exit(1)
 
         # All done setting up
         self.logger.info("")
