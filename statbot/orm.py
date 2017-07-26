@@ -10,7 +10,7 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
-from sqlalchemy import BigInteger, Column, Table
+from sqlalchemy import BigInteger, Column, Integer, Table
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import relationship, mapper, sessionmaker
 import functools
@@ -61,16 +61,17 @@ class ORMHandler:
         # Channel history
         self.tb_channel_hist = Table('channel_hist', meta,
                 Column('channel_id', BigInteger,
-                    ForeignKey('channels.channel_id'), primary_key=True, key='cid'),
+                    ForeignKey('channels.channel_id'), primary_key=True),
                 Column('first_message_id', BigInteger,
-                    ForeignKey('messages.message_id'), nullable=True, key='first'))
+                    ForeignKey('messages.message_id'), nullable=True))
         self.tb_ranges_orm = Table('ranges_orm', meta,
+                Column('range_id', Integer, primary_key=True),
                 Column('channel_id', BigInteger,
-                    ForeignKey('channel_hist.channel_id', ondelete='CASCADE'), key='cid'),
+                    ForeignKey('channel_hist.channel_id', ondelete='CASCADE')),
                 Column('start_message_id', BigInteger,
-                    ForeignKey('messages.message_id', key='start')),
+                    ForeignKey('messages.message_id')),
                 Column('end_message_id', BigInteger,
-                    ForeignKey('messages.message_id'), key='end'))
+                    ForeignKey('messages.message_id')))
 
         mapper(MessageHistoryWrap, self.tb_channel_hist, properties={
             'ranges': relationship(RangeWrap,
