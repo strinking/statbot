@@ -21,7 +21,7 @@ from .util import null_logger
 Column = functools.partial(Column, nullable=False)
 
 __all__ = [
-    'DiscordHistoryORM',
+    'ORMHandler',
 ]
 
 class MessageHistoryWrap:
@@ -34,7 +34,7 @@ class MessageHistoryWrap:
     def __init__(self, cid, mhist):
         self.channel_id = cid
         self.first_message_id = mhist.first
-        self.ranges = mhist.ranges[:]
+        self.ranges = [RangeWrap(cid, range) for range in mhist.ranges]
 
 class RangeWrap:
     __slots__ = (
@@ -48,7 +48,7 @@ class RangeWrap:
         self.start_message_id = range.start
         self.end_message_id = range.end
 
-class DiscordHistoryORM:
+class ORMHandler:
     __slots__ = (
         'db',
         'session',
@@ -80,4 +80,14 @@ class DiscordHistoryORM:
             ),
         })
         mapper(RangeWrap, self.tb_ranges_orm)
+
+    def update_message_hist(self, channel, mhist):
+        self.logger.info(f"Updating message history for #{channel.name}: {mhist}")
+        mhist_wrap = MessageHistoryWrap(channel.id, mhist)
+
+        self.session.add(mhist_wrap)
+        self.session.commit()
+
+    def __del__(self):
+        self.session.close()
 

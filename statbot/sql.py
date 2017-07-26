@@ -18,7 +18,7 @@ import discord
 import functools
 import unicodedata
 
-from .orm import DiscordHistoryORM
+from .orm import ORMHandler
 from .util import embeds_to_json, get_emoji_id, get_null_id, null_logger
 
 Column = functools.partial(Column, nullable=False)
@@ -175,7 +175,7 @@ class DiscordSqlHandler:
                 Column('position', Integer))
 
         # History tables
-        self.hist_orm = DiscordHistoryORM(self.db, self.meta, self.logger)
+        self.orm = ORMHandler(self.db, self.meta, self.logger)
         self.tb_ranges_orm = hist_orm.tb_ranges_orm
         self.tb_channel_hist = hist_orm.tb_channel_hist
 
