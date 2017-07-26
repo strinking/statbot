@@ -51,17 +51,6 @@ class DiscordHistoryCrawler:
         self.progress = {} # {channel_id : MessageHistory}
         self.queue = asyncio.Queue(self.config['crawler']['queue-size'])
 
-        self._load()
-
-    def _load(self):
-        filename = self.config['serial']['filename']
-        if not os.path.exists(filename):
-            self.logger.warning(f"Progress file {filename} not found. Starting fresh.")
-            return
-
-        with open(filename, 'rb') as fh:
-            self.progress = pickle.load(fh)
-
     def _init_channels(self):
         for guild in self.client.guilds:
             if guild.id in self.config['guilds']:

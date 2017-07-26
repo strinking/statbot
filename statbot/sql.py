@@ -137,7 +137,7 @@ class DiscordSqlHandler:
                 Column('owner_id', BigInteger, ForeignKey('users.user_id')),
                 Column('name', Unicode),
                 Column('icon', String),
-                Column('region',  Enum(discord.VoiceRegion)),
+                Column('region', Enum(discord.VoiceRegion)),
                 Column('afk_channel_id', BigInteger,
                     ForeignKey('channels.channel_id'), nullable=True),
                 Column('afk_timeout', Integer),
