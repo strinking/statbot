@@ -164,6 +164,8 @@ class DiscordSqlHandler:
                 Column('is_default', Boolean),
                 Column('is_nsfw', Boolean),
                 Column('is_deleted', Boolean),
+                Column('position', Integer),
+                Column('topic', UnicodeText, nullable=True),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
         self.tb_users = Table('users', self.meta,
                 Column('user_id', BigInteger, primary_key=True),
@@ -250,6 +252,8 @@ class DiscordSqlHandler:
             'is_default': channel.is_default(),
             'is_nsfw': channel.is_nsfw(),
             'is_deleted': False,
+            'position': channel.position,
+            'topic': channel.topic,
             'guild_id': channel.guild.id,
         }
 
