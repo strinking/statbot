@@ -16,6 +16,7 @@ from sqlalchemy.orm import relationship, mapper, sessionmaker
 import functools
 
 from .message_history import MessageHistory
+from .range import Range
 from .util import null_logger
 
 Column = functools.partial(Column, nullable=False)
@@ -24,29 +25,24 @@ __all__ = [
     'ORMHandler',
 ]
 
-class MessageHistoryWrap:
+class MessageHistoryWrap(MessageHistory):
     __slots__ = (
-        'channel_id',
-        'first_message_id',
-        'ranges',
+        'cid',
     )
 
     def __init__(self, cid, mhist):
-        self.channel_id = cid
-        self.first_message_id = mhist.first
-        self.ranges = [RangeWrap(cid, range) for range in mhist.ranges]
+        super().__init__(*mhist.ranges)
+        self.first = mhist.first
+        self.cid = cid
 
-class RangeWrap:
+class RangeWrap(Range):
     __slots__ = (
-        'channel_id',
-        'start_message_id',
-        'end_message_id',
+        'cid',
     )
 
     def __init__(self, cid, range):
-        self.channel_id = cid
-        self.start_message_id = range.start
-        self.end_message_id = range.end
+        super().__init__(range.start, range.end)
+        self.cid = cid
 
 class ORMHandler:
     __slots__ = (
@@ -64,13 +60,19 @@ class ORMHandler:
         self.session = Session()
         self.logger = logger
 
+        # Channel history
         self.tb_channel_hist = Table('channel_hist', meta,
-                Column('channel_id', BigInteger, ForeignKey('channels.channel_id'), primary_key=True),
-                Column('first_message_id', BigInteger, ForeignKey('messages.message_id'), nullable=True))
+                Column('channel_id', BigInteger,
+                    ForeignKey('channels.channel_id'), primary_key=True, key='cid'),
+                Column('first_message_id', BigInteger,
+                    ForeignKey('messages.message_id'), nullable=True, key='first'))
         self.tb_ranges_orm = Table('ranges_orm', meta,
-                Column('channel_id', BigInteger, ForeignKey('channel_hist.channel_id'), ondelete='CASCADE'),
-                Column('start_message_id', BigInteger, ForeignKey('messages.message_id')),
-                Column('end_message_id', BigInteger, ForeignKey('messages.message_id')))
+                Column('channel_id', BigInteger,
+                    ForeignKey('channel_hist.channel_id'), ondelete='CASCADE', key='cid'),
+                Column('start_message_id', BigInteger,
+                    ForeignKey('messages.message_id', key='start')),
+                Column('end_message_id', BigInteger,
+                    ForeignKey('messages.message_id'), key='end'))
 
         mapper(MessageHistoryWrap, self.tb_channel_hist, properties={
             'ranges': relationship(RangeWrap,
