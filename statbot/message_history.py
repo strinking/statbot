@@ -21,9 +21,9 @@ class MessageHistory(MultiRange):
         'first',
     )
 
-    def __init__(self, *ranges):
+    def __init__(self, *ranges, first=None):
         super().__init__(*ranges)
-        self.first = None
+        self.first = first
 
     def find_first_hole(self, start):
         current = start

@@ -16,6 +16,7 @@ from sqlalchemy.orm import relationship, mapper, sessionmaker
 import functools
 
 from .message_history import MessageHistory
+from .range import Range
 from .util import null_logger
 
 Column = functools.partial(Column, nullable=False)
@@ -33,11 +34,17 @@ class MessageHistoryWrap:
         for range in mhist.ranges:
             self.ranges.append(RangeWrap(cid, range))
 
+    def unwrap(self):
+        return MessageHistory(*(range.unwrap() for range in self.ranges), first=self.first_message_id)
+
 class RangeWrap:
     def __init__(self, cid, range):
         self.channel_id = cid
         self.start_message_id = range.start
         self.end_message_id = range.end
+
+    def unwrap(self):
+        return Range(self.start_message_id, self.end_message_id)
 
 class ORMHandler:
     __slots__ = (
@@ -79,12 +86,38 @@ class ORMHandler:
         })
         mapper(RangeWrap, self.tb_ranges_orm)
 
+    def get_message_hist(self, channel):
+        self.logger.info(f"Getting message history for #{channel.name}")
+
+        mhist_wrap = self.session.query(MessageHistoryWrap) \
+                .filter(MessageHistoryWrap.channel_id == channel.id) \
+                .first()
+
+        if mhist_wrap is not None:
+            return mhist_wrap.unwrap()
+        else:
+            return None
+
     def update_message_hist(self, channel, mhist):
         self.logger.info(f"Updating message history for #{channel.name}: {mhist}")
         mhist_wrap = MessageHistoryWrap(channel.id, mhist)
 
         try:
             self.session.add(mhist_wrap)
+            self.session.commit()
+        except:
+            self.session.rollback()
+            raise
+
+    def delete_message_hist(self, channel):
+        self.logger.info(f"Deleting message history for #{channel.name}")
+
+        mhist_wrap = self.session.query(MessageHistoryWrap) \
+                .filter(MessageHistoryWrap.channel_id == channel.id) \
+                .first()
+
+        try:
+            self.session.delete(mhist_wrap)
             self.session.commit()
         except:
             self.session.rollback()

@@ -254,14 +254,14 @@ class MultiRange(AbstractRange):
     )
 
     def __init__(self, *ranges, _direct=None):
-        for range in ranges:
-            if not isinstance(range, Range):
-                raise TypeError(f"MultiRange only supports Range objects, not {type(range)!r}.")
-
         if _direct is None:
             self.ranges = sorted(ranges)
         else:
             self.ranges = _direct
+
+        for range in self.ranges:
+            if not isinstance(range, Range):
+                raise TypeError(f"MultiRange only supports Range objects, not {type(range)!r}.")
 
         self._merge()
 
