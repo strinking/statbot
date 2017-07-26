@@ -42,11 +42,11 @@ class EventIngestionClient(discord.Client):
 
     def run(self):
         # Override method to include the token from config
-        # Override function to include the token from config
         return super().run(self.config['token'])
 
     async def wait_until_ready(self):
         # Override wait method to wait until SQL data is also ready
+        # At least as long as "await super().wait_until_ready()"
         await self.ready.wait()
 
     async def _accept_message(self, message):
