@@ -33,7 +33,7 @@ class MessageHistory(MultiRange):
             current = range.min()
 
         if self.first is None or self.first < current:
-            return current
+            return min(start, current)
         else:
             return None
 

@@ -39,6 +39,9 @@ class TestFindFirstHole(unittest.TestCase):
         start = mhist.find_first_hole(35)
         self.assertEqual(start, 35)
 
+        start = mhist.find_first_hole(15)
+        self.assertEqual(start, 15)
+
         mhist = MessageHistory(Range(5, 9), Range(13, 20), Range(31, 38), Range(50, 52))
         start = mhist.find_first_hole(10)
         self.assertEqual(start, 10)
