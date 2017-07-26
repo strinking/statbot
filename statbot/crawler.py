@@ -160,11 +160,15 @@ class DiscordHistoryCrawler:
             self.queue.task_done()
 
     async def _channel_create_hook(self, channel):
-        if not self._channel_ok(channel):
+        if not self._channel_ok(channel) or channel.id in self.progress:
             return
 
         self.logger.info(f"Adding #{channel.name} to tracked channels")
-        self.progress.setdefault(channel.id, MultiRange())
+        mhist = MessageHistory()
+        self.progress[channel.id] = mhist
+
+        with self.sql.orm.transaction():
+            self.sql.orm.insert_message_hist(channel, mhist)
 
     async def _channel_delete_hook(self, channel):
         self.logger.info(f"Removing #{channel.name} from tracked channels")
@@ -175,8 +179,15 @@ class DiscordHistoryCrawler:
             return
 
         if self._channel_ok(after):
+            if channel.id in self.progress:
+                return
+
             self.logger.info(f"Updating #{channel.name} - adding to list")
-            self.progress.setdefault(channel.id, MultiRange())
+            mhist = MessageHistory()
+            self.progress[channel.id] = mhist
+
+            with self.sql.orm.transaction():
+                self.sql.orm.insert_message_hist(channel, mhist)
         else:
             self.logger.info(f"Updating #{channel.name} - removing from list")
             self.progress.pop(channel.id, None)
