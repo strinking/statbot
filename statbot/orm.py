@@ -26,18 +26,18 @@ __all__ = [
 
 class MessageHistoryWrap:
     def __init__(self, cid, mhist):
-        self.cid = cid
-        self.first = mhist.first
+        self.channel_id = cid
+        self.first_message_id = mhist.first
 
         # This isn't a list, it's a query object
         for range in mhist.ranges:
-            self.ranges.append(RangeWrap(range))
+            self.ranges.append(RangeWrap(cid, range))
 
 class RangeWrap:
     def __init__(self, cid, range):
-        self.cid = cid
-        self.start = range.start
-        self.end = range.end
+        self.channel_id = cid
+        self.start_message_id = range.start
+        self.end_message_id = range.end
 
 class ORMHandler:
     __slots__ = (
@@ -62,16 +62,13 @@ class ORMHandler:
         self.tb_channel_hist = Table('channel_hist', meta,
                 Column('channel_id', BigInteger,
                     ForeignKey('channels.channel_id'), primary_key=True),
-                Column('first_message_id', BigInteger,
-                    ForeignKey('messages.message_id'), nullable=True))
+                Column('first_message_id', BigInteger, nullable=True))
         self.tb_ranges_orm = Table('ranges_orm', meta,
-                Column('range_id', Integer, primary_key=True),
                 Column('channel_id', BigInteger,
-                    ForeignKey('channel_hist.channel_id', ondelete='CASCADE')),
-                Column('start_message_id', BigInteger,
-                    ForeignKey('messages.message_id')),
-                Column('end_message_id', BigInteger,
-                    ForeignKey('messages.message_id')))
+                    ForeignKey('channel_hist.channel_id', ondelete='CASCADE'),
+                    primary_key=True),
+                Column('start_message_id', BigInteger, primary_key=True),
+                Column('end_message_id', BigInteger))
 
         mapper(MessageHistoryWrap, self.tb_channel_hist, properties={
             'ranges': relationship(RangeWrap,
@@ -86,8 +83,12 @@ class ORMHandler:
         self.logger.info(f"Updating message history for #{channel.name}: {mhist}")
         mhist_wrap = MessageHistoryWrap(channel.id, mhist)
 
-        self.session.add(mhist_wrap)
-        self.session.commit()
+        try:
+            self.session.add(mhist_wrap)
+            self.session.commit()
+        except:
+            self.session.rollback()
+            raise
 
     def __del__(self):
         self.session.close()

@@ -93,10 +93,13 @@ class DiscordHistoryCrawler:
                     read = await self._read(channel, mhist)
                     if read:
                         all_empty = False
+                        self.sql.orm.update_message_hist(channel, mhist)
                 except Exception as ex:
                     if type(ex) == SystemExit:
                         raise ex
-                    self.logger.error(f"Error reading messages from channel id {cid}", exc_info=1)
+                    self.logger.error(f"Error reading (or syncing) messages from channel id {cid}", exc_info=1)
+
+            # Sleep before next cycle
             await asyncio.sleep(long_delay if all_empty else yield_delay)
 
     async def _read(self, channel, mhist):
