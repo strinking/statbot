@@ -13,6 +13,7 @@
 from sqlalchemy import BigInteger, Column, Integer, Table
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import relationship, mapper, sessionmaker
+import asyncio
 import functools
 
 from .message_history import MessageHistory
@@ -78,11 +79,12 @@ class _Transaction:
         self.logger = orm.logger
         self.ok = True
 
-    def __enter__(self):
+    async def __aenter__(self):
         self.logger.debug("Starting ORM transaction...")
+        await self.orm.lock.acquire()
         return self.orm
 
-    def __exit__(self, type, value, traceback):
+    async def __aexit__(self, type, value, traceback):
         if (type, value, traceback) == (None, None, None):
             self.logger.debug("Committing ORM transaction...")
             self.orm.session.commit()
@@ -91,11 +93,13 @@ class _Transaction:
             self.logger.debug("Rolling back ORM transaction...")
             self.ok = False
             self.orm.session.rollback()
+        self.orm.lock.release()
 
 class ORMHandler:
     __slots__ = (
         'db',
         'session',
+        'lock',
         'logger',
 
         'tb_channel_hist',
@@ -107,6 +111,7 @@ class ORMHandler:
 
         self.db = db
         self.session = Session()
+        self.lock = asyncio.Lock()
         self.logger = logger
 
         self.logger.info("Initializing ORMHandler...")

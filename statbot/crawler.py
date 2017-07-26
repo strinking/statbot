@@ -51,8 +51,8 @@ class DiscordHistoryCrawler:
         self.progress = {} # {channel_id : MessageHistory}
         self.queue = asyncio.Queue(self.config['crawler']['queue-size'])
 
-    def _init_channels(self):
-        with self.sql.orm.transaction():
+    async def _init_channels(self):
+        async with self.sql.orm.transaction():
             for guild in self.client.guilds:
                 if guild.id in self.config['guilds']:
                     for channel in guild.text_channels:
@@ -83,7 +83,7 @@ class DiscordHistoryCrawler:
 
         # Setup
         await self.client.wait_until_ready()
-        self._init_channels()
+        await self._init_channels()
 
         yield_delay = self.config['crawler']['yield-delay']
         long_delay = self.config['crawler']['long-delay']
@@ -136,7 +136,7 @@ class DiscordHistoryCrawler:
             self.logger.info(f"#{channel.name} has now been exhausted")
             mhist.first = earliest
 
-        with self.sql.orm.transaction():
+        async with self.sql.orm.transaction():
             self.sql.orm.update_message_hist(channel, mhist)
 
         return True
@@ -167,7 +167,7 @@ class DiscordHistoryCrawler:
         mhist = MessageHistory()
         self.progress[channel.id] = mhist
 
-        with self.sql.orm.transaction():
+        async with self.sql.orm.transaction():
             self.sql.orm.insert_message_hist(channel, mhist)
 
     async def _channel_delete_hook(self, channel):
