@@ -78,6 +78,7 @@ class DiscordSqlHandler:
         'tb_typing',
         'tb_pins',
         'tb_guilds',
+        'tb_voice_channels',
         'tb_channels',
         'tb_users',
         'tb_emojis',
@@ -89,6 +90,7 @@ class DiscordSqlHandler:
 
         'guild_cache',
         'channel_cache',
+        'voice_channel_cache',
         'user_cache',
         'emoji_cache',
         'role_cache',
@@ -139,14 +141,26 @@ class DiscordSqlHandler:
                 Column('icon', String),
                 Column('region', Enum(discord.VoiceRegion)),
                 Column('afk_channel_id', BigInteger,
-                    ForeignKey('channels.channel_id'), nullable=True),
+                    ForeignKey('voice_channels.voice_channel_id'), nullable=True),
                 Column('afk_timeout', Integer),
                 Column('mfa_level', Boolean),
                 Column('verification_level', Enum(discord.VerificationLevel)),
                 Column('explicit_content_filter', Enum(discord.ContentFilter)))
+        self.tb_voice_channels = Table('voice_channels', self.meta,
+                Column('voice_channel_id', BigInteger, primary_key=True),
+                Column('name', Unicode);
+                Column('is_default', Boolean),
+                Column('is_deleted', Boolean),
+                Column('position', Integer),
+                Column('bitrate', Integer),
+                Column('user_limit', Integer),
+                Column('changed_roles', Integer),
+                Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
         self.tb_channels = Table('channels', self.meta,
                 Column('channel_id', BigInteger, primary_key=True),
                 Column('name', String),
+                Column('is_default', Boolean),
+                Column('is_nsfw', Boolean),
                 Column('is_deleted', Boolean),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
         self.tb_users = Table('users', self.meta,
@@ -183,6 +197,7 @@ class DiscordSqlHandler:
         # Lookup caches
         self.guild_cache = {}
         self.channel_cache = {}
+        self.voice_channel_cache = {}
         self.user_cache = {}
         self.emoji_cache = {}
         self.role_cache = {}
@@ -230,7 +245,23 @@ class DiscordSqlHandler:
         return {
             'channel_id': channel.id,
             'name': channel.name,
+            'is_default': channel.is_default(),
+            'is_nsfw': channel.is_nsfw(),
             'is_deleted': False,
+            'guild_id': channel.guild.id,
+        }
+
+    @staticmethod
+    def _voice_channel_values(channel):
+        return {
+            'channel_id': channel.id,
+            'name': channel.name,
+            'is_default': channel.is_default(),
+            'is_deleted': False,
+            'position': channel.position,
+            'bitrate': channel.bitrate,
+            'user_limit': channel.user_limit,
+            'changed_roles': len(channel.changed_roles),
             'guild_id': channel.guild.id,
         }
 
@@ -530,7 +561,7 @@ class DiscordSqlHandler:
             self.upsert_channel(trans, channel)
 
     def remove_channel(self, trans, channel):
-        self.logger.info(f"Deleting channel {channel.id} in guild {guild.id}")
+        self.logger.info(f"Deleting channel {channel.id} in guild {channel.guild.id}")
         upd = self.tb_channels \
                 .update() \
                 .values(is_deleted=True) \
@@ -554,6 +585,62 @@ class DiscordSqlHandler:
                 )
         trans.execute(ups)
         self.channel_cache[channel.id] = values
+
+    # Voice Channels
+    def add_voice_channel(self, trans, channel):
+        if channel in self.voice_channel_cache:
+            self.logger.debug(f"Voice channel {channel.id} already inserted")
+            return
+
+        self.logger.info("Inserting new voice channel {channel.id} for guild {channel.guild.id}")
+        values = self._voice_channel_values(channel)
+        ins = self.tb_voice_channels \
+                .insert() \
+                .values(values)
+        trans.execute(ins)
+        self.voice_channel_cache[channel.id] = values
+
+    def _update_voice_channel(self, trans, channel):
+        self.logger.info(f"Updating voice channel {channel.id} in guild {channel.guild.id}")
+        values = self._voice_channel_values(channel)
+        upd = self.tb_voice_channels \
+                .update() \
+                .where(self.tb_voice_channels.c.voice_channel_id == channel.id) \
+                .values(values)
+        trans.execute(upd)
+        self.voice_channel_cache[channel.id] = values
+
+    def update_voice_channel(self, trans, channel):
+        if channel.id in self.void_channel_cache:
+            self._update_voice_channel(trans, channel)
+        else:
+            self.upsert_channel(trans, channel)
+
+    def remove_voice_channel(self, trans, channel):
+        self.logger.info(f"Deleting voice channel {channel.id} in guild {channel.guild.id}")
+        upd = self.tb_voice_channels \
+                .update() \
+                .values(is_deleted=True) \
+                .where(self.tb_voice_channels.c.voice_channel_id == channel.id)
+        trans.execute(upd)
+        self.voice_channel_cache.pop(channel.id, None)
+
+    def upsert_voice_channel(self, trans, channel):
+        values = self._voice_channel_values(channel)
+        if self.voice_channel_cache(channel.id) == values:
+            self.logger.debug(f"Voice channel lookup for {channel.id} is already up-to-date")
+            return
+
+        self.logger.info(f"Updating lookup data for voice channel {channel.name}")
+        ups = p_insert(self.tb_voice_channels) \
+                .values(values) \
+                .on_conflict_do_update(
+                        index_elements=['voice_channel_id'],
+                        index_where=(self.tb_voice_channels.c.voice_channel_id == channel.id),
+                        set_=values,
+                )
+        trans.execute(ups)
+        self.voice_channel_cache[channel.id] = values
 
     # Users
     def add_user(self, trans, user):

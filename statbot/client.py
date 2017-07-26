@@ -203,8 +203,13 @@ class EventIngestionClient(discord.Client):
         if not await self._accept_channel(channel):
             return
 
-        self.logger.info(f"Channel #{channel.name} created in {channel.guild.name}")
+        if isinstance(channel, discord.VoiceChannel):
+            self.logger.info(f"Voice channel {channel.name} deleted in {channel.guild.name}")
+            with self.sql.transaction() as trans:
+                self.sql.add_voice_channel(trans, channel)
+            return
 
+        self.logger.info(f"Channel #{channel.name} created in {channel.guild.name}")
         with self.sql.transaction() as trans:
             self.sql.add_channel(trans, channel)
 
@@ -218,8 +223,13 @@ class EventIngestionClient(discord.Client):
         if not await self._accept_channel(channel):
             return
 
-        self.logger.info(f"Channel #{channel.name} deleted in {channel.guild.name}")
+        if isinstance(channel, discord.VoiceChannel):
+            self.logger.info(f"Voice channel {channel.name} deleted in {channel.guild.name}")
+            with self.sql.transaction() as trans:
+                self.sql.remove_voice_channel(trans, channel)
+            return
 
+        self.logger.info(f"Channel #{channel.name} deleted in {channel.guild.name}")
         with self.sql.transaction() as trans:
             self.sql.remove_channel(trans, channel)
 
@@ -237,6 +247,13 @@ class EventIngestionClient(discord.Client):
             changed = f' (now {after.name})'
         else:
             changed = ''
+
+        if isinstance(channel, discord.VoiceChannel):
+            self.logger.info("Voice channel {before.name}{changed} was changed in {after.guild.name}")
+            with self.sql.transaction() as trans:
+                self.sql.update_voice_channel(trans, channel)
+            return
+
         self.logger.info(f"Channel #{before.name}{changed} was changed in {after.guild.name}")
 
         with self.sql.transaction() as trans:
