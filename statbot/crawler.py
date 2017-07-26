@@ -52,18 +52,19 @@ class DiscordHistoryCrawler:
         self.queue = asyncio.Queue(self.config['crawler']['queue-size'])
 
     def _init_channels(self):
-        for guild in self.client.guilds:
-            if guild.id in self.config['guilds']:
-                for channel in guild.text_channels:
-                    if channel.permissions_for(guild.me).read_message_history:
-                        self.channels[channel.id] = channel
-                        mhist = self.sql.orm.lookup_message_hist(channel)
+        with self.sql.orm.transaction():
+            for guild in self.client.guilds:
+                if guild.id in self.config['guilds']:
+                    for channel in guild.text_channels:
+                        if channel.permissions_for(guild.me).read_message_history:
+                            self.channels[channel.id] = channel
+                            mhist = self.sql.orm.lookup_message_hist(channel)
 
-                        if mhist is None:
-                            mhist = MessageHistory()
-                            self.sql.orm.insert_message_hist(channel, mhist)
+                            if mhist is None:
+                                mhist = MessageHistory()
+                                self.sql.orm.insert_message_hist(channel, mhist)
 
-                        self.progress[channel.id] = mhist
+                            self.progress[channel.id] = mhist
 
         for channel in set(self.progress.keys()) - set(self.channels.keys()):
             del self.progress[channel.id]
@@ -99,7 +100,6 @@ class DiscordHistoryCrawler:
                     read = await self._read(channel, mhist)
                     if read:
                         all_empty = False
-                        self.sql.orm.update_message_hist(channel, mhist)
                 except Exception as ex:
                     if type(ex) == SystemExit:
                         raise ex
@@ -131,6 +131,10 @@ class DiscordHistoryCrawler:
             # This channel has been exhausted
             self.logger.info(f"#{channel.name} has now been exhausted")
             mhist.first = earliest
+
+        with self.sql.orm.transaction():
+            self.sql.orm.update_message_hist(channel, mhist)
+
         return True
 
     async def consumer(self):

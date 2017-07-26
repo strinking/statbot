@@ -66,6 +66,32 @@ class RangeWrap:
     def unwrap(self):
         return Range(self.start_message_id, self.end_message_id)
 
+class _Transaction:
+    __slots__ = (
+        'orm',
+        'logger',
+        'ok',
+    )
+
+    def __init__(self, orm):
+        self.orm = orm
+        self.logger = orm.logger
+        self.ok = True
+
+    def __enter__(self):
+        self.logger.debug("Starting ORM transaction...")
+        return self.orm
+
+    def __exit__(self, type, value, traceback):
+        if (type, value, traceback) == (None, None, None):
+            self.logger.debug("Committing ORM transaction...")
+            self.orm.session.commit()
+        else:
+            self.logger.error("Exception occurred in 'with' scope!")
+            self.logger.debug("Rolling back ORM transaction...")
+            self.ok = False
+            self.orm.session.rollback()
+
 class ORMHandler:
     __slots__ = (
         'db',
@@ -106,6 +132,9 @@ class ORMHandler:
         })
         mapper(RangeWrap, self.tb_ranges_orm)
 
+    def transaction(self):
+        return _Transaction(self)
+
     def _lookup_message_hist(self, channel):
         self.logger.info(f"Looking up message history for #{channel.name}")
 
@@ -124,24 +153,13 @@ class ORMHandler:
     def insert_message_hist(self, channel, mhist):
         self.logger.info(f"Inserting message history for #{channel.name}: {mhist}")
         mhist_wrap = MessageHistoryWrap(channel.id, mhist)
-
-        try:
-            self.session.add(mhist_wrap)
-            self.session.commit()
-        except:
-            self.session.rollback()
-            raise
+        self.session.add(mhist_wrap)
 
     def update_message_hist(self, channel, mhist):
         self.logger.info(f"Updating message history for #{channel.name}: {mhist}")
         mhist_wrap = self._lookup_message_hist(channel)
+        assert mhist_wrap is not None
         mhist_wrap.assign(mhist)
-
-        try:
-            self.session.commit()
-        except:
-            self.sesion.rollback()
-            raise
 
     def delete_message_hist(self, channel):
         self.logger.info(f"Deleting message history for #{channel.name}")
@@ -149,13 +167,7 @@ class ORMHandler:
         mhist_wrap = self.session.query(MessageHistoryWrap) \
                 .filter(MessageHistoryWrap.channel_id == channel.id) \
                 .first()
-
-        try:
-            self.session.delete(mhist_wrap)
-            self.session.commit()
-        except:
-            self.session.rollback()
-            raise
+        self.session.delete(mhist_wrap)
 
     def __del__(self):
         self.session.close()
