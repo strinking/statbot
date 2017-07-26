@@ -373,7 +373,7 @@ class DiscordSqlHandler:
         trans.execute(upd)
 
     def insert_message(self, trans, message):
-        self.logger.info(f"Inserting message {message.id}")
+        self.logger.debug(f"Inserting message {message.id}")
         values = self._message_values(message)
         ins = p_insert(self.tb_messages) \
                 .values(values) \
