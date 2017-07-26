@@ -33,7 +33,7 @@ class EventIngestionClient(discord.Client):
         self.config = config
         self.logger = logger
         self.sql = sql
-        self.ready = False
+        self.ready = asyncio.Event()
         self.hooks = {
             'on_guild_channel_create': None,
             'on_guild_channel_delete': None,
@@ -45,10 +45,8 @@ class EventIngestionClient(discord.Client):
         return super().run(self.config['token'])
 
     async def wait_until_ready(self):
-        # Override wait method to wait until _ready is set too
-        await super().wait_until_ready()
-        while not self.ready:
-            await asyncio.sleep(0)
+        # Override wait method to wait until SQL data is also ready
+        await self.ready.wait()
 
     async def _accept_message(self, message):
         await self.wait_until_ready()
@@ -163,7 +161,7 @@ class EventIngestionClient(discord.Client):
         # All done setting up
         self.logger.info("")
         self.logger.info("Ready!")
-        self.ready = True
+        self.ready.set()
 
     async def on_message(self, message):
         self._log_ignored(f"Message id {message.id} created")

@@ -107,7 +107,7 @@ class DiscordHistoryCrawler:
 
             # Sleep before next cycle
             if all_empty:
-                self.logger.debug("All channels are exhausted, sleeping for a while...")
+                self.logger.info("All channels are exhausted, sleeping for a while...")
                 delay = long_delay
             else:
                 delay = yield_delay
