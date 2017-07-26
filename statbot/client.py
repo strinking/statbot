@@ -10,19 +10,21 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
+import asyncio
 import discord
+
+from .util import get_emoji_name, null_logger
 
 __all__ = [
     'EventIngestionClient',
 ]
-
-from .util import get_emoji_name, null_logger
 
 class EventIngestionClient(discord.Client):
     __slots__ = (
         'config',
         'logger',
         'sql',
+        'ready',
         'hooks',
     )
 
@@ -31,6 +33,7 @@ class EventIngestionClient(discord.Client):
         self.config = config
         self.logger = logger
         self.sql = sql
+        self.ready = False
         self.hooks = {
             'on_guild_channel_create': None,
             'on_guild_channel_delete': None,
@@ -38,8 +41,14 @@ class EventIngestionClient(discord.Client):
         }
 
     def run(self):
-        # Override function to include the token from config
+        # Override method to include the token from config
         return super().run(self.config['token'])
+
+    async def wait_until_ready(self):
+        # Override wait method to wait until _ready is set too
+        await super().wait_until_ready()
+        while not self.ready:
+            await asyncio.sleep(0)
 
     async def _accept_message(self, message):
         await self.wait_until_ready()
@@ -150,13 +159,11 @@ class EventIngestionClient(discord.Client):
         self.logger.info("Initializing SQL lookup tables...")
         with self.sql.transaction() as trans:
             self._init_sql(trans)
-        if not trans.ok:
-            self.logger.error("Error in starter lookup transaction")
-            exit(1)
 
         # All done setting up
         self.logger.info("")
         self.logger.info("Ready!")
+        self.ready = True
 
     async def on_message(self, message):
         self._log_ignored(f"Message id {message.id} created")
