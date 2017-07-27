@@ -38,8 +38,7 @@ class EventIngestionClient(discord.Client):
         self.sql = DiscordSqlHandler(config['url'], sql_logger)
         self.ready = False
 
-    def run(self):
-        # Override function to include the token from config
+    def run_with_token(self):
         return super().run(self.config['token'])
 
     def _accept_message(self, message):

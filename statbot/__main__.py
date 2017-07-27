@@ -100,5 +100,4 @@ if __name__ == '__main__':
     main_logger.info("Setting up bot")
     client = EventIngestionClient(config, event_logger, sql_logger=sql_logger)
     main_logger.info("Starting bot, waiting for discord.py...")
-    client.run()
-
+    client.run_with_token()
