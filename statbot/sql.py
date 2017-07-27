@@ -17,7 +17,7 @@ import discord
 from sqlalchemy import create_engine, and_
 from sqlalchemy import ARRAY, Boolean, BigInteger, Column, DateTime, Enum
 from sqlalchemy import Integer, String, Table, Unicode, UnicodeText
-from sqlalchemy import ForeignKey, Index, MetaData
+from sqlalchemy import ForeignKey, MetaData, UniqueConstraint
 from sqlalchemy.dialects.postgresql import insert as p_insert
 
 from .orm import ORMHandler
@@ -28,10 +28,6 @@ Column = functools.partial(Column, nullable=False)
 __all__ = [
     'DiscordSqlHandler',
 ]
-
-def make_index(name, table, attributes, **kwargs):
-    columns = (getattr(table.c, attr) for attr in attributes)
-    return Index(name, *columns, **kwargs)
 
 class _Transaction:
     __slots__ = (
@@ -136,16 +132,14 @@ class DiscordSqlHandler:
                 Column('emoji_id', BigInteger, ForeignKey('emojis.emoji_id')),
                 Column('user_id', BigInteger, ForeignKey('users.user_id')),
                 Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
-                Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
-        make_index('reaction_idx', self.tb_reactions,
-                ('message_id', 'emoji_id', 'user_id'), unique=True)
+                Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
+                UniqueConstraint('message_id', 'emoji_id', 'user_id', name='uq_reaction'))
         self.tb_typing = Table('typing', self.meta,
                 Column('timestamp', DateTime),
                 Column('user_id', BigInteger, ForeignKey('users.user_id')),
                 Column('channel_id', BigInteger, ForeignKey('channels.user_id')),
-                Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
-        make_index('typing_idx', self.tb_typing,
-                ('timestamp', 'user_id', 'channel_id'), unique=True)
+                Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
+                UniqueConstraint('timestamp', 'user_id', 'channel_id', name='uq_typing'))
         self.tb_pins = Table('pins', self.meta,
                 Column('pin_id', BigInteger, primary_key=True),
                 Column('message_id', BigInteger,
@@ -201,15 +195,13 @@ class DiscordSqlHandler:
                     ForeignKey('users.user_id'), primary_key=True),
                 Column('guild_id', BigInteger,
                     ForeignKey('guilds.guild_id'), primary_key=True),
-                Column('nickname', Unicode(32), nullable=True))
-        make_index('nickname_idx', self.tb_nicknames,
-                ('user_id', 'guild_id'), unique=True)
+                Column('nickname', Unicode(32), nullable=True),
+                UniqueConstraint('user_id', 'guild_id', name='uq_nickname'))
         self.tb_role_membership = Table('role_membership', self.meta,
                 Column('role_id', BigInteger, ForeignKey('roles.role_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
-                Column('user_id', BigInteger, ForeignKey('users.user_id')))
-        make_index('role_membership_idx', self.tb_role_membership,
-                ('role_id', 'user_id'), unique=True)
+                Column('user_id', BigInteger, ForeignKey('users.user_id')),
+                UniqueConstraint('role_id', 'user_id', name='uq_role_membership'))
         self.tb_emojis = Table('emojis', self.meta,
                 Column('emoji_id', BigInteger, primary_key=True),
                 Column('name', String),
@@ -798,13 +790,11 @@ class DiscordSqlHandler:
 
     def upsert_member(self, trans, member):
         self.logger.info(f"Upserting member data for {member.id}")
-        values = {
-            'nickname': member.nick,
-        }
+        values = self._nick_values(member)
         ups = p_insert(self.tb_nicknames) \
                 .values(values) \
                 .on_conflict_do_update(
-                        constraint='reaction_idx',
+                        constraint='uq_nickname',
                         set_=values,
                 )
         trans.execute(ups)
