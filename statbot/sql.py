@@ -145,9 +145,11 @@ class DiscordSqlHandler:
                 Column('region', Enum(discord.VoiceRegion)),
                 Column('afk_channel_id', BigInteger, nullable=True),
                 Column('afk_timeout', Integer),
-                Column('mfa_level', Boolean),
+                Column('mfa', Boolean),
                 Column('verification_level', Enum(discord.VerificationLevel)),
-                Column('explicit_content_filter', Enum(discord.ContentFilter)))
+                Column('explicit_content_filter', Enum(discord.ContentFilter)),
+                Column('features', ARRAY(String)),
+                Column('splash', String))
         self.tb_voice_channels = Table('voice_channels', self.meta,
                 Column('voice_channel_id', BigInteger, primary_key=True),
                 Column('name', Unicode),
@@ -225,9 +227,11 @@ class DiscordSqlHandler:
             'region': guild.region,
             'afk_channel_id': get_null_id(guild.afk_channel),
             'afk_timeout': guild.afk_timeout,
-            'mfa_level': bool(guild.mfa_level),
+            'mfa': bool(guild.mfa_level),
             'verification_level': guild.verification_level,
             'explicit_content_filter': guild.explicit_content_filter,
+            'features': guild.features,
+            'splash': guild.splash,
         }
 
     @staticmethod
