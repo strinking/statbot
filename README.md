@@ -17,11 +17,8 @@ Available under the terms of the MIT License.
 
 You can install them all using pip by running:
 ```sh
-pip3 install -U 'git+https://github.com/Rapptz/discord.py@rewrite#egg=discord.py[voice]'
-pip3 install -U SQLAlchemy psycopg2
+pip3 install -r requirements.txt
 ```
-
-Since discord.py 1.0.0 is not in the pip repos, you cannot use the `requirements.txt` file as-is.
 
 ### Testing
 You can run the test suite by invoking the following from the command line:

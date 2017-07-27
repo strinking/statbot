@@ -16,7 +16,6 @@ __all__ = [
     'get_null_id',
     'get_emoji_name',
     'get_emoji_id',
-    'plural',
     'embeds_to_json',
     'null_logger',
 ]
@@ -38,7 +37,7 @@ def get_emoji_name(emoji):
     itself if it's a unicode emoji.
     '''
 
-    if type(emoji) == str:
+    if isinstance(emoji, str):
         return emoji
     else:
         return emoji.name
@@ -49,7 +48,7 @@ def get_emoji_id(emoji):
     emoji. The id of a unicode emoji is its code point.
     '''
 
-    if type(emoji) == str:
+    if isinstance(emoji, str):
         return ord(emoji)
     else:
         return emoji.id
@@ -57,34 +56,22 @@ def get_emoji_id(emoji):
 def embeds_to_json(embeds):
     return json.dumps([embed.to_dict() for embed in embeds])
 
-def plural(x, suffix='s'):
-    '''
-    Assists in human-readable messages with plurals
-    by returning the suffix if the value is not 1.
-    '''
-
-    if x == 1:
-        return ''
-    else:
-        return suffix
-
 class _NullLogger:
     __slots__ = ()
 
     def __init__(self):
         pass
 
-    def debug(*args, **kwargs):
+    def debug(self, *args, **kwargs):
         pass
 
-    def info(*args, **kwargs):
+    def info(self, *args, **kwargs):
         pass
 
-    def warning(*args, **kwargs):
+    def warning(self, *args, **kwargs):
         pass
 
-    def error(*args, **kwargs):
+    def error(self, *args, **kwargs):
         pass
 
 null_logger = _NullLogger()
-

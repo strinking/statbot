@@ -24,24 +24,23 @@ def is_string_or_null(obj):
     is of type str or is None.
     '''
 
-    return type(obj) == str or \
-            obj is None
+    return isinstance(obj, str) or obj is None
 
 def is_int_list(obj):
-    if type(obj) != list:
+    if not isinstance(obj, list):
         return False
 
     for item in obj:
-        if type(item) != int:
+        if not isinstance(item, int):
             return False
     return True
 
 def is_string_list(obj):
-    if type(obj) != list:
+    if not isinstance(obj, list):
         return False
 
     for item in obj:
-        if type(item) != str:
+        if not isinstance(item, str):
             return False
     return True
 
@@ -55,10 +54,10 @@ def check(cfg, logger=null_logger):
         if not is_int_list(cfg['guilds']):
             logger.error("Configuration field 'guilds' is not an int list")
             return False
-        if type(cfg['token']) != str:
+        if not isinstance(cfg['token'], str):
             logger.error("Configuration field 'token' is not a string")
             return False
-        if type(cfg['url']) != str:
+        if not isinstance(cfg['url'], str):
             logger.error("Configuration field 'url' is not a string")
             return False
 
@@ -111,4 +110,3 @@ def load_config(fn, logger=null_logger):
     with open(fn, 'r') as fh:
         obj = json.load(fh)
     return obj, check(obj, logger)
-

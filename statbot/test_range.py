@@ -10,8 +10,9 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
-from .range import *
 import unittest
+
+from .range import AbstractRange, Range, MultiRange, NullRange, NULL_RANGE
 
 class TestMisc(unittest.TestCase):
     def test_equals(self):
@@ -313,4 +314,3 @@ class TestMultiRange(unittest.TestCase):
 
         m.add(Range(28, 30))
         self.assertEqual(m, MultiRange(Range(0, 9), Range(13, 16), Range(20, 24), Range(28, 30)))
-

@@ -11,8 +11,6 @@
 #
 
 import argparse
-import asyncio
-import json
 import logging
 import os
 import sys
@@ -21,11 +19,9 @@ from .client import EventIngestionClient
 from .config import load_config
 from .crawler import DiscordHistoryCrawler
 from .sql import DiscordSqlHandler
-from .util import plural
 
 __all__ = [
     'LOG_FILE',
-    'LOG_TO_STDOUT',
     'LOG_FILE_MODE',
 ]
 
@@ -116,5 +112,4 @@ if __name__ == '__main__':
     crawler.start()
 
     # Start main loop
-    client.run()
-
+    client.run_with_token()

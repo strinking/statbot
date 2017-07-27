@@ -70,6 +70,9 @@ class DiscordSqlHandler:
     process them into the SQL database accordingly.
     '''
 
+    # disable because we get false positives for dml in sqlalchemy insert/delete
+    # pylint: disable=no-value-for-parameter
+
     __slots__ = (
         'db',
         'meta',
@@ -287,7 +290,7 @@ class DiscordSqlHandler:
 
     @staticmethod
     def _emoji_values(emoji):
-        if type(emoji) == str:
+        if isinstance(emoji, str):
             return {
                 'emoji_id': ord(emoji),
                 'name': unicodedata.name(emoji),
@@ -424,11 +427,12 @@ class DiscordSqlHandler:
         self.logger.info(f"Deleting all reactions on message {message.id}")
         delet = self.tb_reactions \
                 .delete() \
-                .where(self.tb_reactions.c.message_id == reaction.message.id)
+                .where(self.tb_reactions.c.message_id == message.id)
         trans.execute(delet)
 
     # Pins (TODO)
     def add_pin(self, trans, announce, message):
+        # pylint: disable=unreachable
         raise NotImplementedError
 
         self.logger.info(f"Inserting pin for message {message.id}")
@@ -445,6 +449,7 @@ class DiscordSqlHandler:
         trans.execute(ins)
 
     def remove_pin(self, trans, announce, message):
+        # pylint: disable=unreachable
         raise NotImplementedError
 
         self.logger.info(f"Deleting pin for message {message.id}")
@@ -516,7 +521,7 @@ class DiscordSqlHandler:
             self.logger.debug(f"Channel {channel.id} already inserted.")
             return
 
-        self.logger.info(f"Inserting new channel {channel.id} for guild {guild.id}")
+        self.logger.info(f"Inserting new channel {channel.id} for guild {channel.guild.id}")
         values = self._channel_values(channel)
         ins = self.tb_channels \
                 .insert() \
@@ -679,6 +684,7 @@ class DiscordSqlHandler:
 
     # Emojis (TODO)
     def add_emoji(self, trans, emoji):
+        # pylint: disable=unreachable
         raise NotImplementedError
 
         values = self._emoji_values(emoji)
@@ -690,11 +696,12 @@ class DiscordSqlHandler:
         self.logger.info(f"Inserting emoji {id}")
         ins = self.tb_emojis \
                 .insert() \
-                .values(value)
+                .values(id)
         trans.execute(ins)
         self.emoji_cache[id] = values
 
     def remove_emoji(self, trans, emoji):
+        # pylint: disable=unreachable
         raise NotImplementedError
 
         id = get_emoji_id(emoji)
@@ -707,6 +714,7 @@ class DiscordSqlHandler:
         self.emoji_cache.pop(id, None)
 
     def upsert_emoji(self, trans, emoji):
+        # pylint: disable=unreachable
         raise NotImplementedError
 
         values = self._emoji_values(emoji)
@@ -724,4 +732,3 @@ class DiscordSqlHandler:
                     )
         trans.execute(ups)
         self.emoji_cache[id] = values
-

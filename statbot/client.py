@@ -40,9 +40,8 @@ class EventIngestionClient(discord.Client):
             'on_guild_channel_update': None,
         }
 
-    def run(self):
-        # Override method to include the token from config
-        return super().run(self.config['token'])
+    def run_with_token(self):
+        return self.run(self.config['token'])
 
     async def wait_until_ready(self):
         # Override wait method to wait until SQL data is also ready
@@ -395,4 +394,3 @@ class EventIngestionClient(discord.Client):
                 self.sql.add_emoji(trans, emoji)
             for emoji in before - after:
                 self.sql.remove_emoji(trans, emoji)
-
