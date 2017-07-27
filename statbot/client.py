@@ -39,7 +39,7 @@ class EventIngestionClient(discord.Client):
         self.ready = False
 
     def run_with_token(self):
-        return super().run(self.config['token'])
+        return self.run(self.config['token'])
 
     def _accept_message(self, message):
         if not self.ready:
