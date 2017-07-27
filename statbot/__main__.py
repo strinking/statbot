@@ -12,7 +12,6 @@
 
 import argparse
 import logging
-import os
 import sys
 
 from .client import EventIngestionClient

@@ -9,6 +9,7 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
+from numbers import Number
 import json
 
 from .util import null_logger
@@ -50,6 +51,7 @@ def check(cfg, logger=null_logger):
     the correct fields and types.
     '''
 
+    # pylint: disable=too-many-return-statements
     try:
         if not is_int_list(cfg['guilds']):
             logger.error("Configuration field 'guilds' is not an int list")
@@ -61,33 +63,36 @@ def check(cfg, logger=null_logger):
             logger.error("Configuration field 'url' is not a string")
             return False
 
-        if type(cfg.get('logger')) != dict:
+        if not isinstance(cfg.get('logger'), dict):
             logger.warning("Populating configuration field 'logger' with defaults")
             cfg['logger'] = {
                 'full-messages': False,
                 'ignored-events': False,
             }
 
-        if type(cfg['logger']['full-messages']) != bool:
+        if not isinstance(cfg['logger']['full-messages'], bool):
             logger.error("Configuration field 'logger.full-messages' is not a bool")
             return False
-        if type(cfg['logger']['ignored-events']) != bool:
+        if not isinstance(cfg['logger']['ignored-events'], bool):
             logger.error("Configuration field 'logger.ignored-events' is not a bool")
             return False
 
-        if type(cfg.get('crawler')) != dict:
+        if not isinstance(cfg.get('crawler'), dict):
             logger.error("Configuration field 'crawler' not an object")
             return False
-        if type(cfg['crawler']['batch-size']) not in (float, int):
+        if not isinstance(cfg['crawler']['batch-size'], Number):
             logger.error("Configuration field 'crawler.batch-size' is not a number")
             return False
-        if type(cfg['crawler']['yield-delay']) not in (float, int):
+        if cfg['crawler']['batch-size'] <= 0:
+            logger.error("Configuration field 'crawler.batch-size' is zero or negative")
+            return False
+        if not isinstance(cfg['crawler']['yield-delay'], Number):
             logger.error("Configuration field 'crawler.yield-delay' is not a number")
             return False
         if cfg['crawler']['yield-delay'] <= 0:
             logger.error("Configuration field 'crawler.yield-delay' is zero or negative")
             return False
-        if type(cfg['crawler']['long-delay']) not in (float, int):
+        if not isinstance(cfg['crawler']['long-delay'], Number):
             logger.error("Configuration field 'crawler.long-delay' is not a number")
             return False
         if cfg['crawler']['long-delay'] <= 0:

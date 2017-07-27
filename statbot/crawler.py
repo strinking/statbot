@@ -13,7 +13,6 @@
 from datetime import datetime
 import asyncio
 import discord
-import os
 
 from .message_history import MessageHistory
 from .range import Range
@@ -36,11 +35,6 @@ class DiscordHistoryCrawler:
         'progress',
         'queue',
     )
-
-    @staticmethod
-    def _channel_ok(channel):
-        return channel.guild.id in self.config['guilds'] \
-                and channel.permissions_for(channel.guild.me).read_message_history
 
     def __init__(self, client, sql, config, logger=null_logger):
         self.client = client
@@ -100,7 +94,7 @@ class DiscordHistoryCrawler:
                     mhist = self.progress[cid]
                     all_empty &= not await self._read(channel, mhist)
                 except Exception as ex:
-                    if type(ex) == SystemExit:
+                    if isinstance(ex, SystemExit):
                         raise ex
                     self.logger.error(f"Error reading (or syncing) messages from channel id {cid}", exc_info=1)
 
@@ -127,7 +121,8 @@ class DiscordHistoryCrawler:
 
         earliest = messages[-1].id
         messages = list(filter(lambda m: m.id not in mhist, messages))
-        if messages: await self.queue.put(messages)
+        if messages:
+            await self.queue.put(messages)
         self.logger.info(f"Queued {len(messages)} messages for ingestion")
         mhist.add(Range(earliest, start_id))
 
@@ -153,7 +148,7 @@ class DiscordHistoryCrawler:
                     for message in messages:
                         self.sql.insert_message(trans, message)
             except Exception as ex:
-                if type(ex) == SystemExit:
+                if isinstance(ex, SystemExit):
                     raise ex
                 self.logger.error(f"Error writing message id {message.id}", exc_info=1)
 
@@ -179,16 +174,19 @@ class DiscordHistoryCrawler:
             return
 
         if self._channel_ok(after):
-            if channel.id in self.progress:
+            if after.id in self.progress:
                 return
 
-            self.logger.info(f"Updating #{channel.name} - adding to list")
+            self.logger.info(f"Updating #{after.name} - adding to list")
             mhist = MessageHistory()
-            self.progress[channel.id] = mhist
+            self.progress[after.id] = mhist
 
             with self.sql.orm.transaction():
-                self.sql.orm.insert_message_hist(channel, mhist)
+                self.sql.orm.insert_message_hist(after, mhist)
         else:
-            self.logger.info(f"Updating #{channel.name} - removing from list")
-            self.progress.pop(channel.id, None)
+            self.logger.info(f"Updating #{after.name} - removing from list")
+            self.progress.pop(after.id, None)
 
+    def _channel_ok(self, channel):
+        return channel.guild.id in self.config['guilds'] \
+                and channel.permissions_for(channel.guild.me).read_message_history

@@ -10,9 +10,9 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
+import unittest
 from .message_history import MessageHistory
 from .range import Range
-import unittest
 
 class TestFindFirstHole(unittest.TestCase):
     def test_empty(self):
@@ -70,4 +70,3 @@ class TestFindFirstHole(unittest.TestCase):
 
         start = mhist.find_first_hole(22)
         self.assertEqual(start, 13)
-

@@ -251,6 +251,7 @@ class EventIngestionClient(discord.Client):
         with self.sql.transaction() as trans:
             self.sql.add_channel(trans, channel)
 
+        # pylint: disable=not-callable
         hook = self.hooks['on_guild_channel_create']
         if hook:
             self.logger.debug(f"Found hook {hook!r}, calling it")
@@ -271,6 +272,7 @@ class EventIngestionClient(discord.Client):
         with self.sql.transaction() as trans:
             self.sql.remove_channel(trans, channel)
 
+        # pylint: disable=not-callable
         hook = self.hooks['on_guild_channel_delete']
         if hook:
             self.logger.debug(f"Found hook {hook!r}, calling it")
@@ -286,10 +288,10 @@ class EventIngestionClient(discord.Client):
         else:
             changed = ''
 
-        if isinstance(channel, discord.VoiceChannel):
+        if isinstance(after, discord.VoiceChannel):
             self.logger.info("Voice channel {before.name}{changed} was changed in {after.guild.name}")
             with self.sql.transaction() as trans:
-                self.sql.update_voice_channel(trans, channel)
+                self.sql.update_voice_channel(trans, after)
             return
 
         self.logger.info(f"Channel #{before.name}{changed} was changed in {after.guild.name}")
@@ -297,6 +299,7 @@ class EventIngestionClient(discord.Client):
         with self.sql.transaction() as trans:
             self.sql.update_channel(trans, after)
 
+        # pylint: disable=not-callable
         hook = self.hooks['on_guild_channel_update']
         if hook:
             self.logger.debug(f"Found hook {hook!r}, calling it")

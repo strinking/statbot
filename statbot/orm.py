@@ -10,11 +10,10 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
-from sqlalchemy import BigInteger, Column, Integer, Table
-from sqlalchemy import ForeignKey
-from sqlalchemy.orm import relationship, mapper, sessionmaker
 import asyncio
 import functools
+from sqlalchemy import BigInteger, Column, ForeignKey, Table
+from sqlalchemy.orm import relationship, mapper, sessionmaker
 
 from .message_history import MessageHistory
 from .range import Range
@@ -27,6 +26,8 @@ __all__ = [
 ]
 
 class MessageHistoryWrap:
+    # pylint: disable=no-member
+
     def __init__(self, cid, mhist):
         self.channel_id = cid
         self.first_message_id = mhist.first
@@ -141,6 +142,8 @@ class ORMHandler:
         return _Transaction(self)
 
     def _lookup_message_hist(self, channel):
+        # pylint: disable=no-member
+
         self.logger.info(f"Looking up message history for #{channel.name}")
 
         return self.session.query(MessageHistoryWrap) \
@@ -167,6 +170,8 @@ class ORMHandler:
         mhist_wrap.assign(mhist)
 
     def delete_message_hist(self, channel):
+        # pylint: disable=no-member
+
         self.logger.info(f"Deleting message history for #{channel.name}")
 
         mhist_wrap = self.session.query(MessageHistoryWrap) \
@@ -176,4 +181,3 @@ class ORMHandler:
 
     def __del__(self):
         self.session.close()
-

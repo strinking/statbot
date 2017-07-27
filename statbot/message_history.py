@@ -10,7 +10,7 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
-from .range import MultiRange, Range
+from .range import MultiRange
 
 __all__ = [
     'MessageHistory',
@@ -45,4 +45,3 @@ class MessageHistory(MultiRange):
             return f"<MessageHistory object: {self.first}, []>"
         else:
             return f"<MessageHistory object: {self.first}, {self}>"
-

@@ -10,13 +10,14 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
+import functools
+import unicodedata
+
+import discord
 from sqlalchemy import ARRAY, Boolean, BigInteger, Column, DateTime, Enum
 from sqlalchemy import Integer, String, Table, Unicode, UnicodeText
 from sqlalchemy import ForeignKey, MetaData, create_engine
 from sqlalchemy.dialects.postgresql import insert as p_insert
-import discord
-import functools
-import unicodedata
 
 from .orm import ORMHandler
 from .util import embeds_to_json, get_emoji_id, get_null_id, null_logger
@@ -352,6 +353,7 @@ class DiscordSqlHandler:
 
         self.logger.info(f"Inserting message {message.id}")
         values = self._message_values(message)
+        values['content'] = content
         ins = self.tb_messages \
                 .insert() \
                 .values(values)
@@ -596,7 +598,7 @@ class DiscordSqlHandler:
         self.voice_channel_cache[channel.id] = values
 
     def update_voice_channel(self, trans, channel):
-        if channel.id in self.void_channel_cache:
+        if channel.id in self.voice_channel_cache:
             self._update_voice_channel(trans, channel)
         else:
             self.upsert_channel(trans, channel)
