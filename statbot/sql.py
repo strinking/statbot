@@ -16,7 +16,7 @@ import unicodedata
 import discord
 from sqlalchemy import ARRAY, Boolean, BigInteger, Column, DateTime, Enum
 from sqlalchemy import Integer, String, Table, Unicode, UnicodeText
-from sqlalchemy import ForeignKey, MetaData, create_engine
+from sqlalchemy import ForeignKey, MetaData, create_engine, and_
 from sqlalchemy.dialects.postgresql import insert as p_insert
 
 from .orm import ORMHandler
@@ -88,6 +88,7 @@ class DiscordSqlHandler:
         'tb_voice_channels',
         'tb_channels',
         'tb_users',
+        'tb_nicknames',
         'tb_emojis',
         'tb_roles',
 
@@ -183,6 +184,10 @@ class DiscordSqlHandler:
                 Column('discriminator', Integer),
                 Column('is_deleted', Boolean),
                 Column('is_bot', Boolean))
+        self.tb_nicknames = Table('nicknames', self.meta,
+                Column('user_id', BigInteger, ForeignKey('users.user_id')),
+                Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
+                Column('nickname', Unicode(32), nullable=True))
         self.tb_emojis = Table('emojis', self.meta,
                 Column('emoji_id', BigInteger, primary_key=True),
                 Column('name', String),
@@ -300,6 +305,14 @@ class DiscordSqlHandler:
             'discriminator': user.discriminator,
             'is_deleted': False,
             'is_bot': user.bot,
+        }
+
+    @staticmethod
+    def _nick_values(member):
+        return {
+            'user_id': member.id,
+            'guild_id': member.guild.id,
+            'nickname': member.nick,
         }
 
     @staticmethod
@@ -697,6 +710,51 @@ class DiscordSqlHandler:
                 )
         trans.execute(ups)
         self.user_cache[user.id] = values
+
+        if not isinstance(user, discord.Member):
+            return
+
+    # Members
+    def add_member(self, trans, member):
+        self.logger.info(f"Inserting member data for {member.id}")
+        values = self._nick_values(member)
+        ins = self.tb_nicknames \
+                .insert() \
+                .values(values)
+        trans.execute(ins)
+
+    def update_member(self, trans, member):
+        self.logger.info(f"Updating member data for {member.id}")
+        values = {
+            'nickname': user.nick,
+        }
+        upd = self.tb_nicknames \
+                .update() \
+                .where(and_(
+                    self.tb_nicknames.c.user_id == user.id,
+                    self.tb_nicknames.c.guild_id == user.guild.id,
+                )) \
+                .values(values)
+        trans.execute(upd)
+
+    def remove_member(self, trans, member):
+        self.logger.info(f"Deleting member data for {member.id}")
+
+        # Nothing to do
+        pass
+
+    def upsert_member(self, trans, member):
+        self.logger.info(f"Upserting member data for {member.id}")
+        values = self._nick_values(user)
+        ups = p_insert(self.tb_nicknames) \
+                .values(values) \
+                .on_conflict_do_update(
+                        index_elements=['user_id', 'guild_id'],
+                        index_where=and_(
+                            self.tb_nicknames.c.user_id == user.id,
+                            self.tb_nicknames.c.guild_id == user.guild.id,
+                        ))
+        trans.execute(ups)
 
     # Emojis (TODO)
     def add_emoji(self, trans, emoji):

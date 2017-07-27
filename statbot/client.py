@@ -322,6 +322,7 @@ class EventIngestionClient(discord.Client):
 
         with self.sql.transaction() as trans:
             self.sql.add_user(trans, member)
+            self.sql.add_member(trans, member)
 
     async def on_member_remove(self, member):
         self._log_ignored(f"Member {member.id} left guild {member.guild.id}")
@@ -332,6 +333,7 @@ class EventIngestionClient(discord.Client):
 
         with self.sql.transaction() as trans:
             self.sql.remove_user(trans, member)
+            self.sql.remove_member(trans, member)
 
     async def on_member_update(self, before, after):
         self._log_ignored(f"Member {after.id} was updated in guild {after.guild.id}")
@@ -353,6 +355,7 @@ class EventIngestionClient(discord.Client):
 
         with self.sql.transaction() as trans:
             self.sql.update_user(trans, after)
+            self.sql.update_member(trans, after)
 
     async def on_guild_role_create(self, role):
         self._log_ignored(f"Role {role.id} was created in guild {role.guild.id}")
