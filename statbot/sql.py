@@ -313,13 +313,13 @@ class DiscordSqlHandler:
         }
 
     @staticmethod
-    def _user_values(user):
+    def _user_values(user, deleted=False):
         return {
             'user_id': user.id,
             'name': user.name,
             'discriminator': user.discriminator,
             'avatar': user.avatar,
-            'is_deleted': False,
+            'is_deleted': deleted,
             'is_bot': user.bot,
         }
 
@@ -401,6 +401,8 @@ class DiscordSqlHandler:
         else:
             content = attach_urls
 
+        self.upsert_user(trans, message.author)
+
         self.logger.info(f"Inserting message {message.id}")
         values = self._message_values(message)
         values['content'] = content
@@ -433,6 +435,8 @@ class DiscordSqlHandler:
         trans.execute(upd)
 
     def insert_message(self, trans, message):
+        self.upsert_user(trans, message.author)
+
         self.logger.debug(f"Inserting message {message.id}")
         values = self._message_values(message)
         ins = p_insert(self.tb_messages) \
@@ -720,6 +724,7 @@ class DiscordSqlHandler:
         self.user_cache.pop(user.id, None)
 
     def upsert_user(self, trans, user):
+        self.logger.info(f"Upserting user {user.id}")
         values = self._user_values(user)
         if self.user_cache.get(user.id) == values:
             self.logger.debug(f"User lookup for {user.id} is already up-to-date")
