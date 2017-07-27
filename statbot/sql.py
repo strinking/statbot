@@ -185,8 +185,10 @@ class DiscordSqlHandler:
                 Column('is_deleted', Boolean),
                 Column('is_bot', Boolean))
         self.tb_nicknames = Table('nicknames', self.meta,
-                Column('user_id', BigInteger, ForeignKey('users.user_id')),
-                Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
+                Column('user_id', BigInteger,
+                    ForeignKey('users.user_id'), primary_key=True),
+                Column('guild_id', BigInteger,
+                    ForeignKey('guilds.guild_id'), primary_key=True),
                 Column('nickname', Unicode(32), nullable=True))
         self.tb_emojis = Table('emojis', self.meta,
                 Column('emoji_id', BigInteger, primary_key=True),
@@ -726,13 +728,13 @@ class DiscordSqlHandler:
     def update_member(self, trans, member):
         self.logger.info(f"Updating member data for {member.id}")
         values = {
-            'nickname': user.nick,
+            'nickname': member.nick,
         }
         upd = self.tb_nicknames \
                 .update() \
                 .where(and_(
-                    self.tb_nicknames.c.user_id == user.id,
-                    self.tb_nicknames.c.guild_id == user.guild.id,
+                    self.tb_nicknames.c.user_id == member.id,
+                    self.tb_nicknames.c.guild_id == member.guild.id,
                 )) \
                 .values(values)
         trans.execute(upd)
@@ -745,15 +747,17 @@ class DiscordSqlHandler:
 
     def upsert_member(self, trans, member):
         self.logger.info(f"Upserting member data for {member.id}")
-        values = self._nick_values(user)
+        values = self._nick_values(member)
         ups = p_insert(self.tb_nicknames) \
                 .values(values) \
                 .on_conflict_do_update(
                         index_elements=['user_id', 'guild_id'],
                         index_where=and_(
-                            self.tb_nicknames.c.user_id == user.id,
-                            self.tb_nicknames.c.guild_id == user.guild.id,
-                        ))
+                            self.tb_nicknames.c.user_id == member.id,
+                            self.tb_nicknames.c.guild_id == member.guild.id,
+                        ),
+                        set_=values,
+                )
         trans.execute(ups)
 
     # Emojis (TODO)

@@ -127,6 +127,10 @@ class EventIngestionClient(discord.Client):
         for guild in self.guilds:
             self.sql.upsert_guild(trans, guild)
 
+            self.logger.debug(f"Processing {len(guild.members)} members...")
+            for member in guild.members:
+                self.sql.upsert_member(trans, member)
+
             self.logger.debug(f"Processing {len(guild.channels)} channels...")
             for channel in guild.channels:
                 if isinstance(channel, discord.VoiceChannel):
