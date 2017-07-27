@@ -152,7 +152,7 @@ class DiscordSqlHandler:
                 Column('verification_level', Enum(discord.VerificationLevel)),
                 Column('explicit_content_filter', Enum(discord.ContentFilter)),
                 Column('features', ARRAY(String)),
-                Column('splash', String))
+                Column('splash', String, nullable=True))
         self.tb_voice_channels = Table('voice_channels', self.meta,
                 Column('voice_channel_id', BigInteger, primary_key=True),
                 Column('name', Unicode),
