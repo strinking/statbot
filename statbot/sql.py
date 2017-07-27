@@ -673,7 +673,7 @@ class DiscordSqlHandler:
         self.user_cache.pop(user.id, None)
 
     def upsert_user(self, trans, user):
-        self.logger.info(f"Upserting user {user.id}")
+        self.logger.debug(f"Upserting user {user.id}")
         values = self._user_values(user)
         if self.user_cache.get(user.id) == values:
             self.logger.debug(f"User lookup for {user.id} is already up-to-date")
