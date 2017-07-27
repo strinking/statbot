@@ -364,7 +364,7 @@ class DiscordSqlHandler:
         self.logger.info(f"Deleting all reactions on message {message.id}")
         delet = self.tb_reactions \
                 .delete() \
-                .where(self.tb_reactions.c.message_id == reaction.message.id)
+                .where(self.tb_reactions.c.message_id == message.id)
         trans.execute(delet)
 
     # Pins (TODO)
@@ -464,7 +464,7 @@ class DiscordSqlHandler:
             self.logger.debug(f"Channel {channel.id} already inserted.")
             return
 
-        self.logger.info(f"Inserting new channel {channel.id} for guild {guild.id}")
+        self.logger.info(f"Inserting new channel {channel.id} for guild {channel.guild.id}")
         values = self._channel_values(channel)
         ins = self.tb_channel_lookup \
                 .insert() \
@@ -489,7 +489,7 @@ class DiscordSqlHandler:
             self.upsert_channel(trans, channel)
 
     def remove_channel(self, trans, channel):
-        self.logger.info(f"Deleting channel {channel.id} in guild {guild.id}")
+        self.logger.info(f"Deleting channel {channel.id} in guild {channel.guild.id}")
         upd = self.tb_channel_lookup \
                 .update() \
                 .values(is_deleted=True) \
@@ -583,7 +583,7 @@ class DiscordSqlHandler:
         self.logger.info(f"Inserting emoji {id}")
         ins = self.tb_emoji_lookup \
                 .insert() \
-                .values(value)
+                .values(id)
         trans.execute(ins)
         self.emoji_cache[id] = values
 
