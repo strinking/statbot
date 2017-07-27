@@ -117,7 +117,9 @@ class DiscordHistoryCrawler:
         self.logger.info(f"Reading through channel {channel.id} (#{channel.name}):")
         self.logger.info(f"Starting from {start_id} ({start})")
         messages = await channel.history(before=start, limit=limit).flatten()
-        assert messages, "No messages found in this range"
+        if not messages:
+            self.logger.info("No messages found in this range")
+            return
 
         earliest = messages[-1].id
         messages = list(filter(lambda m: m.id not in mhist, messages))
