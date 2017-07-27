@@ -117,7 +117,7 @@ class DiscordSqlHandler:
                 Column('content', UnicodeText),
                 Column('embeds', UnicodeText),
                 Column('attachments', Integer),
-                Column('user_id', BigInteger, ForeignKey('users.user_id')),
+                Column('user_id', BigInteger),
                 Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
         self.tb_reactions = Table('reactions', self.meta,
