@@ -11,18 +11,14 @@
 #
 
 import argparse
-import asyncio
-import json
 import logging
 import sys
 
 from .client import EventIngestionClient
 from .config import load_config
-from .util import plural
 
 __all__ = [
     'LOG_FILE',
-    'LOG_TO_STDOUT',
     'LOG_FILE_MODE',
 ]
 
@@ -104,5 +100,4 @@ if __name__ == '__main__':
     main_logger.info("Setting up bot")
     client = EventIngestionClient(config, event_logger, sql_logger=sql_logger)
     main_logger.info("Starting bot, waiting for discord.py...")
-    client.run()
-
+    client.run_with_token()

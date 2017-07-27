@@ -12,6 +12,9 @@
 
 import discord
 
+from .sql import DiscordSqlHandler
+from .util import get_emoji_name, null_logger
+
 __all__ = [
     'LOG_FULL_MESSAGES',
     'EventIngestionClient',
@@ -19,9 +22,6 @@ __all__ = [
 
 LOG_FULL_MESSAGES = False
 LOG_IGNORED_EVENTS = False
-
-from .sql import DiscordSqlHandler
-from .util import get_emoji_name, null_logger
 
 class EventIngestionClient(discord.Client):
     __slots__ = (
@@ -38,9 +38,8 @@ class EventIngestionClient(discord.Client):
         self.sql = DiscordSqlHandler(config['url'], sql_logger)
         self.ready = False
 
-    def run(self):
-        # Override function to include the token from config
-        return super().run(self.config['token'])
+    def run_with_token(self):
+        return self.run(self.config['token'])
 
     def _accept_message(self, message):
         if not self.ready:
@@ -329,4 +328,3 @@ class EventIngestionClient(discord.Client):
                 self.sql.add_emoji(trans, emoji)
             for emoji in before - after:
                 self.sql.remove_emoji(trans, emoji)
-

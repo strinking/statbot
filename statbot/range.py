@@ -186,8 +186,7 @@ class Range(AbstractRange):
     def __init__(self, begin, end=None):
         if end is None:
             end = begin
-
-        if type(begin) != type(end):
+        elif type(begin) != type(end): # pylint: disable=unidiomatic-typecheck
             raise TypeError("type of both endpoints aren't the same")
         elif begin > end:
             raise ValueError("beginning value is larger than the end value")
@@ -341,7 +340,7 @@ class MultiRange(AbstractRange):
             raise TypeError(f"cannot create union with unknown type: {type(other)!r}")
 
     def add(self, range):
-        if type(range) != Range:
+        if not isinstance(range, Range):
             raise TypeError(f"expected Range, not '{type(range)!r}'")
 
         bisect.insort(self.ranges, range)
@@ -373,4 +372,4 @@ class MultiRange(AbstractRange):
             return f"<MultiRange object: {self}>"
 
     def __str__(self):
-            return ' u '.join(str(range) for range in self.ranges)
+        return ' u '.join(str(range) for range in self.ranges)

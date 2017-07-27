@@ -1,0 +1,21 @@
+language: python
+dist: trusty
+
+python:
+  - '3.6'
+  - 'nightly'
+
+sudo: false
+
+install:
+  - pip install --quiet --requirement requirements.txt
+  - pip install --quiet pylint
+
+script:
+  - python3 -m unittest --verbose
+  - pylint statbot
+
+notifications:
+  email:
+    on_success: change
+    on_failure: change
