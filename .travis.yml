@@ -9,9 +9,11 @@ sudo: false
 
 install:
   - pip install --quiet --requirement requirements.txt
+  - pip install --quiet pylint
 
 script:
   - python3 -m unittest --verbose
+  - pylint statbot
 
 notifications:
   email:
