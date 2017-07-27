@@ -112,8 +112,12 @@ class DiscordSqlHandler:
         # Primary tables
         self.tb_messages = Table('messages', self.meta,
                 Column('message_id', BigInteger, primary_key=True),
+                Column('created_at', DateTime),
+                Column('edited_at', DateTime, nullable=True),
                 Column('is_edited', Boolean),
                 Column('is_deleted', Boolean),
+                Column('message_type', Enum(discord.MessageType)),
+                Column('system_content', UnicodeText),
                 Column('content', UnicodeText),
                 Column('embeds', UnicodeText),
                 Column('attachments', Integer),
@@ -240,10 +244,19 @@ class DiscordSqlHandler:
 
     @staticmethod
     def _message_values(message):
+        if message.type == discord.MessageType.default:
+            system_content = '';
+        else:
+            system_content = message.system_content
+
         return {
             'message_id': message.id,
-            'is_edited': False,
+            'created_at': message.created_at,
+            'edited_at': message.edited_at,
+            'is_edited': message.edited_at is not None,
             'is_deleted': False,
+            'message_type': message.type,
+            'system_content': system_content,
             'content': message.content,
             'embeds': embeds_to_json(message.embeds),
             'attachments': len(message.attachments),
@@ -364,6 +377,7 @@ class DiscordSqlHandler:
         upd = self.tb_messages \
                 .update() \
                 .values({
+                    'edit_timestamp': after.edited_at,
                     'is_edited': before.content != after.content,
                     'content': after.content,
                     'embeds': embeds_to_json(after.embeds),
