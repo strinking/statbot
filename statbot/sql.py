@@ -89,6 +89,7 @@ class DiscordSqlHandler:
         'tb_channels',
         'tb_users',
         'tb_nicknames',
+        'tb_role_membership',
         'tb_emojis',
         'tb_roles',
 
@@ -191,6 +192,10 @@ class DiscordSqlHandler:
                 Column('guild_id', BigInteger,
                     ForeignKey('guilds.guild_id'), primary_key=True),
                 Column('nickname', Unicode(32), nullable=True))
+        self.tb_role_membership = Table('role_membership', self.meta,
+                Column('role_id', BigInteger, ForeignKey('roles.role_id')),
+                Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
+                Column('user_id', BigInteger, ForeignKey('users.user_id')))
         self.tb_emojis = Table('emojis', self.meta,
                 Column('emoji_id', BigInteger, primary_key=True),
                 Column('name', String),
@@ -253,7 +258,7 @@ class DiscordSqlHandler:
     @staticmethod
     def _message_values(message):
         if message.type == discord.MessageType.default:
-            system_content = '';
+            system_content = ''
         else:
             system_content = message.system_content
 
@@ -317,6 +322,14 @@ class DiscordSqlHandler:
             'user_id': member.id,
             'guild_id': member.guild.id,
             'nickname': member.nick,
+        }
+
+    @staticmethod
+    def _role_member_values(member, role):
+        return {
+            'role_id': role.id,
+            'guild_id': role.guild.id,
+            'user_id': member.id,
         }
 
     @staticmethod
@@ -727,6 +740,8 @@ class DiscordSqlHandler:
                 .values(values)
         trans.execute(ins)
 
+        self._insert_role_membership(trans, member)
+
     def update_member(self, trans, member):
         self.logger.info(f"Updating member data for {member.id}")
         values = {
@@ -740,6 +755,26 @@ class DiscordSqlHandler:
                 )) \
                 .values(values)
         trans.execute(upd)
+
+        self._update_role_membership(trans, member)
+
+    def _insert_role_membership(self, trans, member):
+        for role in member.roles:
+            values = self._role_member_values(member, role)
+            ins = self.tb_role_membership \
+                    .insert() \
+                    .values(values)
+            trans.execute(ins)
+
+    def _update_role_membership(self, trans, member):
+        delet = self.tb_role_membership \
+                    .delete() \
+                    .where(and_(
+                        self.tb_role_membership.c.user_id == member.id,
+                        self.tb_role_membership.c.guild_id == member.guild.id,
+                    ))
+        trans.execute(delet)
+        self._insert_role_membership(trans, member)
 
     def remove_member(self, trans, member):
         self.logger.info(f"Deleting member data for {member.id}")
@@ -761,6 +796,8 @@ class DiscordSqlHandler:
                         set_=values,
                 )
         trans.execute(ups)
+
+        self._update_role_membership(trans, member)
 
     # Emojis (TODO)
     def add_emoji(self, trans, emoji):
