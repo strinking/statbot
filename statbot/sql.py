@@ -786,7 +786,9 @@ class DiscordSqlHandler:
 
     def upsert_member(self, trans, member):
         self.logger.info(f"Upserting member data for {member.id}")
-        values = self._nick_values(member)
+        values = {
+            'nickname': member.nick,
+        }
         ups = p_insert(self.tb_nicknames) \
                 .values(values) \
                 .on_conflict_do_update(
@@ -795,9 +797,7 @@ class DiscordSqlHandler:
                             self.tb_nicknames.c.user_id == member.id,
                             self.tb_nicknames.c.guild_id == member.guild.id,
                         ),
-                        set_={
-                            'nickname': member.nick,
-                        },
+                        set_=values,
                 )
         #trans.execute(ups)
 
