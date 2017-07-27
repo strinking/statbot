@@ -177,6 +177,7 @@ class DiscordSqlHandler:
                 Column('is_deleted', Boolean),
                 Column('position', Integer),
                 Column('topic', UnicodeText, nullable=True),
+                Column('changed_roles', ARRAY(BigInteger)),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
         self.tb_users = Table('users', self.meta,
                 Column('user_id', BigInteger, primary_key=True),
@@ -282,6 +283,7 @@ class DiscordSqlHandler:
             'is_deleted': False,
             'position': channel.position,
             'topic': channel.topic,
+            'changed_roles': [role.id for role in channel.changed_roles],
             'guild_id': channel.guild.id,
         }
 
