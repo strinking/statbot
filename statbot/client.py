@@ -13,7 +13,7 @@
 import asyncio
 import discord
 
-from .util import get_emoji_name, null_logger
+from .util import get_emoji_name, member_update, null_logger
 
 __all__ = [
     'EventIngestionClient',
@@ -344,18 +344,15 @@ class EventIngestionClient(discord.Client):
         if not await self._accept_guild(after.guild):
             return
 
-        # Certain changes that we don't care about can trigger this event
-        before.status = after.status
-        before.game = after.game
-        if before == after:
-            self._log_ignored("It was only a status change")
+        if not member_update(before, after):
+            self._log_ignored("We don't care about this type of member update")
             return
 
-        if before.name != after.name:
+        if before.display_name != after.display_name:
             changed = f' (now {after.name})'
         else:
             changed = ''
-        self.logger.info(f"Member {before.name}{changed} was changed in {after.guild.name}")
+        self.logger.info(f"Member {before.display_name}{changed} was changed in {after.guild.name}")
 
         with self.sql.transaction() as trans:
             self.sql.update_user(trans, after)

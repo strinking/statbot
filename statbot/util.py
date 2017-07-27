@@ -13,12 +13,27 @@
 import json
 
 __all__ = [
+    'member_update',
     'get_null_id',
     'get_emoji_name',
     'get_emoji_id',
     'embeds_to_json',
     'null_logger',
 ]
+
+def member_update(before, after):
+    '''
+    See if the given member update is something
+    we care about.
+
+    Returns 'False' for no difference or
+    change we will ignore.
+    '''
+
+    for attr in ('name', 'discriminator', 'nick', 'avatar', 'roles'):
+        if getattr(before, attr) != getattr(after, attr):
+            return True
+    return False
 
 def get_null_id(obj):
     '''

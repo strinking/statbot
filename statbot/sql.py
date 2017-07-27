@@ -14,9 +14,10 @@ import functools
 import unicodedata
 
 import discord
+from sqlalchemy import create_engine, and_
 from sqlalchemy import ARRAY, Boolean, BigInteger, Column, DateTime, Enum
 from sqlalchemy import Integer, String, Table, Unicode, UnicodeText
-from sqlalchemy import ForeignKey, MetaData, create_engine, and_
+from sqlalchemy import ForeignKey, ForeignKeyConstraint, MetaData
 from sqlalchemy.dialects.postgresql import insert as p_insert
 
 from .orm import ORMHandler
@@ -184,13 +185,14 @@ class DiscordSqlHandler:
                 Column('user_id', BigInteger, primary_key=True),
                 Column('name', Unicode),
                 Column('discriminator', Integer),
+                Column('avatar', String, nullable=True),
                 Column('is_deleted', Boolean),
                 Column('is_bot', Boolean))
         self.tb_nicknames = Table('nicknames', self.meta,
                 Column('user_id', BigInteger,
                     ForeignKey('users.user_id'), primary_key=True),
                 Column('guild_id', BigInteger,
-                    ForeignKey('guilds.guild_id'), primary_key=True),
+                    ForeignKey('guilds.guild_id') ,primary_key=True),
                 Column('nickname', Unicode(32), nullable=True))
         self.tb_role_membership = Table('role_membership', self.meta,
                 Column('role_id', BigInteger, ForeignKey('roles.role_id')),
@@ -312,6 +314,7 @@ class DiscordSqlHandler:
             'user_id': user.id,
             'name': user.name,
             'discriminator': user.discriminator,
+            'avatar': user.avatar,
             'is_deleted': False,
             'is_bot': user.bot,
         }
@@ -756,7 +759,18 @@ class DiscordSqlHandler:
                 .values(values)
         trans.execute(upd)
 
-        self._update_role_membership(trans, member)
+        self._delete_role_membership(trans, member)
+        self._insert_role_membership(trans, member)
+
+    def _delete_role_membership(self, trans, member):
+        delet = self.tb_role_membership \
+                .delete() \
+                .where(and_(
+                    self.tb_role_membership.c.user_id == member.id,
+                    self.tb_role_membership.c.guild_id == member.guild.id,
+                    self.tb_role_membership.c.role_id not in member.roles,
+                ))
+        trans.execute(delet)
 
     def _insert_role_membership(self, trans, member):
         for role in member.roles:
@@ -766,21 +780,9 @@ class DiscordSqlHandler:
                     .values(values)
             trans.execute(ins)
 
-    def _update_role_membership(self, trans, member):
-        delet = self.tb_role_membership \
-                    .delete() \
-                    .where(and_(
-                        self.tb_role_membership.c.user_id == member.id,
-                        self.tb_role_membership.c.guild_id == member.guild.id,
-                    ))
-        trans.execute(delet)
-        self._insert_role_membership(trans, member)
-
     def remove_member(self, trans, member):
         self.logger.info(f"Deleting member data for {member.id}")
-
-        # Nothing to do
-        pass
+        # (do nothing)
 
     def upsert_member(self, trans, member):
         self.logger.info(f"Upserting member data for {member.id}")
@@ -793,11 +795,14 @@ class DiscordSqlHandler:
                             self.tb_nicknames.c.user_id == member.id,
                             self.tb_nicknames.c.guild_id == member.guild.id,
                         ),
-                        set_=values,
+                        set_={
+                            'nickname': member.nick,
+                        },
                 )
-        trans.execute(ups)
+        #trans.execute(ups)
 
-        self._update_role_membership(trans, member)
+        self._delete_role_membership(trans, member)
+        self._insert_role_membership(trans, member)
 
     # Emojis (TODO)
     def add_emoji(self, trans, emoji):
