@@ -12,6 +12,9 @@
 
 import discord
 
+from .sql import DiscordSqlHandler
+from .util import get_emoji_name, null_logger
+
 __all__ = [
     'LOG_FULL_MESSAGES',
     'EventIngestionClient',
@@ -19,9 +22,6 @@ __all__ = [
 
 LOG_FULL_MESSAGES = False
 LOG_IGNORED_EVENTS = False
-
-from .sql import DiscordSqlHandler
-from .util import get_emoji_name, null_logger
 
 class EventIngestionClient(discord.Client):
     __slots__ = (
@@ -329,4 +329,3 @@ class EventIngestionClient(discord.Client):
                 self.sql.add_emoji(trans, emoji)
             for emoji in before - after:
                 self.sql.remove_emoji(trans, emoji)
-

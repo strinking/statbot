@@ -11,18 +11,14 @@
 #
 
 import argparse
-import asyncio
-import json
 import logging
 import sys
 
 from .client import EventIngestionClient
 from .config import load_config
-from .util import plural
 
 __all__ = [
     'LOG_FILE',
-    'LOG_TO_STDOUT',
     'LOG_FILE_MODE',
 ]
 

@@ -52,4 +52,3 @@ def get_message_stats(message):
         'table_flip': TABLE_FLIP in text,
         'table_restore': TABLE_RESTORE in text,
     }
-
