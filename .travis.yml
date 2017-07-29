@@ -8,8 +8,8 @@ python:
 sudo: false
 
 install:
-  - pip install --quiet --requirement requirements.txt
-  - pip install --quiet pylint
+  - pip install -r requirements.txt
+  - pip install pylint
 
 script:
   - python3 -m unittest --verbose
