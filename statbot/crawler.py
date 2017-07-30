@@ -93,7 +93,7 @@ class DiscordHistoryCrawler:
                     channel = self.channels[cid]
                     mhist = self.progress[cid]
                     all_empty &= not await self._read(channel, mhist)
-                except Exception as ex:
+                except Exception:
                     self.logger.error(f"Error reading (or syncing) messages from channel id {cid}", exc_info=1)
 
             # Sleep before next cycle
@@ -147,7 +147,7 @@ class DiscordHistoryCrawler:
                 with self.sql.transaction() as trans:
                     for message in messages:
                         self.sql.insert_message(trans, message)
-            except Exception as ex:
+            except Exception:
                 self.logger.error(f"Error writing message id {message.id}", exc_info=1)
 
             self.queue.task_done()
