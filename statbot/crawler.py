@@ -121,9 +121,6 @@ class DiscordHistoryCrawler:
 
         earliest = messages[-1].id
         messages = list(filter(lambda m: m.id not in mhist, messages))
-        if messages:
-            await self.queue.put(messages)
-        self.logger.info(f"Queued {len(messages)} messages for ingestion")
         mhist.add(Range(earliest, start_id))
 
         if len(messages) < limit:
@@ -131,16 +128,15 @@ class DiscordHistoryCrawler:
             self.logger.info(f"#{channel.name} has now been exhausted")
             mhist.first = earliest
 
-        async with self.sql.orm.transaction():
-            self.sql.orm.update_message_hist(channel, mhist)
-
+        await self.queue.put((channel, mhist, messages))
+        self.logger.info(f"Queued {len(messages)} messages for ingestion")
         return True
 
     async def consumer(self):
         self.logger.info("Consumer coroutine started!")
 
         while True:
-            messages = await self.queue.get()
+            channel, mhist, messages = await self.queue.get()
             self.logger.info("Got group of messages from queue")
 
             try:
@@ -149,6 +145,12 @@ class DiscordHistoryCrawler:
                         self.sql.insert_message(trans, message)
             except Exception:
                 self.logger.error(f"Error writing message id {message.id}", exc_info=1)
+
+            try:
+                async with self.sql.orm.transaction():
+                    self.sql.orm.update_message_hist(channel, mhist)
+            except Exception:
+                self.logger.error(f"Error updating message history", exc_info=1)
 
             self.queue.task_done()
 
