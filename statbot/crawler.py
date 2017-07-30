@@ -93,9 +93,7 @@ class DiscordHistoryCrawler:
                     channel = self.channels[cid]
                     mhist = self.progress[cid]
                     all_empty &= not await self._read(channel, mhist)
-                except BaseException as ex:
-                    if isinstance(ex, SystemExit):
-                        raise ex
+                except Exception as ex:
                     self.logger.error(f"Error reading (or syncing) messages from channel id {cid}", exc_info=1)
 
             # Sleep before next cycle
@@ -119,7 +117,7 @@ class DiscordHistoryCrawler:
         messages = await channel.history(before=start, limit=limit).flatten()
         if not messages:
             self.logger.info("No messages found in this range")
-            return
+            return False
 
         earliest = messages[-1].id
         messages = list(filter(lambda m: m.id not in mhist, messages))
@@ -149,9 +147,7 @@ class DiscordHistoryCrawler:
                 with self.sql.transaction() as trans:
                     for message in messages:
                         self.sql.insert_message(trans, message)
-            except BaseException as ex:
-                if isinstance(ex, SystemExit):
-                    raise ex
+            except Exception as ex:
                 self.logger.error(f"Error writing message id {message.id}", exc_info=1)
 
             self.queue.task_done()
