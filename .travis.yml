@@ -8,7 +8,7 @@ python:
 sudo: false
 
 install:
-  - pip install -r requirements.txt
+  - pip install --requirement requirements.txt
   - pip install pylint
 
 script:
