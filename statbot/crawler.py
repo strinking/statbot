@@ -143,14 +143,11 @@ class DiscordHistoryCrawler:
                 with self.sql.transaction() as trans:
                     for message in messages:
                         self.sql.insert_message(trans, message)
-            except Exception:
-                self.logger.error(f"Error writing message id {message.id}", exc_info=1)
 
-            try:
                 async with self.sql.orm.transaction():
                     self.sql.orm.update_message_hist(channel, mhist)
             except Exception:
-                self.logger.error(f"Error updating message history", exc_info=1)
+                self.logger.error(f"Error writing message id {message.id}", exc_info=1)
 
             self.queue.task_done()
 
