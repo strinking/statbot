@@ -9,24 +9,25 @@ There may be features or tables that exist but are not mentioned in
 this document. This is likely intentional, as they are not yet ready
 for public usage.
 
-The database has two groups of tables, data tables and lookup tables.
-Data tables are for information that are continually added, such
-as messages and reactions. The lookup tables are for information like
-users and channels, things that do not change regularly, and when they
-do, are more likely to modify an existing entry than create/delete one.
+The database has a few different categories of tables.
+**Data tables** are for information that is continually added, such
+as message and reactions.  
+**Lookup tables** are for static information, such as information about
+channels or guilds. While these may get updated, they will not do so
+frequently, and do not always track history.  
+**ORM tables** are for internal use of the bot to track information. These
+tables will _not_ have stable schemas and should not be used by end users
+to gather information.
 
 ### Guarantees and Requirements
 * Clients should review this document whenever the minor version changes.
-* Clients must not assume that any particular row is present. This is true
-for all tables ane data points.
 * Clients must be able to handle tables with information from multiple guilds.
-* Clients must assume that there will be holes in the chronological history
+* Clients must assume that there may be holes in the chronological history
 of the records.
-* Clients must not except queried data to be in chronological order, unless
+* Clients must not expect queried data to be in chronological order, unless
 they explicitly designate a `SORT BY` clause to do so.
-* Except in the case where an explicit timestamp field is provided, or in the
-case of emojis, clients shall determine timestamps from the snowflake provided
-with each record.
+* Except in the case where an explicit timestamp field is provided,
+clients shall determine timestamps from the snowflake provided with each record.
 
 ### Table Schemas
 The schemas are not yet stabilized, but applications may assume they will

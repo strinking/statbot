@@ -16,6 +16,8 @@ import sys
 
 from .client import EventIngestionClient
 from .config import load_config
+from .crawler import DiscordHistoryCrawler
+from .sql import DiscordSqlHandler
 
 __all__ = [
     'LOG_FILE',
@@ -96,8 +98,17 @@ if __name__ == '__main__':
         main_logger.error("Configuration file was invalid.")
         exit(1)
 
-    # Open and run event client
+    # Create SQL handler
+    sql = DiscordSqlHandler(config['url'], sql_logger)
+
+    # Create client
     main_logger.info("Setting up bot")
-    client = EventIngestionClient(config, event_logger, sql_logger=sql_logger)
+    client = EventIngestionClient(config, sql, event_logger)
     main_logger.info("Starting bot, waiting for discord.py...")
+
+    # Create crawler
+    crawler = DiscordHistoryCrawler(client, sql, config, crawler_logger)
+    crawler.start()
+
+    # Start main loop
     client.run_with_token()

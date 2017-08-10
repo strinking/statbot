@@ -13,11 +13,23 @@
 import json
 
 __all__ = [
+    'get_null_id',
     'get_emoji_name',
     'get_emoji_id',
     'embeds_to_json',
     'null_logger',
 ]
+
+def get_null_id(obj):
+    '''
+    If "obj" is None, return None.
+    Otherwise get the "id" field and return it.
+    '''
+
+    if obj is None:
+        return None
+    else:
+        return obj.id
 
 def get_emoji_name(emoji):
     '''

@@ -179,38 +179,38 @@ class Range(AbstractRange):
     '''
 
     __slots__ = (
-        'begin',
+        'start',
         'end',
     )
 
-    def __init__(self, begin, end=None):
+    def __init__(self, start, end=None):
         if end is None:
-            end = begin
-        elif type(begin) != type(end): # pylint: disable=unidiomatic-typecheck
+            end = start
+        elif type(start) != type(end): # pylint: disable=unidiomatic-typecheck
             raise TypeError("type of both endpoints aren't the same")
-        elif begin > end:
+        elif start > end:
             raise ValueError("beginning value is larger than the end value")
 
-        self.begin = begin
+        self.start = start
         self.end = end
 
     def min(self):
-        return self.begin
+        return self.start
 
     def max(self):
         return self.end
 
     def clone(self):
-        return Range(self.begin, self.end)
+        return Range(self.start, self.end)
 
     def __contains__(self, item):
-        return self.begin <= item <= self.end
+        return self.start <= item <= self.end
 
     def __or__(self, other):
         if isinstance(other, Range):
             x, y = order(self, other)
-            if x.end >= y.begin:
-                return Range(x.begin, max(x.end, y.end))
+            if x.end >= y.start:
+                return Range(x.start, max(x.end, y.end))
             else:
                 return MultiRange(x, y)
         elif isinstance(other, MultiRange):
@@ -222,24 +222,24 @@ class Range(AbstractRange):
 
     def __eq__(self, other):
         if isinstance(other, Range):
-            return (self.begin == other.begin) and (self.end == other.end)
+            return (self.start == other.start) and (self.end == other.end)
         elif isinstance(other, MultiRange):
             return other == self
         else:
             return False
 
     def __hash__(self):
-        return hash(self.begin) ^ hash(self.end)
+        return hash(self.start) ^ hash(self.end)
 
     def __bool__(self):
         # Ranges always have at least one item in them
         return True
 
     def __repr__(self):
-        return f"<Range object: [{self.begin!r}, {self.end!r}]>"
+        return f"<Range object: [{self.start!r}, {self.end!r}]>"
 
     def __str__(self):
-        return f"[{self.begin}, {self.end}]"
+        return f"[{self.start}, {self.end}]"
 
 class MultiRange(AbstractRange):
     '''
@@ -253,14 +253,14 @@ class MultiRange(AbstractRange):
     )
 
     def __init__(self, *ranges, _direct=None):
-        for range in ranges:
-            if not isinstance(range, Range):
-                raise TypeError(f"MultiRange only supports Range objects, not {type(range)!r}.")
-
         if _direct is None:
             self.ranges = sorted(ranges)
         else:
             self.ranges = _direct
+
+        for range in self.ranges:
+            if not isinstance(range, Range):
+                raise TypeError(f"MultiRange only supports Range objects, not {type(range)!r}.")
 
         self._merge()
 
@@ -283,8 +283,8 @@ class MultiRange(AbstractRange):
                 # Skip items that are a subset of what we already have
                 continue
 
-            if last.end >= current.begin:
-                last = Range(last.begin, current.end)
+            if last.end >= current.start:
+                last = Range(last.start, current.end)
             else:
                 new_ranges.append(last)
                 last = current
