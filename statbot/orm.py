@@ -120,7 +120,8 @@ class ORMHandler:
         # Channel history
         self.tb_channel_hist = Table('channel_hist', meta,
                 Column('channel_id', BigInteger,
-                    ForeignKey('channels.channel_id'), primary_key=True),
+                    ForeignKey('channels.channel_id', ondelete='CASCADE'),
+                    primary_key=True),
                 Column('first_message_id', BigInteger, nullable=True))
         self.tb_ranges_orm = Table('ranges_orm', meta,
                 Column('channel_id', BigInteger,
@@ -152,11 +153,7 @@ class ORMHandler:
 
     def lookup_message_hist(self, channel):
         mhist_wrap = self._lookup_message_hist(channel)
-
-        if mhist_wrap is not None:
-            return mhist_wrap.unwrap()
-        else:
-            return None
+        return None if mhist_wrap is None else mhist_wrap.unwrap()
 
     def insert_message_hist(self, channel, mhist):
         self.logger.info(f"Inserting message history for #{channel.name}: {mhist}")

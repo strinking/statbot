@@ -7,9 +7,11 @@ python:
 
 sudo: false
 
+cache: pip
+
 install:
-  - pip install --quiet --requirement requirements.txt
-  - pip install --quiet pylint
+  - pip install --requirement requirements.txt
+  - pip install pylint
 
 script:
   - python3 -m unittest --verbose
@@ -19,3 +21,6 @@ notifications:
   email:
     on_success: change
     on_failure: change
+
+after_script:
+  - bash travis_discord.sh

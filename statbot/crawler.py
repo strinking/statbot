@@ -93,9 +93,7 @@ class DiscordHistoryCrawler:
                     channel = self.channels[cid]
                     mhist = self.progress[cid]
                     all_empty &= not await self._read(channel, mhist)
-                except Exception as ex:
-                    if isinstance(ex, SystemExit):
-                        raise ex
+                except Exception:
                     self.logger.error(f"Error reading (or syncing) messages from channel id {cid}", exc_info=1)
 
             # Sleep before next cycle
@@ -119,13 +117,10 @@ class DiscordHistoryCrawler:
         messages = await channel.history(before=start, limit=limit).flatten()
         if not messages:
             self.logger.info("No messages found in this range")
-            return
+            return False
 
         earliest = messages[-1].id
         messages = list(filter(lambda m: m.id not in mhist, messages))
-        if messages:
-            await self.queue.put(messages)
-        self.logger.info(f"Queued {len(messages)} messages for ingestion")
         mhist.add(Range(earliest, start_id))
 
         if len(messages) < limit:
@@ -133,25 +128,25 @@ class DiscordHistoryCrawler:
             self.logger.info(f"#{channel.name} has now been exhausted")
             mhist.first = earliest
 
-        async with self.sql.orm.transaction():
-            self.sql.orm.update_message_hist(channel, mhist)
-
+        await self.queue.put((channel, mhist, messages))
+        self.logger.info(f"Queued {len(messages)} messages for ingestion")
         return True
 
     async def consumer(self):
         self.logger.info("Consumer coroutine started!")
 
         while True:
-            messages = await self.queue.get()
+            channel, mhist, messages = await self.queue.get()
             self.logger.info("Got group of messages from queue")
 
             try:
                 with self.sql.transaction() as trans:
                     for message in messages:
                         self.sql.insert_message(trans, message)
-            except Exception as ex:
-                if isinstance(ex, SystemExit):
-                    raise ex
+
+                async with self.sql.orm.transaction():
+                    self.sql.orm.update_message_hist(channel, mhist)
+            except Exception:
                 self.logger.error(f"Error writing message id {message.id}", exc_info=1)
 
             self.queue.task_done()
