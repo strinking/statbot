@@ -37,15 +37,6 @@ class MessageHistory(MultiRange):
         else:
             return None
 
-    def to_ranges(self):
-        starts = []
-        ends = []
-
-        for range in self.ranges:
-            starts.append(range.start)
-            ends.append(range.end)
-        return starts, ends
-
     def __repr__(self):
         leng = len(self.ranges)
         if leng > 4:
