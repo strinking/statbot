@@ -137,7 +137,7 @@ class DiscordSqlHandler:
         self.tb_typing = Table('typing', self.meta,
                 Column('timestamp', DateTime),
                 Column('user_id', BigInteger, ForeignKey('users.user_id')),
-                Column('channel_id', BigInteger, ForeignKey('channels.user_id')),
+                Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
                 UniqueConstraint('timestamp', 'user_id', 'channel_id', name='uq_typing'))
         self.tb_pins = Table('pins', self.meta,
@@ -739,9 +739,6 @@ class DiscordSqlHandler:
                 )
         trans.execute(ups)
         self.user_cache[user.id] = values
-
-        if not isinstance(user, discord.Member):
-            return
 
     # Members
     def add_member(self, trans, member):

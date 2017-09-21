@@ -127,6 +127,10 @@ class EventIngestionClient(discord.Client):
         for guild in self.guilds:
             self.sql.upsert_guild(trans, guild)
 
+            self.logger.debug(f"Processing {len(guild.roles)} roles...")
+            for role in guild.roles:
+                self.sql.upsert_role(trans, role)
+
             self.logger.debug(f"Processing {len(guild.members)} members...")
             for member in guild.members:
                 self.sql.upsert_member(trans, member)
@@ -137,10 +141,6 @@ class EventIngestionClient(discord.Client):
                     self.sql.upsert_voice_channel(trans, channel)
                 else:
                     self.sql.upsert_channel(trans, channel)
-
-            self.logger.debug(f"Processing {len(guild.roles)} roles...")
-            for role in guild.roles:
-                self.sql.upsert_role(trans, role)
 
             self.logger.debug(f"Processing {len(guild.emojis)} emojis...")
             # Emojis not ready yet
