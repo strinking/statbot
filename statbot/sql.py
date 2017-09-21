@@ -416,7 +416,7 @@ class DiscordSqlHandler:
         upd = self.tb_messages \
                 .update() \
                 .values({
-                    'edit_timestamp': after.edited_at,
+                    'edited_at': after.edited_at,
                     'is_edited': before.content != after.content,
                     'content': after.content,
                     'embeds': embeds_to_json(after.embeds),
