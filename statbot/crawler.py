@@ -46,18 +46,16 @@ class DiscordHistoryCrawler:
         self.queue = asyncio.Queue(self.config['crawler']['queue-size'])
 
     async def _init_channels(self):
-        async with self.sql.orm.transaction():
+        with self.sql.transaction() as trans:
             for guild in self.client.guilds:
                 if guild.id in self.config['guilds']:
                     for channel in guild.text_channels:
                         if channel.permissions_for(guild.me).read_message_history:
                             self.channels[channel.id] = channel
-                            mhist = self.sql.orm.lookup_message_hist(channel)
-
+                            mhist = self.sql.lookup_message_hist(channel)
                             if mhist is None:
                                 mhist = MessageHistory()
-                                self.sql.orm.insert_message_hist(channel, mhist)
-
+                                self.sql.insert_message_hist(trans, channel, mhist)
                             self.progress[channel.id] = mhist
 
         # Remove deleted channels from tracker
@@ -144,8 +142,8 @@ class DiscordHistoryCrawler:
                     for message in messages:
                         self.sql.insert_message(trans, message)
 
-                async with self.sql.orm.transaction():
-                    self.sql.orm.update_message_hist(channel, mhist)
+                with self.sql.transaction() as trans:
+                    self.sql.update_message_hist(trans, channel, mhist)
             except Exception:
                 self.logger.error(f"Error writing message id {message.id}", exc_info=1)
 
@@ -159,8 +157,8 @@ class DiscordHistoryCrawler:
         mhist = MessageHistory()
         self.progress[channel.id] = mhist
 
-        async with self.sql.orm.transaction():
-            self.sql.orm.insert_message_hist(channel, mhist)
+        with self.sql.transaction() as trans:
+            self.sql.insert_message_hist(trans, channel, mhist)
 
     async def _channel_delete_hook(self, channel):
         self.logger.info(f"Removing #{channel.name} from tracked channels")
@@ -178,8 +176,8 @@ class DiscordHistoryCrawler:
             mhist = MessageHistory()
             self.progress[after.id] = mhist
 
-            with self.sql.orm.transaction():
-                self.sql.orm.insert_message_hist(after, mhist)
+            with self.sql.transaction() as trans:
+                self.sql.insert_message_hist(trans, after, mhist)
         else:
             self.logger.info(f"Updating #{after.name} - removing from list")
             self.progress.pop(after.id, None)

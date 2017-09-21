@@ -20,7 +20,6 @@ from sqlalchemy import Integer, String, Table, Unicode, UnicodeText
 from sqlalchemy import ForeignKey, MetaData, UniqueConstraint
 from sqlalchemy.dialects.postgresql import insert as p_insert
 
-from .orm import ORMHandler
 from .util import embeds_to_json, get_emoji_id, get_null_id, null_logger
 
 Column = functools.partial(Column, nullable=False)
@@ -77,9 +76,7 @@ class DiscordSqlHandler:
 
     __slots__ = (
         'db',
-        'meta',
         'logger',
-        'orm',
 
         'tb_messages',
         'tb_reactions',
@@ -93,10 +90,7 @@ class DiscordSqlHandler:
         'tb_role_membership',
         'tb_emojis',
         'tb_roles',
-
-        'tb_channel_hist',
-        'tb_ranges_orm',
-        'tb_audit_hist',
+        'tb_crawl_ranges',
 
         'guild_cache',
         'channel_cache',
@@ -109,11 +103,11 @@ class DiscordSqlHandler:
     def __init__(self, addr, logger=null_logger):
         logger.info(f"Opening database: '{addr}'")
         self.db = create_engine(addr)
-        self.meta = MetaData(self.db)
+        meta = MetaData(self.db)
         self.logger = logger
 
         # Primary tables
-        self.tb_messages = Table('messages', self.meta,
+        self.tb_messages = Table('messages', meta,
                 Column('message_id', BigInteger, primary_key=True),
                 Column('created_at', DateTime),
                 Column('edited_at', DateTime, nullable=True),
@@ -127,20 +121,20 @@ class DiscordSqlHandler:
                 Column('user_id', BigInteger),
                 Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
-        self.tb_reactions = Table('reactions', self.meta,
+        self.tb_reactions = Table('reactions', meta,
                 Column('message_id', BigInteger, ForeignKey('messages.message_id')),
                 Column('emoji_id', BigInteger, ForeignKey('emojis.emoji_id')),
                 Column('user_id', BigInteger, ForeignKey('users.user_id')),
                 Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
                 UniqueConstraint('message_id', 'emoji_id', 'user_id', name='uq_reaction'))
-        self.tb_typing = Table('typing', self.meta,
+        self.tb_typing = Table('typing', meta,
                 Column('timestamp', DateTime),
                 Column('user_id', BigInteger, ForeignKey('users.user_id')),
                 Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
                 UniqueConstraint('timestamp', 'user_id', 'channel_id', name='uq_typing'))
-        self.tb_pins = Table('pins', self.meta,
+        self.tb_pins = Table('pins', meta,
                 Column('pin_id', BigInteger, primary_key=True),
                 Column('message_id', BigInteger,
                     ForeignKey('messages.message_id'), primary_key=True),
@@ -150,7 +144,7 @@ class DiscordSqlHandler:
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
 
         # Lookup tables
-        self.tb_guilds = Table('guilds', self.meta,
+        self.tb_guilds = Table('guilds', meta,
                 Column('guild_id', BigInteger, primary_key=True),
                 Column('owner_id', BigInteger, ForeignKey('users.user_id')),
                 Column('name', Unicode),
@@ -163,7 +157,7 @@ class DiscordSqlHandler:
                 Column('explicit_content_filter', Enum(discord.ContentFilter)),
                 Column('features', ARRAY(String)),
                 Column('splash', String, nullable=True))
-        self.tb_voice_channels = Table('voice_channels', self.meta,
+        self.tb_voice_channels = Table('voice_channels', meta,
                 Column('voice_channel_id', BigInteger, primary_key=True),
                 Column('name', Unicode),
                 Column('is_default', Boolean),
@@ -173,7 +167,7 @@ class DiscordSqlHandler:
                 Column('user_limit', Integer),
                 Column('changed_roles', ARRAY(BigInteger)),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
-        self.tb_channels = Table('channels', self.meta,
+        self.tb_channels = Table('channels', meta,
                 Column('channel_id', BigInteger, primary_key=True),
                 Column('name', String),
                 Column('is_default', Boolean),
@@ -183,26 +177,26 @@ class DiscordSqlHandler:
                 Column('topic', UnicodeText, nullable=True),
                 Column('changed_roles', ARRAY(BigInteger)),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
-        self.tb_users = Table('users', self.meta,
+        self.tb_users = Table('users', meta,
                 Column('user_id', BigInteger, primary_key=True),
                 Column('name', Unicode),
                 Column('discriminator', Integer),
                 Column('avatar', String, nullable=True),
                 Column('is_deleted', Boolean),
                 Column('is_bot', Boolean))
-        self.tb_nicknames = Table('nicknames', self.meta,
+        self.tb_nicknames = Table('nicknames', meta,
                 Column('user_id', BigInteger,
                     ForeignKey('users.user_id'), primary_key=True),
                 Column('guild_id', BigInteger,
                     ForeignKey('guilds.guild_id'), primary_key=True),
                 Column('nickname', Unicode(32), nullable=True),
                 UniqueConstraint('user_id', 'guild_id', name='uq_nickname'))
-        self.tb_role_membership = Table('role_membership', self.meta,
+        self.tb_role_membership = Table('role_membership', meta,
                 Column('role_id', BigInteger, ForeignKey('roles.role_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
                 Column('user_id', BigInteger, ForeignKey('users.user_id')),
                 UniqueConstraint('role_id', 'user_id', name='uq_role_membership'))
-        self.tb_emojis = Table('emojis', self.meta,
+        self.tb_emojis = Table('emojis', meta,
                 Column('emoji_id', BigInteger, primary_key=True),
                 Column('name', String),
                 Column('is_deleted', Boolean),
@@ -210,7 +204,7 @@ class DiscordSqlHandler:
                 Column('unicode', Unicode(1), nullable=True),
                 Column('guild_id', BigInteger,
                     ForeignKey('guilds.guild_id'), nullable=True))
-        self.tb_roles = Table('roles', self.meta,
+        self.tb_roles = Table('roles', meta,
                 Column('role_id', BigInteger, primary_key=True),
                 Column('name', Unicode),
                 Column('color', Integer),
@@ -223,9 +217,13 @@ class DiscordSqlHandler:
                 Column('position', Integer))
 
         # History tables
-        self.orm = ORMHandler(self.db, self.meta, self.logger)
-        self.tb_channel_hist = self.orm.tb_channel_hist
-        self.tb_ranges_orm = self.orm.tb_ranges_orm
+        self.tb_crawl_ranges = Table('crawl_ranges', meta,
+                Column('channel_id', BigInteger,
+                    ForeignKey('channels.channel_id'), primary_key=True),
+                Column('first_message_id', BigInteger,
+                    ForeignKey('messages.message_id'), nullable=True),
+                Column('start_ranges', ARRAY(BigInteger)),
+                Column('end_ranges', ARRAY(BigInteger)))
 
         # Lookup caches
         self.guild_cache = {}
@@ -236,7 +234,7 @@ class DiscordSqlHandler:
         self.role_cache = {}
 
         # Create tables
-        self.meta.create_all(self.db)
+        meta.create_all(self.db)
         self.logger.info("Created all tables.")
 
     # Transaction logic
@@ -373,6 +371,16 @@ class DiscordSqlHandler:
             'is_mentionable': role.mentionable,
             'is_deleted': False,
             'position': role.position,
+        }
+
+    @staticmethod
+    def _message_hist_values(channel, mhist):
+        starts, ends = mhist.to_ranges()
+        return {
+            'channel_id': channel.id,
+            'first_message_id': mhist.first,
+            'start_ranges': starts,
+            'end_ranges': ends,
         }
 
     # Guild
@@ -854,3 +862,34 @@ class DiscordSqlHandler:
                     )
         trans.execute(ups)
         self.emoji_cache[id] = values
+
+    # Message History
+    def lookup_message_hist(self, channel):
+        self.logger.info(f"Looking up message history for #{channel.name}")
+        # TODO
+
+    def insert_message_hist(self, trans, channel, mhist):
+        self.logger.info(f"Inserting message history for #{channel.name}: {mhist}")
+        values = self._message_hist_values(channel, mhist)
+
+        ins = self.tb_crawl_ranges \
+                .insert() \
+                .values(values)
+        trans.execute(ins)
+
+    def update_message_hist(self, trans, channel, mhist):
+        self.logger.info(f"Updating message history for #{channel.name}: {mhist}")
+        values = self._message_hist_values(channel, mhist)
+
+        upd = self.tb_crawl_ranges \
+                .update() \
+                .values(values)
+        trans.execute(upd)
+
+    def delete_message_hist(self, trans, channel):
+        self.logger.info(f"Deleting message history for #{channel.name}")
+
+        delet = self.tb_crawl_ranges \
+                .delete() \
+                .where(self.tb_crawl_ranges.c.channel_id == channel.id)
+        trans.execute(delet)
