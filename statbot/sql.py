@@ -169,7 +169,7 @@ class DiscordSqlHandler:
                 Column('is_default', Boolean),
                 Column('is_deleted', Boolean),
                 Column('position', Integer),
-                Column('bitrate', Integer),
+                Column('bitrate', Integer, nullable=True),
                 Column('user_limit', Integer),
                 Column('changed_roles', ARRAY(BigInteger)),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
@@ -307,7 +307,7 @@ class DiscordSqlHandler:
             'is_deleted': False,
             'position': channel.position,
             'bitrate': channel.bitrate,
-            'user_limit': channel.user_limit,
+            'user_limit': channel.user_limit or 0,
             'changed_roles': [role.id for role in channel.changed_roles],
             'guild_id': channel.guild.id,
         }
