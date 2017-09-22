@@ -11,6 +11,7 @@
 #
 
 import functools
+import json
 import unicodedata
 
 import discord
@@ -21,13 +22,50 @@ from sqlalchemy import ForeignKey, MetaData, UniqueConstraint
 from sqlalchemy.dialects.postgresql import insert as p_insert
 
 from .orm import ORMHandler
-from .util import embeds_to_json, get_emoji_id, get_null_id, null_logger
+from .util import null_logger
 
 Column = functools.partial(Column, nullable=False)
 
 __all__ = [
     'DiscordSqlHandler',
 ]
+
+# Utility functions
+def get_null_id(obj):
+    '''
+    If "obj" is None, return None.
+    Otherwise get the "id" field and return it.
+    '''
+
+    if obj is None:
+        return None
+    else:
+        return obj.id
+
+def get_emoji_name(emoji):
+    '''
+    Gets an emoji's name, or the actual character
+    itself if it's a unicode emoji.
+    '''
+
+    if isinstance(emoji, str):
+        return emoji
+    else:
+        return emoji.name
+
+def get_emoji_id(emoji):
+    '''
+    Gets a unique integer that represents a particular
+    emoji. The id of a unicode emoji is its code point.
+    '''
+
+    if isinstance(emoji, str):
+        return ord(emoji)
+    else:
+        return emoji.id
+
+def embeds_to_json(embeds):
+    return json.dumps([embed.to_dict() for embed in embeds])
 
 # Value builders
 def guild_values(guild):

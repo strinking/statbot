@@ -10,66 +10,9 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
-import json
-
 __all__ = [
-    'member_needs_update',
-    'get_null_id',
-    'get_emoji_name',
-    'get_emoji_id',
-    'embeds_to_json',
     'null_logger',
 ]
-
-def member_needs_update(before, after):
-    '''
-    See if the given member update is something
-    we care about.
-
-    Returns 'False' for no difference or
-    change we will ignore.
-    '''
-
-    for attr in ('name', 'discriminator', 'nick', 'avatar', 'roles'):
-        if getattr(before, attr) != getattr(after, attr):
-            return True
-    return False
-
-def get_null_id(obj):
-    '''
-    If "obj" is None, return None.
-    Otherwise get the "id" field and return it.
-    '''
-
-    if obj is None:
-        return None
-    else:
-        return obj.id
-
-def get_emoji_name(emoji):
-    '''
-    Gets an emoji's name, or the actual character
-    itself if it's a unicode emoji.
-    '''
-
-    if isinstance(emoji, str):
-        return emoji
-    else:
-        return emoji.name
-
-def get_emoji_id(emoji):
-    '''
-    Gets a unique integer that represents a particular
-    emoji. The id of a unicode emoji is its code point.
-    '''
-
-    if isinstance(emoji, str):
-        return ord(emoji)
-    else:
-        return emoji.id
-
-def embeds_to_json(embeds):
-    return json.dumps([embed.to_dict() for embed in embeds])
 
 class _NullLogger:
     __slots__ = ()

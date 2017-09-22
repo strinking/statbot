@@ -13,11 +13,25 @@
 import asyncio
 import discord
 
-from .util import get_emoji_name, member_needs_update, null_logger
+from .util import null_logger
 
 __all__ = [
     'EventIngestionClient',
 ]
+
+def member_needs_update(before, after):
+    '''
+    See if the given member update is something
+    we care about.
+
+    Returns 'False' for no difference or
+    change we will ignore.
+    '''
+
+    for attr in ('name', 'discriminator', 'nick', 'avatar', 'roles'):
+        if getattr(before, attr) != getattr(after, attr):
+            return True
+    return False
 
 class EventIngestionClient(discord.Client):
     __slots__ = (
@@ -108,7 +122,7 @@ class EventIngestionClient(discord.Client):
 
     def _log_react(self, reaction, user, action):
         name = user.display_name
-        emote = get_emoji_name(reaction.emoji)
+        emote = 'TODO: emote name (reaction.emoji)'
         count = reaction.count
         id = reaction.message.id
 
