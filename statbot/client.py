@@ -13,7 +13,7 @@
 import asyncio
 import discord
 
-from .util import get_emoji_name, member_update, null_logger
+from .util import get_emoji_name, member_needs_update, null_logger
 
 __all__ = [
     'EventIngestionClient',
@@ -332,7 +332,7 @@ class EventIngestionClient(discord.Client):
         self.logger.info(f"Member {member.name} has joined {member.guild.name}")
 
         with self.sql.transaction() as trans:
-            self.sql.add_user(trans, member)
+            self.sql.upsert_user(trans, member)
             self.sql.add_member(trans, member)
 
     async def on_member_remove(self, member):
@@ -351,7 +351,7 @@ class EventIngestionClient(discord.Client):
         if not await self._accept_guild(after.guild):
             return
 
-        if not member_update(before, after):
+        if not member_needs_update(before, after):
             self._log_ignored("We don't care about this type of member update")
             return
 

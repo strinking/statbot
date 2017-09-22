@@ -13,7 +13,7 @@
 import json
 
 __all__ = [
-    'member_update',
+    'member_needs_update',
     'get_null_id',
     'get_emoji_name',
     'get_emoji_id',
@@ -21,7 +21,7 @@ __all__ = [
     'null_logger',
 ]
 
-def member_update(before, after):
+def member_needs_update(before, after):
     '''
     See if the given member update is something
     we care about.
