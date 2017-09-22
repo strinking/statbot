@@ -29,6 +29,141 @@ __all__ = [
     'DiscordSqlHandler',
 ]
 
+# Value builders
+def guild_values(guild):
+    return {
+        'guild_id': guild.id,
+        'owner_id': guild.owner.id,
+        'name': guild.name,
+        'icon': guild.icon,
+        'region': guild.region,
+        'afk_channel_id': get_null_id(guild.afk_channel),
+        'afk_timeout': guild.afk_timeout,
+        'mfa': bool(guild.mfa_level),
+        'verification_level': guild.verification_level,
+        'explicit_content_filter': guild.explicit_content_filter,
+        'features': guild.features,
+        'splash': guild.splash,
+    }
+
+def message_values(message):
+    if message.type == discord.MessageType.default:
+        system_content = ''
+    else:
+        system_content = message.system_content
+
+    return {
+        'message_id': message.id,
+        'created_at': message.created_at,
+        'edited_at': message.edited_at,
+        'is_edited': message.edited_at is not None,
+        'is_deleted': False,
+        'message_type': message.type,
+        'system_content': system_content,
+        'content': message.content,
+        'embeds': embeds_to_json(message.embeds),
+        'attachments': len(message.attachments),
+        'user_id': message.author.id,
+        'channel_id': message.channel.id,
+        'guild_id': message.guild.id,
+    }
+
+def channel_values(channel):
+    return {
+        'channel_id': channel.id,
+        'name': channel.name,
+        'is_nsfw': channel.is_nsfw(),
+        'is_deleted': False,
+        'position': channel.position,
+        'topic': channel.topic,
+        'changed_roles': [role.id for role in channel.changed_roles],
+        'category_id': get_null_id(channel.category),
+        'guild_id': channel.guild.id,
+    }
+
+def voice_channel_values(channel):
+    return {
+        'voice_channel_id': channel.id,
+        'name': channel.name,
+        'is_deleted': False,
+        'position': channel.position,
+        'bitrate': channel.bitrate,
+        'user_limit': channel.user_limit,
+        'changed_roles': [role.id for role in channel.changed_roles],
+        'category_id': get_null_id(channel.category),
+        'guild_id': channel.guild.id,
+    }
+
+def channel_categories_values(category):
+    return {
+        'category_id': category.id,
+        'name': category.name,
+        'position': category.position,
+        'is_deleted': False,
+        'is_nsfw': category.is_nsfw(),
+        'parent_category_id': get_null_id(category.category),
+        'changed_roles': [role.id for role in category.changed_roles],
+        'guild_id': category.guild.id,
+    }
+
+def user_values(user, deleted=False):
+    return {
+        'user_id': user.id,
+        'name': user.name,
+        'discriminator': user.discriminator,
+        'avatar': user.avatar,
+        'is_deleted': deleted,
+        'is_bot': user.bot,
+    }
+
+def nick_values(member):
+    return {
+        'user_id': member.id,
+        'guild_id': member.guild.id,
+        'nickname': member.nick,
+    }
+
+def role_member_values(member, role):
+    return {
+        'role_id': role.id,
+        'guild_id': role.guild.id,
+        'user_id': member.id,
+    }
+
+def emoji_values(emoji):
+    if isinstance(emoji, str):
+        return {
+            'emoji_id': ord(emoji),
+            'name': unicodedata.name(emoji),
+            'is_deleted': False,
+            'category': unicodedata.category(emoji),
+            'unicode': emoji,
+            'guild_id': None,
+        }
+    else:
+        return {
+            'emoji_id': emoji.id,
+            'name': emoji.name,
+            'is_deleted': False,
+            'category': f'(custom:{emoji.guild.name})',
+            'unicode': None,
+            'guild_id': emoji.guild.id,
+        }
+
+def role_values(role):
+    return {
+        'role_id': role.id,
+        'name': role.name,
+        'color': role.color.value,
+        'raw_permissions': role.permissions.value,
+        'guild_id': role.guild.id,
+        'is_hoisted': role.hoist,
+        'is_managed': role.managed,
+        'is_mentionable': role.mentionable,
+        'is_deleted': False,
+        'position': role.position,
+    }
+
 class _Transaction:
     __slots__ = (
         'sql',
@@ -258,154 +393,9 @@ class DiscordSqlHandler:
     def transaction(self):
         return _Transaction(self)
 
-    # Value builders
-    @staticmethod
-    def _guild_values(guild):
-        return {
-            'guild_id': guild.id,
-            'owner_id': guild.owner.id,
-            'name': guild.name,
-            'icon': guild.icon,
-            'region': guild.region,
-            'afk_channel_id': get_null_id(guild.afk_channel),
-            'afk_timeout': guild.afk_timeout,
-            'mfa': bool(guild.mfa_level),
-            'verification_level': guild.verification_level,
-            'explicit_content_filter': guild.explicit_content_filter,
-            'features': guild.features,
-            'splash': guild.splash,
-        }
-
-    @staticmethod
-    def _message_values(message):
-        if message.type == discord.MessageType.default:
-            system_content = ''
-        else:
-            system_content = message.system_content
-
-        return {
-            'message_id': message.id,
-            'created_at': message.created_at,
-            'edited_at': message.edited_at,
-            'is_edited': message.edited_at is not None,
-            'is_deleted': False,
-            'message_type': message.type,
-            'system_content': system_content,
-            'content': message.content,
-            'embeds': embeds_to_json(message.embeds),
-            'attachments': len(message.attachments),
-            'user_id': message.author.id,
-            'channel_id': message.channel.id,
-            'guild_id': message.guild.id,
-        }
-
-    @staticmethod
-    def _channel_values(channel):
-        return {
-            'channel_id': channel.id,
-            'name': channel.name,
-            'is_nsfw': channel.is_nsfw(),
-            'is_deleted': False,
-            'position': channel.position,
-            'topic': channel.topic,
-            'changed_roles': [role.id for role in channel.changed_roles],
-            'category_id': get_null_id(channel.category),
-            'guild_id': channel.guild.id,
-        }
-
-    @staticmethod
-    def _voice_channel_values(channel):
-        return {
-            'voice_channel_id': channel.id,
-            'name': channel.name,
-            'is_deleted': False,
-            'position': channel.position,
-            'bitrate': channel.bitrate,
-            'user_limit': channel.user_limit,
-            'changed_roles': [role.id for role in channel.changed_roles],
-            'category_id': get_null_id(channel.category),
-            'guild_id': channel.guild.id,
-        }
-
-    @staticmethod
-    def _channel_categories_values(category):
-        return {
-            'category_id': category.id,
-            'name': category.name,
-            'position': category.position,
-            'is_deleted': False,
-            'is_nsfw': category.is_nsfw(),
-            'parent_category_id': get_null_id(category.category),
-            'changed_roles': [role.id for role in category.changed_roles],
-            'guild_id': category.guild.id,
-        }
-
-    @staticmethod
-    def _user_values(user, deleted=False):
-        return {
-            'user_id': user.id,
-            'name': user.name,
-            'discriminator': user.discriminator,
-            'avatar': user.avatar,
-            'is_deleted': deleted,
-            'is_bot': user.bot,
-        }
-
-    @staticmethod
-    def _nick_values(member):
-        return {
-            'user_id': member.id,
-            'guild_id': member.guild.id,
-            'nickname': member.nick,
-        }
-
-    @staticmethod
-    def _role_member_values(member, role):
-        return {
-            'role_id': role.id,
-            'guild_id': role.guild.id,
-            'user_id': member.id,
-        }
-
-    @staticmethod
-    def _emoji_values(emoji):
-        if isinstance(emoji, str):
-            return {
-                'emoji_id': ord(emoji),
-                'name': unicodedata.name(emoji),
-                'is_deleted': False,
-                'category': unicodedata.category(emoji),
-                'unicode': emoji,
-                'guild_id': None,
-            }
-        else:
-            return {
-                'emoji_id': emoji.id,
-                'name': emoji.name,
-                'is_deleted': False,
-                'category': f'(custom:{emoji.guild.name})',
-                'unicode': None,
-                'guild_id': emoji.guild.id,
-            }
-
-    @staticmethod
-    def _role_values(role):
-        return {
-            'role_id': role.id,
-            'name': role.name,
-            'color': role.color.value,
-            'raw_permissions': role.permissions.value,
-            'guild_id': role.guild.id,
-            'is_hoisted': role.hoist,
-            'is_managed': role.managed,
-            'is_mentionable': role.mentionable,
-            'is_deleted': False,
-            'position': role.position,
-        }
-
     # Guild
     def upsert_guild(self, trans, guild):
-        values = self._guild_values(guild)
+        values = guild_values(guild)
         if self.guild_cache.get(guild.id) == values:
             self.logger.debug(f"Guild lookup for {guild.id} is already up-to-date")
             return
@@ -421,7 +411,7 @@ class DiscordSqlHandler:
         trans.conn.execute(ups)
         self.guild_cache[guild.id] = values
 
-    # Message
+    # Messages
     def add_message(self, trans, message):
         attach_urls = '\n'.join(attach.url for attach in message.attachments)
         if message.content:
@@ -432,7 +422,7 @@ class DiscordSqlHandler:
         self.upsert_user(trans, message.author)
 
         self.logger.info(f"Inserting message {message.id}")
-        values = self._message_values(message)
+        values = message_values(message)
         values['content'] = content
         ins = self.tb_messages \
                 .insert() \
@@ -466,7 +456,7 @@ class DiscordSqlHandler:
         self.upsert_user(trans, message.author)
 
         self.logger.debug(f"Inserting message {message.id}")
-        values = self._message_values(message)
+        values = message_values(message)
         ins = p_insert(self.tb_messages) \
                 .values(values) \
                 .on_conflict_do_nothing(index_elements=['message_id'])
@@ -551,7 +541,7 @@ class DiscordSqlHandler:
             return
 
         self.logger.info(f"Inserting role {role.id}")
-        values = self._role_values(role)
+        values = role_values(role)
         ins = self.tb_roles \
                 .insert() \
                 .values(values)
@@ -560,7 +550,7 @@ class DiscordSqlHandler:
 
     def _update_role(self, trans, role):
         self.logger.info(f"Updating role {role.id} in guild {role.guild.id}")
-        values = self._role_values(role)
+        values = role_values(role)
         upd = self.tb_roles \
                 .update() \
                 .where(self.tb_roles.c.role_id == role.id) \
@@ -584,7 +574,7 @@ class DiscordSqlHandler:
         self.role_cache.pop(role.id, None)
 
     def upsert_role(self, trans, role):
-        values = self._role_values(role)
+        values = role_values(role)
         if self.role_cache.get(role.id) == values:
             self.logger.debug(f"Role lookup for {role.id} is already up-to-date")
             return
@@ -607,7 +597,7 @@ class DiscordSqlHandler:
             return
 
         self.logger.info(f"Inserting new channel {channel.id} for guild {channel.guild.id}")
-        values = self._channel_values(channel)
+        values = channel_values(channel)
         ins = self.tb_channels \
                 .insert() \
                 .values(values)
@@ -616,7 +606,7 @@ class DiscordSqlHandler:
 
     def _update_channel(self, trans, channel):
         self.logger.info(f"Updating channel {channel.id} in guild {channel.guild.id}")
-        values = self._channel_values(channel)
+        values = channel_values(channel)
         upd = self.tb_channels \
                 .update() \
                 .where(self.tb_channels.c.channel_id == channel.id) \
@@ -640,7 +630,7 @@ class DiscordSqlHandler:
         self.channel_cache.pop(channel.id, None)
 
     def upsert_channel(self, trans, channel):
-        values = self._channel_values(channel)
+        values = channel_values(channel)
         if self.channel_cache.get(channel.id) == values:
             self.logger.debug(f"Channel lookup for {channel.id} is already up-to-date")
             return
@@ -663,7 +653,7 @@ class DiscordSqlHandler:
             return
 
         self.logger.info("Inserting new voice channel {channel.id} for guild {channel.guild.id}")
-        values = self._voice_channel_values(channel)
+        values = voice_channel_values(channel)
         ins = self.tb_voice_channels \
                 .insert() \
                 .values(values)
@@ -672,7 +662,7 @@ class DiscordSqlHandler:
 
     def _update_voice_channel(self, trans, channel):
         self.logger.info(f"Updating voice channel {channel.id} in guild {channel.guild.id}")
-        values = self._voice_channel_values(channel)
+        values = voice_channel_values(channel)
         upd = self.tb_voice_channels \
                 .update() \
                 .where(self.tb_voice_channels.c.voice_channel_id == channel.id) \
@@ -696,7 +686,7 @@ class DiscordSqlHandler:
         self.voice_channel_cache.pop(channel.id, None)
 
     def upsert_voice_channel(self, trans, channel):
-        values = self._voice_channel_values(channel)
+        values = voice_channel_values(channel)
         if self.voice_channel_cache.get(channel.id) == values:
             self.logger.debug(f"Voice channel lookup for {channel.id} is already up-to-date")
             return
@@ -719,7 +709,7 @@ class DiscordSqlHandler:
             return
 
         self.logger.info(f"Inserting new category {category.id} for guild {category.guild.id}")
-        values = self._channel_categories_values(category)
+        values = channel_categories_values(category)
         ins = self.tb_channel_categories \
                 .insert() \
                 .values(values)
@@ -728,7 +718,7 @@ class DiscordSqlHandler:
 
     def _update_channel_category(self, trans, category):
         self.logger.info(f"Updating channel category {category.id} in guild {category.guild.id}")
-        values = self._channel_categories_values(category)
+        values = channel_categories_values(category)
         upd = self.tb_channel_categories \
                 .update() \
                 .where(self.tb_channel_categories.c.category_id == category.id) \
@@ -752,7 +742,7 @@ class DiscordSqlHandler:
         self.channel_category_cache.pop(category.id, None)
 
     def upsert_channel_category(self, trans, category):
-        values = self._channel_categories_values(category)
+        values = channel_categories_values(category)
         if self.channel_cache.get(category.id) == values:
             self.logger.debug(f"Channel category lookup for {category.id} is already up-to-date")
             return
@@ -775,7 +765,7 @@ class DiscordSqlHandler:
             return
 
         self.logger.info(f"Inserting user {user.id}")
-        values = self._user_values(user)
+        values = user_values(user)
         ins = self.tb_users \
                 .insert() \
                 .values(values)
@@ -784,7 +774,7 @@ class DiscordSqlHandler:
 
     def _update_user(self, trans, user):
         self.logger.info(f"Updating user {user.id}")
-        values = self._user_values(user)
+        values = user_values(user)
         upd = self.tb_users \
                 .update() \
                 .where(self.tb_users.c.user_id == user.id) \
@@ -809,7 +799,7 @@ class DiscordSqlHandler:
 
     def upsert_user(self, trans, user):
         self.logger.debug(f"Upserting user {user.id}")
-        values = self._user_values(user)
+        values = user_values(user)
         if self.user_cache.get(user.id) == values:
             self.logger.debug(f"User lookup for {user.id} is already up-to-date")
             return
@@ -827,7 +817,7 @@ class DiscordSqlHandler:
     # Members
     def add_member(self, trans, member):
         self.logger.info(f"Inserting member data for {member.id}")
-        values = self._nick_values(member)
+        values = nick_values(member)
         ins = self.tb_nicknames \
                 .insert() \
                 .values(values)
@@ -864,7 +854,7 @@ class DiscordSqlHandler:
 
     def _insert_role_membership(self, trans, member):
         for role in member.roles:
-            values = self._role_member_values(member, role)
+            values = role_member_values(member, role)
             ins = self.tb_role_membership \
                     .insert() \
                     .values(values)
@@ -876,7 +866,7 @@ class DiscordSqlHandler:
 
     def upsert_member(self, trans, member):
         self.logger.info(f"Upserting member data for {member.id}")
-        values = self._nick_values(member)
+        values = nick_values(member)
         ups = p_insert(self.tb_nicknames) \
                 .values(values) \
                 .on_conflict_do_update(
@@ -893,7 +883,7 @@ class DiscordSqlHandler:
         # pylint: disable=unreachable
         raise NotImplementedError
 
-        values = self._emoji_values(emoji)
+        values = emoji_values(emoji)
         id = values['emoji_id']
         if id in self.emoji_cache:
             self.logger.debug(f"Emoji {id} already inserted.")
@@ -923,7 +913,7 @@ class DiscordSqlHandler:
         # pylint: disable=unreachable
         raise NotImplementedError
 
-        values = self._emoji_values(emoji)
+        values = emoji_values(emoji)
         id = values['emoji_id']
         if self.emoji_cache.get(id) == values:
             self.logger.debug(f"Emoji lookup for {id} is already up-to-date")
