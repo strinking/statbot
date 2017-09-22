@@ -125,7 +125,7 @@ class DiscordHistoryCrawler:
 
         if len(messages) < limit:
             # This channel has been exhausted
-            self.logger.info(f"#{channel.name} has now been exhausted")
+            self.logger.info(f"{channel.guild.name} #{channel.name} has now been exhausted")
             mhist.first = earliest
 
         await self.queue.put((channel, mhist, messages))
