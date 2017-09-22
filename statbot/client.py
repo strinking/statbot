@@ -137,10 +137,12 @@ class EventIngestionClient(discord.Client):
 
             self.logger.debug(f"Processing {len(guild.channels)} channels...")
             for channel in guild.channels:
-                if isinstance(channel, discord.VoiceChannel):
-                    self.sql.upsert_voice_channel(trans, channel)
-                else:
+                if isinstance(channel, discord.TextChannel):
                     self.sql.upsert_channel(trans, channel)
+                elif isinstance(channel, discord.VoiceChannel):
+                    self.sql.upsert_voice_channel(trans, channel)
+                elif isinstance(channel, discord.CategoryChannel):
+                    self.sql.upsert_channel_category(trans, channel)
 
             self.logger.debug(f"Processing {len(guild.emojis)} emojis...")
             # Emojis not ready yet
@@ -292,22 +294,27 @@ class EventIngestionClient(discord.Client):
         else:
             changed = ''
 
-        if isinstance(after, discord.VoiceChannel):
+        if isinstance(after, discord.TextChannel):
+            self.logger.info(f"Channel #{before.name}{changed} was changed in {after.guild.name}")
+
+            with self.sql.transaction() as trans:
+                self.sql.update_channel(trans, after)
+
+            # pylint: disable=not-callable
+            hook = self.hooks['on_guild_channel_update']
+            if hook:
+                self.logger.debug(f"Found hook {hook!r}, calling it")
+                await hook(before, after)
+        elif isinstance(after, discord.VoiceChannel):
             self.logger.info("Voice channel {before.name}{changed} was changed in {after.guild.name}")
+
             with self.sql.transaction() as trans:
                 self.sql.update_voice_channel(trans, after)
-            return
+        elif isinstance(after, discord.CategoryChannel):
+            self.logger.info(f"Channel category {before.name}{changed} was changed in {after.guild.name}")
 
-        self.logger.info(f"Channel #{before.name}{changed} was changed in {after.guild.name}")
-
-        with self.sql.transaction() as trans:
-            self.sql.update_channel(trans, after)
-
-        # pylint: disable=not-callable
-        hook = self.hooks['on_guild_channel_update']
-        if hook:
-            self.logger.debug(f"Found hook {hook!r}, calling it")
-            await hook(before, after)
+            with self.sql.transaction() as trans:
+                self.sql.update_channel_category(trans, after)
 
     async def on_guild_channel_pins_update(self, channel, last_pin):
         self._log_ignored(f"Channel {channel.id} got a pin update")

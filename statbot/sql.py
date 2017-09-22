@@ -86,8 +86,9 @@ class DiscordSqlHandler:
         'tb_typing',
         'tb_pins',
         'tb_guilds',
-        'tb_voice_channels',
         'tb_channels',
+        'tb_voice_channels',
+        'tb_channel_categories',
         'tb_users',
         'tb_nicknames',
         'tb_role_membership',
@@ -101,6 +102,7 @@ class DiscordSqlHandler:
         'guild_cache',
         'channel_cache',
         'voice_channel_cache',
+        'channel_category_cache',
         'user_cache',
         'emoji_cache',
         'role_cache',
@@ -139,7 +141,7 @@ class DiscordSqlHandler:
                 Column('user_id', BigInteger, ForeignKey('users.user_id')),
                 Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
-                UniqueConstraint('timestamp', 'user_id', 'channel_id', name='uq_typing'))
+                UniqueConstraint('timestamp', 'user_id', 'channel_id', 'guild_id', name='uq_typing'))
         self.tb_pins = Table('pins', self.meta,
                 Column('pin_id', BigInteger, primary_key=True),
                 Column('message_id', BigInteger,
@@ -163,25 +165,37 @@ class DiscordSqlHandler:
                 Column('explicit_content_filter', Enum(discord.ContentFilter)),
                 Column('features', ARRAY(String)),
                 Column('splash', String, nullable=True))
-        self.tb_voice_channels = Table('voice_channels', self.meta,
-                Column('voice_channel_id', BigInteger, primary_key=True),
-                Column('name', Unicode),
-                Column('is_default', Boolean),
-                Column('is_deleted', Boolean),
-                Column('position', Integer),
-                Column('bitrate', Integer, nullable=True),
-                Column('user_limit', Integer),
-                Column('changed_roles', ARRAY(BigInteger)),
-                Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
         self.tb_channels = Table('channels', self.meta,
                 Column('channel_id', BigInteger, primary_key=True),
                 Column('name', String),
-                Column('is_default', Boolean),
                 Column('is_nsfw', Boolean),
                 Column('is_deleted', Boolean),
                 Column('position', Integer),
                 Column('topic', UnicodeText, nullable=True),
                 Column('changed_roles', ARRAY(BigInteger)),
+                Column('category_id', BigInteger,
+                    ForeignKey('channel_categories.category_id'), nullable=True),
+                Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
+        self.tb_voice_channels = Table('voice_channels', self.meta,
+                Column('voice_channel_id', BigInteger, primary_key=True),
+                Column('name', Unicode),
+                Column('is_deleted', Boolean),
+                Column('position', Integer),
+                Column('bitrate', Integer),
+                Column('user_limit', Integer),
+                Column('changed_roles', ARRAY(BigInteger)),
+                Column('category_id', BigInteger,
+                    ForeignKey('channel_categories.category_id'), nullable=True),
+                Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
+        self.tb_channel_categories = Table('channel_categories', self.meta,
+                Column('category_id', BigInteger, primary_key=True),
+                Column('name', Unicode),
+                Column('position', Integer),
+                Column('is_deleted', Boolean),
+                Column('is_nsfw', Boolean),
+                Column('changed_roles', ARRAY(BigInteger)),
+                Column('parent_category_id', BigInteger,
+                    ForeignKey('channel_categories.category_id'), nullable=True),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
         self.tb_users = Table('users', self.meta,
                 Column('user_id', BigInteger, primary_key=True),
@@ -231,6 +245,7 @@ class DiscordSqlHandler:
         self.guild_cache = {}
         self.channel_cache = {}
         self.voice_channel_cache = {}
+        self.channel_category_cache = {}
         self.user_cache = {}
         self.emoji_cache = {}
         self.role_cache = {}
@@ -289,12 +304,12 @@ class DiscordSqlHandler:
         return {
             'channel_id': channel.id,
             'name': channel.name,
-            'is_default': channel.is_default(),
             'is_nsfw': channel.is_nsfw(),
             'is_deleted': False,
             'position': channel.position,
             'topic': channel.topic,
             'changed_roles': [role.id for role in channel.changed_roles],
+            'category_id': get_null_id(channel.category),
             'guild_id': channel.guild.id,
         }
 
@@ -303,13 +318,26 @@ class DiscordSqlHandler:
         return {
             'voice_channel_id': channel.id,
             'name': channel.name,
-            'is_default': channel.is_default(),
             'is_deleted': False,
             'position': channel.position,
             'bitrate': channel.bitrate,
-            'user_limit': channel.user_limit or 0,
+            'user_limit': channel.user_limit,
             'changed_roles': [role.id for role in channel.changed_roles],
+            'category_id': get_null_id(channel.category),
             'guild_id': channel.guild.id,
+        }
+
+    @staticmethod
+    def _channel_categories_values(category):
+        return {
+            'category_id': category.id,
+            'name': category.name,
+            'position': category.position,
+            'is_deleted': False,
+            'is_nsfw': category.is_nsfw(),
+            'parent_category_id': get_null_id(category.category),
+            'changed_roles': [role.id for role in category.changed_roles],
+            'guild_id': category.guild.id,
         }
 
     @staticmethod
@@ -683,6 +711,62 @@ class DiscordSqlHandler:
                 )
         trans.execute(ups)
         self.voice_channel_cache[channel.id] = values
+
+    # Channel Categories
+    def add_channel_category(self, trans, category):
+        if category.id in self.channel_category_cache:
+            self.logger.debug(f"Channel category {category.id} already inserted.")
+            return
+
+        self.logger.info(f"Inserting new category {category.id} for guild {category.guild.id}")
+        values = self._channel_categories_values(category)
+        ins = self.tb_channel_categories \
+                .insert() \
+                .values(values)
+        trans.execute(ins)
+        self.channel_category_cache[category.id] = values
+
+    def _update_channel_category(self, trans, category):
+        self.logger.info(f"Updating channel category {category.id} in guild {category.guild.id}")
+        values = self._channel_categories_values(category)
+        upd = self.tb_channel_categories \
+                .update() \
+                .where(self.tb_channel_categories.c.category_id == category.id) \
+                .values(values)
+        trans.execute(upd)
+        self.channel_category_cache[category.id] = values
+
+    def update_channel_category(self, trans, category):
+        if category.id in self.channel_category_cache:
+            self._update_channel_category(trans, category)
+        else:
+            self.upsert_channel_category(trans, category)
+
+    def remove_channel_category(self, trans, category):
+        self.logger.info(f"Deleting channel category {category.id} in guild {category.guild.id}")
+        upd = self.tb_channel_categories \
+                .update() \
+                .values(is_deleted=True) \
+                .where(self.tb_channels.c.category_id == category.id)
+        trans.execute(upd)
+        self.channel_category_cache.pop(category.id, None)
+
+    def upsert_channel_category(self, trans, category):
+        values = self._channel_categories_values(category)
+        if self.channel_cache.get(category.id) == values:
+            self.logger.debug(f"Channel category lookup for {category.id} is already up-to-date")
+            return
+
+        self.logger.info(f"Updating lookup data for channel category #{category.name}")
+        ups = p_insert(self.tb_channel_categories) \
+                .values(values) \
+                .on_conflict_do_update(
+                        index_elements=['category_id'],
+                        index_where=(self.tb_channel_categories.c.category_id == category.id),
+                        set_=values,
+                )
+        trans.execute(ups)
+        self.channel_category_cache[category.id] = values
 
     # Users
     def add_user(self, trans, user):

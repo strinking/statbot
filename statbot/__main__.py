@@ -27,7 +27,7 @@ __all__ = [
 LOG_FILE = 'bot.log'
 LOG_FILE_MODE = 'w'
 LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-LOG_DATE_FORMAT = "[%d/%m/%Y %H:%M]"
+LOG_DATE_FORMAT = "[%d/%m/%Y %H:%M:%S]"
 
 class StderrTee:
     def __init__(self, filename, mode):
