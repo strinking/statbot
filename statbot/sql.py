@@ -19,8 +19,11 @@ from sqlalchemy import create_engine, and_
 from sqlalchemy import ARRAY, Boolean, BigInteger, Column, DateTime, Enum
 from sqlalchemy import Integer, String, Table, Unicode, UnicodeText
 from sqlalchemy import ForeignKey, MetaData, UniqueConstraint
+from sqlalchemy.sql import select
 from sqlalchemy.dialects.postgresql import insert as p_insert
 
+from .message_history import MessageHistory
+from .range import Range
 from .util import null_logger
 
 Column = functools.partial(Column, nullable=False)
@@ -231,7 +234,7 @@ class _Transaction:
             self.trans.rollback()
 
     def execute(self, *args, **kwargs):
-        self.conn.execute(*args, **kwargs)
+        return self.conn.execute(*args, **kwargs)
 
 class DiscordSqlHandler:
     '''
@@ -964,9 +967,20 @@ class DiscordSqlHandler:
         self.emoji_cache[id] = values
 
     # Message History
-    def lookup_message_hist(self, channel):
+    def lookup_message_hist(self, trans, channel):
         self.logger.info(f"Looking up message history for #{channel.name}")
-        # TODO
+        sel = select([self.tb_crawl_ranges]) \
+                .where(self.tb_crawl_ranges.c.channel_id == channel.id)
+        result = trans.execute(sel)
+
+        if result.rowcount:
+            _, first, starts, ends = result.fetchone()
+            assert len(starts) == len(ends)
+            ranges = (Range(*r) for r in zip(starts, ends))
+            result.close()
+            return MessageHistory(*ranges, first=first)
+        else:
+            return None
 
     def insert_message_hist(self, trans, channel, mhist):
         self.logger.info(f"Inserting message history for #{channel.name}: {mhist}")
@@ -983,7 +997,8 @@ class DiscordSqlHandler:
 
         upd = self.tb_crawl_ranges \
                 .update() \
-                .values(values)
+                .values(values) \
+                .where(self.tb_crawl_ranges.c.channel_id == channel.id)
         trans.execute(upd)
 
     def delete_message_hist(self, trans, channel):

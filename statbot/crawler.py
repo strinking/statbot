@@ -52,10 +52,12 @@ class DiscordHistoryCrawler:
                     for channel in guild.text_channels:
                         if channel.permissions_for(guild.me).read_message_history:
                             self.channels[channel.id] = channel
-                            mhist = self.sql.lookup_message_hist(channel)
+                            mhist = self.sql.lookup_message_hist(trans, channel)
+
                             if mhist is None:
                                 mhist = MessageHistory()
                                 self.sql.insert_message_hist(trans, channel, mhist)
+
                             self.progress[channel.id] = mhist
 
         # Remove deleted channels from tracker
@@ -145,7 +147,7 @@ class DiscordHistoryCrawler:
                 with self.sql.transaction() as trans:
                     self.sql.update_message_hist(trans, channel, mhist)
             except Exception:
-                self.logger.error(f"Error writing message id {message.id}", exc_info=1)
+                self.logger.error(f"Error in consumer during message write", exc_info=1)
 
             self.queue.task_done()
 
