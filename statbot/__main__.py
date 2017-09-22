@@ -27,7 +27,7 @@ __all__ = [
 LOG_FILE = 'bot.log'
 LOG_FILE_MODE = 'w'
 LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-LOG_DATE_FORMAT = "[%d/%m/%Y %H:%M]"
+LOG_DATE_FORMAT = "[%d/%m/%Y %H:%M:%S]"
 
 class StderrTee:
     def __init__(self, filename, mode):
@@ -62,8 +62,7 @@ if __name__ == '__main__':
 
     # Set up logging
     log_fmtr = logging.Formatter(LOG_FORMAT, datefmt=LOG_DATE_FORMAT)
-    log_hndl = logging.FileHandler(filename=LOG_FILE,
-            encoding='utf-8', mode=LOG_FILE_MODE)
+    log_hndl = logging.FileHandler(filename=LOG_FILE, mode=LOG_FILE_MODE)
     log_hndl.setFormatter(log_fmtr)
     log_level = (logging.DEBUG if args.debug else logging.INFO)
 

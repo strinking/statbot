@@ -13,11 +13,25 @@
 import asyncio
 import discord
 
-from .util import get_emoji_name, null_logger
+from .util import null_logger
 
 __all__ = [
     'EventIngestionClient',
 ]
+
+def member_needs_update(before, after):
+    '''
+    See if the given member update is something
+    we care about.
+
+    Returns 'False' for no difference or
+    change we will ignore.
+    '''
+
+    for attr in ('name', 'discriminator', 'nick', 'avatar', 'roles'):
+        if getattr(before, attr) != getattr(after, attr):
+            return True
+    return False
 
 class EventIngestionClient(discord.Client):
     __slots__ = (
@@ -108,7 +122,7 @@ class EventIngestionClient(discord.Client):
 
     def _log_react(self, reaction, user, action):
         name = user.display_name
-        emote = get_emoji_name(reaction.emoji)
+        emote = 'TODO: emote name (reaction.emoji)'
         count = reaction.count
         id = reaction.message.id
 
@@ -127,13 +141,6 @@ class EventIngestionClient(discord.Client):
         for guild in self.guilds:
             self.sql.upsert_guild(trans, guild)
 
-            self.logger.debug(f"Processing {len(guild.channels)} channels...")
-            for channel in guild.channels:
-                if isinstance(channel, discord.VoiceChannel):
-                    self.sql.upsert_voice_channel(trans, channel)
-                else:
-                    self.sql.upsert_channel(trans, channel)
-
             self.logger.debug(f"Processing {len(guild.roles)} roles...")
             for role in guild.roles:
                 self.sql.upsert_role(trans, role)
@@ -142,6 +149,33 @@ class EventIngestionClient(discord.Client):
             # Emojis not ready yet
             #for emoji in guild.emojis:
             #    self.sql.upsert_emoji(trans, emoji)
+
+            self.logger.debug(f"Processing {len(guild.members)} members...")
+            for member in guild.members:
+                self.sql.upsert_member(trans, member)
+
+            text_channels = []
+            voice_channels = []
+            categories = []
+            for channel in guild.channels:
+                if isinstance(channel, discord.TextChannel):
+                    text_channels.append(channel)
+                elif isinstance(channel, discord.VoiceChannel):
+                    voice_channels.append(channel)
+                elif isinstance(channel, discord.CategoryChannel):
+                    categories.append(channel)
+
+            self.logger.debug(f"Processing {len(categories)} channel categories...")
+            for category in categories:
+                self.sql.upsert_channel_category(trans, category)
+
+            self.logger.debug(f"Processing {len(text_channels)} channels...")
+            for channel in text_channels:
+                self.sql.upsert_channel(trans, channel)
+
+            self.logger.debug(f"Processing {len(voice_channels)} voice channels...")
+            for channel in voice_channels:
+                self.sql.upsert_voice_channel(trans, channel)
 
     async def on_ready(self):
         # Print welcome string
@@ -288,22 +322,27 @@ class EventIngestionClient(discord.Client):
         else:
             changed = ''
 
-        if isinstance(after, discord.VoiceChannel):
+        if isinstance(after, discord.TextChannel):
+            self.logger.info(f"Channel #{before.name}{changed} was changed in {after.guild.name}")
+
+            with self.sql.transaction() as trans:
+                self.sql.update_channel(trans, after)
+
+            # pylint: disable=not-callable
+            hook = self.hooks['on_guild_channel_update']
+            if hook:
+                self.logger.debug(f"Found hook {hook!r}, calling it")
+                await hook(before, after)
+        elif isinstance(after, discord.VoiceChannel):
             self.logger.info("Voice channel {before.name}{changed} was changed in {after.guild.name}")
+
             with self.sql.transaction() as trans:
                 self.sql.update_voice_channel(trans, after)
-            return
+        elif isinstance(after, discord.CategoryChannel):
+            self.logger.info(f"Channel category {before.name}{changed} was changed in {after.guild.name}")
 
-        self.logger.info(f"Channel #{before.name}{changed} was changed in {after.guild.name}")
-
-        with self.sql.transaction() as trans:
-            self.sql.update_channel(trans, after)
-
-        # pylint: disable=not-callable
-        hook = self.hooks['on_guild_channel_update']
-        if hook:
-            self.logger.debug(f"Found hook {hook!r}, calling it")
-            await hook(before, after)
+            with self.sql.transaction() as trans:
+                self.sql.update_channel_category(trans, after)
 
     async def on_guild_channel_pins_update(self, channel, last_pin):
         self._log_ignored(f"Channel {channel.id} got a pin update")
@@ -321,7 +360,8 @@ class EventIngestionClient(discord.Client):
         self.logger.info(f"Member {member.name} has joined {member.guild.name}")
 
         with self.sql.transaction() as trans:
-            self.sql.add_user(trans, member)
+            self.sql.upsert_user(trans, member)
+            self.sql.add_member(trans, member)
 
     async def on_member_remove(self, member):
         self._log_ignored(f"Member {member.id} left guild {member.guild.id}")
@@ -332,27 +372,26 @@ class EventIngestionClient(discord.Client):
 
         with self.sql.transaction() as trans:
             self.sql.remove_user(trans, member)
+            self.sql.remove_member(trans, member)
 
     async def on_member_update(self, before, after):
         self._log_ignored(f"Member {after.id} was updated in guild {after.guild.id}")
         if not await self._accept_guild(after.guild):
             return
 
-        # Certain changes that we don't care about can trigger this event
-        before.status = after.status
-        before.game = after.game
-        if before == after:
-            self._log_ignored("It was only a status change")
+        if not member_needs_update(before, after):
+            self._log_ignored("We don't care about this type of member update")
             return
 
-        if before.name != after.name:
+        if before.display_name != after.display_name:
             changed = f' (now {after.name})'
         else:
             changed = ''
-        self.logger.info(f"Member {before.name}{changed} was changed in {after.guild.name}")
+        self.logger.info(f"Member {before.display_name}{changed} was changed in {after.guild.name}")
 
         with self.sql.transaction() as trans:
             self.sql.update_user(trans, after)
+            self.sql.update_member(trans, after)
 
     async def on_guild_role_create(self, role):
         self._log_ignored(f"Role {role.id} was created in guild {role.guild.id}")
