@@ -145,23 +145,37 @@ class EventIngestionClient(discord.Client):
             for role in guild.roles:
                 self.sql.upsert_role(trans, role)
 
-            self.logger.debug(f"Processing {len(guild.members)} members...")
-            for member in guild.members:
-                self.sql.upsert_member(trans, member)
-
-            self.logger.debug(f"Processing {len(guild.channels)} channels...")
-            for channel in guild.channels:
-                if isinstance(channel, discord.TextChannel):
-                    self.sql.upsert_channel(trans, channel)
-                elif isinstance(channel, discord.VoiceChannel):
-                    self.sql.upsert_voice_channel(trans, channel)
-                elif isinstance(channel, discord.CategoryChannel):
-                    self.sql.upsert_channel_category(trans, channel)
-
             self.logger.debug(f"Processing {len(guild.emojis)} emojis...")
             # Emojis not ready yet
             #for emoji in guild.emojis:
             #    self.sql.upsert_emoji(trans, emoji)
+
+            self.logger.debug(f"Processing {len(guild.members)} members...")
+            for member in guild.members:
+                self.sql.upsert_member(trans, member)
+
+            text_channels = []
+            voice_channels = []
+            categories = []
+            for channel in guild.channels:
+                if isinstance(channel, discord.TextChannel):
+                    text_channels.append(channel)
+                elif isinstance(channel, discord.VoiceChannel):
+                    voice_channels.append(channel)
+                elif isinstance(channel, discord.CategoryChannel):
+                    categories.append(channel)
+
+            self.logger.debug(f"Processing {len(categories)} channel categories...")
+            for category in categories:
+                self.sql.upsert_channel_category(trans, category)
+
+            self.logger.debug(f"Processing {len(text_channels)} channels...")
+            for channel in text_channels:
+                self.sql.upsert_channel(trans, channel)
+
+            self.logger.debug(f"Processing {len(voice_channels)} voice channels...")
+            for channel in voice_channels:
+                self.sql.upsert_voice_channel(trans, channel)
 
     async def on_ready(self):
         # Print welcome string

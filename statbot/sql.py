@@ -774,7 +774,7 @@ class DiscordSqlHandler:
             self.logger.debug(f"Channel category lookup for {category.id} is already up-to-date")
             return
 
-        self.logger.info(f"Updating lookup data for channel category #{category.name}")
+        self.logger.info(f"Updating lookup data for channel category {category.name}")
         ups = p_insert(self.tb_channel_categories) \
                 .values(values) \
                 .on_conflict_do_update(
