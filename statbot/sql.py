@@ -10,9 +10,9 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
+from datetime import datetime
 import functools
 import json
-import unicodedata
 
 import discord
 from sqlalchemy import create_engine, and_
@@ -22,6 +22,7 @@ from sqlalchemy import ForeignKey, MetaData, UniqueConstraint
 from sqlalchemy.sql import select
 from sqlalchemy.dialects.postgresql import insert as p_insert
 
+from .emoji import EmojiData
 from .message_history import MessageHistory
 from .range import Range
 from .util import null_logger
@@ -33,28 +34,6 @@ __all__ = [
 ]
 
 # Utility functions
-def get_emoji_name(emoji):
-    '''
-    Gets an emoji's name, or the actual character
-    itself if it's a unicode emoji.
-    '''
-
-    if isinstance(emoji, str):
-        return emoji
-    else:
-        return emoji.name
-
-def get_emoji_id(emoji):
-    '''
-    Gets a unique integer that represents a particular
-    emoji. The id of a unicode emoji is its code point.
-    '''
-
-    if isinstance(emoji, str):
-        return ord(emoji)
-    else:
-        return emoji.id
-
 def embeds_to_json(embeds):
     return json.dumps([embed.to_dict() for embed in embeds])
 
@@ -158,26 +137,6 @@ def role_member_values(member, role):
         'guild_id': role.guild.id,
         'user_id': member.id,
     }
-
-def emoji_values(emoji):
-    if isinstance(emoji, str):
-        return {
-            'emoji_id': ord(emoji),
-            'name': unicodedata.name(emoji),
-            'is_deleted': False,
-            'category': unicodedata.category(emoji),
-            'unicode': emoji,
-            'guild_id': None,
-        }
-    else:
-        return {
-            'emoji_id': emoji.id,
-            'name': emoji.name,
-            'is_deleted': False,
-            'category': f'(custom:{emoji.guild.name})',
-            'unicode': None,
-            'guild_id': emoji.guild.id,
-        }
 
 def role_values(role):
     return {
@@ -298,12 +257,15 @@ class DiscordSqlHandler:
                 Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
         self.tb_reactions = Table('reactions', meta,
-                Column('message_id', BigInteger, ForeignKey('messages.message_id')),
-                Column('emoji_id', BigInteger, ForeignKey('emojis.emoji_id')),
+                Column('timestamp', DateTime),
+                Column('message_id', BigInteger),
+                Column('emoji_id', BigInteger, nullable=True),
+                Column('emoji_unicode', Unicode(1), nullable=True),
                 Column('user_id', BigInteger, ForeignKey('users.user_id')),
                 Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
-                UniqueConstraint('message_id', 'emoji_id', 'user_id', name='uq_reaction'))
+                UniqueConstraint('timestamp', 'message_id', 'emoji_id', 'emoji_unicode',
+                    name='uq_reactions'))
         self.tb_typing = Table('typing', meta,
                 Column('timestamp', DateTime),
                 Column('user_id', BigInteger, ForeignKey('users.user_id')),
@@ -385,13 +347,16 @@ class DiscordSqlHandler:
                 Column('user_id', BigInteger, ForeignKey('users.user_id')),
                 UniqueConstraint('role_id', 'user_id', name='uq_role_membership'))
         self.tb_emojis = Table('emojis', meta,
-                Column('emoji_id', BigInteger, primary_key=True),
-                Column('name', String),
+                Column('emoji_id', BigInteger, nullable=True),
+                Column('emoji_unicode', Unicode(1), nullable=True),
+                Column('is_custom', Boolean),
+                Column('is_managed', Boolean),
                 Column('is_deleted', Boolean),
+                Column('name', String),
                 Column('category', String),
-                Column('unicode', Unicode(1), nullable=True),
-                Column('guild_id', BigInteger,
-                    ForeignKey('guilds.guild_id'), nullable=True))
+                Column('roles', ARRAY(BigInteger)),
+                Column('guild_id', BigInteger, nullable=True),
+                UniqueConstraint('emoji_id', 'emoji_unicode', name='uq_emoji'))
         self.tb_roles = Table('roles', meta,
                 Column('role_id', BigInteger, primary_key=True),
                 Column('name', Unicode),
@@ -515,11 +480,14 @@ class DiscordSqlHandler:
     # Reactions
     def add_reaction(self, trans, reaction, user):
         self.logger.info(f"Inserting reaction for user {user.id} on message {reaction.message.id}")
+        data = EmojiData(reaction.emoji)
         ins = self.tb_reactions \
                 .insert() \
                 .values({
+                    'timestamp': datetime.now(),
                     'message_id': reaction.message.id,
-                    'emoji_id': get_emoji_id(reaction.emoji),
+                    'emoji_id': data.id,
+                    'emoji_unicode': data.unicode,
                     'user_id': user.id,
                     'channel_id': reaction.message.channel.id,
                     'guild_id': reaction.message.guild.id,
@@ -528,10 +496,12 @@ class DiscordSqlHandler:
 
     def remove_reaction(self, trans, reaction, user):
         self.logger.info(f"Deleting reaction for user {user.id} on message {reaction.message.id}")
+        data = EmojiData(reaction.emoji)
         delet = self.tb_reactions \
                 .delete() \
                 .where(self.tb_reactions.c.message_id == reaction.message.id) \
-                .where(self.tb_reactions.c.emoji_id == get_emoji_id(reaction.emoji)) \
+                .where(self.tb_reactions.c.emoji_id == data.id) \
+                .where(self.tb_reactions.c.emoji_unicode == data.unicode) \
                 .where(self.tb_reactions.c.user_id == user.id)
         trans.execute(delet)
 
@@ -915,56 +885,52 @@ class DiscordSqlHandler:
         self._delete_role_membership(trans, member)
         self._insert_role_membership(trans, member)
 
-    # Emojis (TODO)
+    # Emojis
     def add_emoji(self, trans, emoji):
-        # pylint: disable=unreachable
-        raise NotImplementedError
-
-        values = emoji_values(emoji)
-        id = values['emoji_id']
-        if id in self.emoji_cache:
-            self.logger.debug(f"Emoji {id} already inserted.")
+        data = EmojiData(emoji)
+        if data.cache_id in self.emoji_cache:
+            self.logger.debug(f"Emoji {data} already inserted.")
             return
 
-        self.logger.info(f"Inserting emoji {id}")
+        self.logger.info(f"Inserting emoji {data}")
+        values = emoji.values()
         ins = self.tb_emojis \
                 .insert() \
-                .values(id)
+                .values(values)
         trans.execute(ins)
-        self.emoji_cache[id] = values
+        self.emoji_cache[data.cache_id] = values
 
     def remove_emoji(self, trans, emoji):
-        # pylint: disable=unreachable
-        raise NotImplementedError
+        data = EmojiData(emoji)
+        self.logger.info(f"Deleting emoji {data}")
 
-        id = get_emoji_id(emoji)
-        self.logger.info(f"Deleting emoji {id}")
         upd = self.tb_emojis \
                 .update() \
                 .values(is_deleted=True) \
-                .where(self.tb_emojis.c.emoji_id == id)
+                .where(self.tb_emojis.c.emoji_id == data.id) \
+                .where(self.tb_emojis.c.emoji_unicode == data.unicode)
         trans.execute(upd)
-        self.emoji_cache.pop(id, None)
+        self.emoji_cache.pop(data.cache_id, None)
 
     def upsert_emoji(self, trans, emoji):
-        # pylint: disable=unreachable
-        raise NotImplementedError
-
-        values = emoji_values(emoji)
-        id = values['emoji_id']
-        if self.emoji_cache.get(id) == values:
-            self.logger.debug(f"Emoji lookup for {id} is already up-to-date")
+        data = EmojiData(emoji)
+        values = data.values()
+        if self.emoji_cache.get(data.cache_id) == values:
+            self.logger.debug(f"Emoji lookup for {data} is already up-to-date")
             return
 
         ups = p_insert(self.tb_emojis) \
                 .values(values) \
                 .on_conflict_do_update(
-                        index_elements=['emoji_id'],
-                        index_where=(self.tb_emojis.c.emoji_id == id),
+                        index_elements=['emoji_id', 'emoji_unicode'],
+                        index_where=and_(
+                            self.tb_emojis.c.emoji_id == data.id,
+                            self.tb_emojis.c.emoji_unicode == data.unicode,
+                        ),
                         set_=values,
                     )
         trans.execute(ups)
-        self.emoji_cache[id] = values
+        self.emoji_cache[data.cache_id] = values
 
     # Message History
     def lookup_message_hist(self, trans, channel):
