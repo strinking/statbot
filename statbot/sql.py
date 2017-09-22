@@ -31,17 +31,6 @@ __all__ = [
 ]
 
 # Utility functions
-def get_null_id(obj):
-    '''
-    If "obj" is None, return None.
-    Otherwise get the "id" field and return it.
-    '''
-
-    if obj is None:
-        return None
-    else:
-        return obj.id
-
 def get_emoji_name(emoji):
     '''
     Gets an emoji's name, or the actual character
@@ -75,7 +64,7 @@ def guild_values(guild):
         'name': guild.name,
         'icon': guild.icon,
         'region': guild.region,
-        'afk_channel_id': get_null_id(guild.afk_channel),
+        'afk_channel_id': getattr(guild.afk_channel, 'id', None),
         'afk_timeout': guild.afk_timeout,
         'mfa': bool(guild.mfa_level),
         'verification_level': guild.verification_level,
@@ -115,7 +104,7 @@ def channel_values(channel):
         'position': channel.position,
         'topic': channel.topic,
         'changed_roles': [role.id for role in channel.changed_roles],
-        'category_id': get_null_id(channel.category),
+        'category_id': getattr(channel.category, 'id', None),
         'guild_id': channel.guild.id,
     }
 
@@ -128,7 +117,7 @@ def voice_channel_values(channel):
         'bitrate': channel.bitrate,
         'user_limit': channel.user_limit,
         'changed_roles': [role.id for role in channel.changed_roles],
-        'category_id': get_null_id(channel.category),
+        'category_id': getattr(channel.category, 'id', None),
         'guild_id': channel.guild.id,
     }
 
@@ -139,7 +128,7 @@ def channel_categories_values(category):
         'position': category.position,
         'is_deleted': False,
         'is_nsfw': category.is_nsfw(),
-        'parent_category_id': get_null_id(category.category),
+        'parent_category_id': getattr(category.category, 'id', None),
         'changed_roles': [role.id for role in category.changed_roles],
         'guild_id': category.guild.id,
     }
