@@ -71,6 +71,7 @@ def message_values(message):
         'content': message.content,
         'embeds': embeds_to_json(message.embeds),
         'attachments': len(message.attachments),
+        'webhook_id': message.webhook_id,
         'user_id': message.author.id,
         'channel_id': message.channel.id,
         'guild_id': message.guild.id,
@@ -253,6 +254,7 @@ class DiscordSqlHandler:
                 Column('content', UnicodeText),
                 Column('embeds', UnicodeText),
                 Column('attachments', Integer),
+                Column('webhook_id', BigInteger, nullable=True),
                 Column('user_id', BigInteger),
                 Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
@@ -351,7 +353,7 @@ class DiscordSqlHandler:
                 Column('emoji_id', BigInteger),
                 Column('emoji_unicode', Unicode(7)),
                 Column('is_custom', Boolean),
-                Column('is_managed', Boolean),
+                Column('is_managed', Boolean, nullable=True),
                 Column('is_deleted', Boolean),
                 Column('name', String),
                 Column('category', String),
@@ -375,7 +377,8 @@ class DiscordSqlHandler:
                 Column('channel_id', BigInteger,
                     ForeignKey('channels.channel_id'), primary_key=True),
                 Column('first_message_id', BigInteger,
-                    ForeignKey('messages.message_id'), nullable=True),
+                    nullable=True), # FIXME: first_message_id is being set prematurely
+                    #ForeignKey('messages.message_id'), nullable=True),
                 Column('start_ranges', ARRAY(BigInteger)),
                 Column('end_ranges', ARRAY(BigInteger)))
 
@@ -506,6 +509,28 @@ class DiscordSqlHandler:
                 .where(self.tb_reactions.c.emoji_unicode == data.unicode) \
                 .where(self.tb_reactions.c.user_id == user.id)
         trans.execute(delet)
+
+    def insert_reaction(self, trans, reaction, users):
+        self.logger.info(f"Inserting reactions for {reaction.message.id}")
+        data = EmojiData(reaction.emoji)
+        for user in users:
+            values = {
+                'timestamp': datetime.now(),
+                'message_id': reaction.message.id,
+                'emoji_id': data.id,
+                'emoji_unicode': data.unicode,
+                'user_id': user.id,
+                'channel_id': reaction.message.channel.id,
+                'guild_id': reaction.message.guild.id,
+            }
+            self.logger.debug(f"Inserting single reaction {data} from {user.id}")
+            ins = p_insert(self.tb_reactions) \
+                    .values(values) \
+                    .on_conflict_do_nothing(index_elements=[
+                        'timestamp', 'message_id',
+                        'emoji_id', 'emoji_unicode',
+                    ])
+            trans.execute(ins)
 
     def clear_reactions(self, trans, message):
         self.logger.info(f"Deleting all reactions on message {message.id}")

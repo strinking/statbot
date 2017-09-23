@@ -16,6 +16,12 @@ __all__ = [
     'EmojiData',
 ]
 
+def _partial_category(emoji):
+    if hasattr(emoji, 'guild'):
+        return f'[Custom: {emoji.guild.name}]'
+    else:
+        return '[Custom]'
+
 class EmojiData:
     __slots__ = (
         'raw',
@@ -45,11 +51,11 @@ class EmojiData:
             self.id = emoji.id
             self.unicode = ''
             self.custom = True
-            self.managed = emoji.managed
+            self.managed = getattr(emoji, 'managed', None)
             self.name = emoji.name
-            self.category = f'[Custom: {emoji.guild.name}]'
+            self.category = _partial_category(emoji)
             self.roles = emoji.roles
-            self.guild = emoji.guild
+            self.guild = getattr(emoji, 'guild', None)
 
     @property
     def mention(self):
