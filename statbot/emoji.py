@@ -54,7 +54,7 @@ class EmojiData:
     @property
     def mention(self):
         if self.id:
-            return f'<:{self.name}:{self.id}>'
+            return f'<:{self.name[0]}:{self.id}>'
         else:
             return self.unicode
 
