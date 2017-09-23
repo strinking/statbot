@@ -153,6 +153,19 @@ def role_values(role):
         'position': role.position,
     }
 
+def reaction_values(reaction, user):
+    data = EmojiData(reaction.emoji)
+    return {
+        'timestamp': datetime.now(),
+        'message_id': reaction.message.id,
+        'emoji_id': data.id,
+        'emoji_unicode': data.unicode,
+        'user_id': user.id,
+        'is_deleted': False,
+        'channel_id': reaction.message.channel.id,
+        'guild_id': reaction.message.guild.id,
+    }
+
 def message_hist_values(channel, mhist):
     starts, ends = mhist.to_ranges()
     return {
@@ -264,6 +277,7 @@ class DiscordSqlHandler:
                 Column('emoji_id', BigInteger),
                 Column('emoji_unicode', Unicode(7)),
                 Column('user_id', BigInteger, ForeignKey('users.user_id')),
+                Column('is_deleted', Boolean),
                 Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
                 UniqueConstraint('timestamp', 'message_id', 'emoji_id', 'emoji_unicode',
@@ -484,44 +498,29 @@ class DiscordSqlHandler:
     def add_reaction(self, trans, reaction, user):
         self.logger.info(f"Inserting reaction for user {user.id} on message {reaction.message.id}")
         self.upsert_emoji(trans, reaction.emoji)
-        data = EmojiData(reaction.emoji)
+        values = reaction_values(reaction, user)
         ins = self.tb_reactions \
                 .insert() \
-                .values({
-                    'timestamp': datetime.now(),
-                    'message_id': reaction.message.id,
-                    'emoji_id': data.id,
-                    'emoji_unicode': data.unicode,
-                    'user_id': user.id,
-                    'channel_id': reaction.message.channel.id,
-                    'guild_id': reaction.message.guild.id,
-                })
+                .values(values)
         trans.execute(ins)
 
     def remove_reaction(self, trans, reaction, user):
         self.logger.info(f"Deleting reaction for user {user.id} on message {reaction.message.id}")
         data = EmojiData(reaction.emoji)
-        delet = self.tb_reactions \
-                .delete() \
+        upd = self.tb_reactions \
+                .update() \
+                .values(is_deleted=True) \
                 .where(self.tb_reactions.c.message_id == reaction.message.id) \
                 .where(self.tb_reactions.c.emoji_id == data.id) \
                 .where(self.tb_reactions.c.emoji_unicode == data.unicode) \
                 .where(self.tb_reactions.c.user_id == user.id)
-        trans.execute(delet)
+        trans.execute(upd)
 
     def insert_reaction(self, trans, reaction, users):
         self.logger.info(f"Inserting reactions for {reaction.message.id}")
         data = EmojiData(reaction.emoji)
         for user in users:
-            values = {
-                'timestamp': datetime.now(),
-                'message_id': reaction.message.id,
-                'emoji_id': data.id,
-                'emoji_unicode': data.unicode,
-                'user_id': user.id,
-                'channel_id': reaction.message.channel.id,
-                'guild_id': reaction.message.guild.id,
-            }
+            values = reaction_values(reaction, user)
             self.logger.debug(f"Inserting single reaction {data} from {user.id}")
             ins = p_insert(self.tb_reactions) \
                     .values(values) \
@@ -533,10 +532,11 @@ class DiscordSqlHandler:
 
     def clear_reactions(self, trans, message):
         self.logger.info(f"Deleting all reactions on message {message.id}")
-        delet = self.tb_reactions \
-                .delete() \
+        upd = self.tb_reactions \
+                .update() \
+                .values(is_deleted=True) \
                 .where(self.tb_reactions.c.message_id == message.id)
-        trans.execute(delet)
+        trans.execute(upd)
 
     # Pins (TODO)
     def add_pin(self, trans, announce, message):
