@@ -256,6 +256,9 @@ class DiscordSqlHandler:
         'tb_reactions',
         'tb_typing',
         'tb_pins',
+        'tb_user_mentions',
+        'tb_role_mentions',
+        'tb_channel_mentions',
         'tb_guilds',
         'tb_channels',
         'tb_voice_channels',
@@ -282,7 +285,6 @@ class DiscordSqlHandler:
         meta = MetaData(self.db)
         self.logger = logger
 
-        # Primary tables
         self.tb_messages = Table('messages', meta,
                 Column('message_id', BigInteger, primary_key=True),
                 Column('created_at', DateTime),
@@ -318,8 +320,18 @@ class DiscordSqlHandler:
                 Column('user_id', BigInteger, ForeignKey('users.user_id')),
                 Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
-
-        # Lookup tables
+        self.tb_user_mentions = Table('user_mentions', meta,
+                Column('user_id', BigInteger),
+                Column('message_id', BigInteger, ForeignKey('messages.message_id')),
+                UniqueConstraint('user_id', 'message_id', name='uq_user_mention'))
+        self.tb_role_mentions = Table('role_mentions', meta,
+                Column('role_id', BigInteger),
+                Column('message_id', BigInteger, ForeignKey('messages.message_id')),
+                UniqueConstraint('role_id', 'message_id', name='uq_role_mention'))
+        self.tb_channel_mentions = Table('channel_mentions', meta,
+                Column('channel_id', BigInteger),
+                Column('message_id', BigInteger, ForeignKey('messages.message_id')),
+                UniqueConstraint('channel_id', 'message_id', name='uq_channel_mention'))
         self.tb_guilds = Table('guilds', meta,
                 Column('guild_id', BigInteger, primary_key=True),
                 Column('owner_id', BigInteger, ForeignKey('users.user_id')),
@@ -456,8 +468,6 @@ class DiscordSqlHandler:
         else:
             content = attach_urls
 
-        self.upsert_user(trans, message.author)
-
         self.logger.info(f"Inserting message {message.id}")
         values = message_values(message)
         values['content'] = content
@@ -465,6 +475,9 @@ class DiscordSqlHandler:
                 .insert() \
                 .values(values)
         trans.execute(ins)
+
+        self.upsert_user(trans, message.author)
+        self.insert_mentions(trans, message)
 
     def edit_message(self, trans, before, after):
         self.logger.info(f"Updating message {after.id}")
@@ -479,25 +492,60 @@ class DiscordSqlHandler:
                 .where(self.tb_messages.c.message_id == after.id)
         trans.execute(upd)
 
+        self.insert_mentions(trans, after)
+
     def remove_message(self, trans, message):
         self.logger.info(f"Deleting message {message.id}")
         upd = self.tb_messages \
                 .update() \
-                .values({
-                    'is_deleted': True,
-                }) \
+                .values(is_deleted=True) \
                 .where(self.tb_messages.c.message_id == message.id)
         trans.execute(upd)
 
     def insert_message(self, trans, message):
-        self.upsert_user(trans, message.author)
-
         self.logger.debug(f"Inserting message {message.id}")
         values = message_values(message)
         ins = p_insert(self.tb_messages) \
                 .values(values) \
                 .on_conflict_do_nothing(index_elements=['message_id'])
         trans.execute(ins)
+
+        self.upsert_user(trans, message.author)
+        self.insert_mentions(trans, message)
+
+    # Mentions
+    def insert_mentions(self, trans, message):
+        self.logger.info(f"Inserting all mentions in message {message.id}")
+
+        for id in message.raw_mentions:
+            self.logger.debug(f"User mention: {id}")
+            ins = p_insert(self.tb_user_mentions) \
+                    .values({
+                        'user_id': id,
+                        'message_id': message.id,
+                    }) \
+                    .on_conflict_do_nothing(index_elements=['user_id', 'message_id'])
+            trans.execute(ins)
+
+        for id in message.raw_role_mentions:
+            self.logger.debug(f"Role mention: {id}")
+            ins = p_insert(self.tb_role_mentions) \
+                    .values({
+                        'role_id': id,
+                        'message_id': message.id,
+                    }) \
+                    .on_conflict_do_nothing(index_elements=['role_id', 'message_id'])
+            trans.execute(ins)
+
+        for id in message.raw_channel_mentions:
+            self.logger.debug(f"Channel mention: {id}")
+            ins = p_insert(self.tb_channel_mentions) \
+                    .values({
+                        'channel_id': id,
+                        'message_id': message.id,
+                    }) \
+                    .on_conflict_do_nothing(index_elements=['channel_id', 'message_id'])
+            trans.execute(ins)
 
     # Typing
     def typing(self, trans, channel, user, when):
