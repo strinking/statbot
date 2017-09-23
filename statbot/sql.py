@@ -323,14 +323,20 @@ class DiscordSqlHandler:
         self.tb_user_mentions = Table('user_mentions', meta,
                 Column('user_id', BigInteger),
                 Column('message_id', BigInteger, ForeignKey('messages.message_id')),
+                Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
+                Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
                 UniqueConstraint('user_id', 'message_id', name='uq_user_mention'))
         self.tb_role_mentions = Table('role_mentions', meta,
                 Column('role_id', BigInteger),
                 Column('message_id', BigInteger, ForeignKey('messages.message_id')),
+                Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
+                Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
                 UniqueConstraint('role_id', 'message_id', name='uq_role_mention'))
         self.tb_channel_mentions = Table('channel_mentions', meta,
                 Column('channel_id', BigInteger),
                 Column('message_id', BigInteger, ForeignKey('messages.message_id')),
+                Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
+                Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
                 UniqueConstraint('channel_id', 'message_id', name='uq_channel_mention'))
         self.tb_guilds = Table('guilds', meta,
                 Column('guild_id', BigInteger, primary_key=True),
@@ -523,6 +529,8 @@ class DiscordSqlHandler:
                     .values({
                         'user_id': id,
                         'message_id': message.id,
+                        'channel_id': message.channel.id,
+                        'guild_id': message.guild.id,
                     }) \
                     .on_conflict_do_nothing(index_elements=['user_id', 'message_id'])
             trans.execute(ins)
@@ -533,6 +541,8 @@ class DiscordSqlHandler:
                     .values({
                         'role_id': id,
                         'message_id': message.id,
+                        'channel_id': message.channel.id,
+                        'guild_id': message.guild.id,
                     }) \
                     .on_conflict_do_nothing(index_elements=['role_id', 'message_id'])
             trans.execute(ins)
@@ -543,6 +553,8 @@ class DiscordSqlHandler:
                     .values({
                         'channel_id': id,
                         'message_id': message.id,
+                        'channel_id': message.channel.id,
+                        'guild_id': message.guild.id,
                     }) \
                     .on_conflict_do_nothing(index_elements=['channel_id', 'message_id'])
             trans.execute(ins)
