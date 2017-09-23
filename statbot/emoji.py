@@ -33,23 +33,30 @@ class EmojiData:
         self.raw = emoji
 
         if isinstance(emoji, str):
-            self.id = None
+            self.id = 0
             self.unicode = emoji
             self.custom = False
             self.managed = False
-            self.name = unicodedata.name(emoji)
-            self.category = unicodedata.category(emoji)
+            self.name = ';'.join(unicodedata.name(ch) for ch in emoji)
+            self.category = ';'.join(unicodedata.category(ch) for ch in emoji)
             self.roles = []
             self.guild = None
         else:
             self.id = emoji.id
-            self.unicode = None
+            self.unicode = ''
             self.custom = True
             self.managed = emoji.managed
             self.name = emoji.name
             self.category = f'[Custom: {emoji.guild.name}]'
             self.roles = emoji.roles
             self.guild = emoji.guild
+
+    @property
+    def mention(self):
+        if self.id:
+            return f'<:{self.name}:{self.id}>'
+        else:
+            return self.unicode
 
     @property
     def cache_id(self):
@@ -65,7 +72,7 @@ class EmojiData:
             'name': self.name,
             'category': self.category,
             'roles': [role.id for role in self.roles],
-            'guild_id': self.guild.id,
+            'guild_id': getattr(self.guild, 'id', None),
         }
 
     def __str__(self):

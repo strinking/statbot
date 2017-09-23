@@ -259,8 +259,8 @@ class DiscordSqlHandler:
         self.tb_reactions = Table('reactions', meta,
                 Column('timestamp', DateTime),
                 Column('message_id', BigInteger),
-                Column('emoji_id', BigInteger, nullable=True),
-                Column('emoji_unicode', Unicode(1), nullable=True),
+                Column('emoji_id', BigInteger),
+                Column('emoji_unicode', Unicode(7)),
                 Column('user_id', BigInteger, ForeignKey('users.user_id')),
                 Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
@@ -271,11 +271,12 @@ class DiscordSqlHandler:
                 Column('user_id', BigInteger, ForeignKey('users.user_id')),
                 Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
-                UniqueConstraint('timestamp', 'user_id', 'channel_id', 'guild_id', name='uq_typing'))
+                UniqueConstraint('timestamp', 'user_id', 'channel_id', 'guild_id',
+                    name='uq_typing'))
         self.tb_pins = Table('pins', meta,
                 Column('pin_id', BigInteger, primary_key=True),
-                Column('message_id', BigInteger,
-                    ForeignKey('messages.message_id'), primary_key=True),
+                Column('message_id', BigInteger, ForeignKey('messages.message_id'),
+                    primary_key=True),
                 Column('pinner_id', BigInteger, ForeignKey('users.user_id')),
                 Column('user_id', BigInteger, ForeignKey('users.user_id')),
                 Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
@@ -347,8 +348,8 @@ class DiscordSqlHandler:
                 Column('user_id', BigInteger, ForeignKey('users.user_id')),
                 UniqueConstraint('role_id', 'user_id', name='uq_role_membership'))
         self.tb_emojis = Table('emojis', meta,
-                Column('emoji_id', BigInteger, nullable=True),
-                Column('emoji_unicode', Unicode(1), nullable=True),
+                Column('emoji_id', BigInteger),
+                Column('emoji_unicode', Unicode(7)),
                 Column('is_custom', Boolean),
                 Column('is_managed', Boolean),
                 Column('is_deleted', Boolean),
@@ -480,6 +481,7 @@ class DiscordSqlHandler:
     # Reactions
     def add_reaction(self, trans, reaction, user):
         self.logger.info(f"Inserting reaction for user {user.id} on message {reaction.message.id}")
+        self.upsert_emoji(trans, reaction.emoji)
         data = EmojiData(reaction.emoji)
         ins = self.tb_reactions \
                 .insert() \
@@ -919,16 +921,17 @@ class DiscordSqlHandler:
             self.logger.debug(f"Emoji lookup for {data} is already up-to-date")
             return
 
+        self.logger.info(f"Upserting emoji {data}")
         ups = p_insert(self.tb_emojis) \
                 .values(values) \
                 .on_conflict_do_update(
-                        index_elements=['emoji_id', 'emoji_unicode'],
-                        index_where=and_(
-                            self.tb_emojis.c.emoji_id == data.id,
-                            self.tb_emojis.c.emoji_unicode == data.unicode,
-                        ),
-                        set_=values,
-                    )
+                    index_elements=['emoji_id', 'emoji_unicode'],
+                    index_where=and_(
+                        self.tb_emojis.c.emoji_id == data.id,
+                        self.tb_emojis.c.emoji_unicode == data.unicode,
+                    ),
+                    set_=values,
+                )
         trans.execute(ups)
         self.emoji_cache[data.cache_id] = values
 
