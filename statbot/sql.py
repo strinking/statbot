@@ -377,8 +377,7 @@ class DiscordSqlHandler:
                 Column('channel_id', BigInteger,
                     ForeignKey('channels.channel_id'), primary_key=True),
                 Column('first_message_id', BigInteger,
-                    nullable=True), # FIXME: first_message_id is being set prematurely
-                    #ForeignKey('messages.message_id'), nullable=True),
+                    ForeignKey('messages.message_id'), nullable=True),
                 Column('start_ranges', ARRAY(BigInteger)),
                 Column('end_ranges', ARRAY(BigInteger)))
 
