@@ -321,23 +321,23 @@ class DiscordSqlHandler:
                 Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
         self.tb_user_mentions = Table('user_mentions', meta,
-                Column('user_id', BigInteger),
+                Column('mentioned_user_id', BigInteger),
                 Column('message_id', BigInteger, ForeignKey('messages.message_id')),
                 Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
-                UniqueConstraint('user_id', 'message_id', name='uq_user_mention'))
+                UniqueConstraint('mentioned_user_id', 'message_id', name='uq_user_mention'))
         self.tb_role_mentions = Table('role_mentions', meta,
-                Column('role_id', BigInteger),
+                Column('mentioned_role_id', BigInteger),
                 Column('message_id', BigInteger, ForeignKey('messages.message_id')),
                 Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
-                UniqueConstraint('role_id', 'message_id', name='uq_role_mention'))
+                UniqueConstraint('mentioned_role_id', 'message_id', name='uq_role_mention'))
         self.tb_channel_mentions = Table('channel_mentions', meta,
-                Column('channel_id', BigInteger),
+                Column('mentioned_channel_id', BigInteger),
                 Column('message_id', BigInteger, ForeignKey('messages.message_id')),
                 Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
-                UniqueConstraint('channel_id', 'message_id', name='uq_channel_mention'))
+                UniqueConstraint('mentioned_channel_id', 'message_id', name='uq_channel_mention'))
         self.tb_guilds = Table('guilds', meta,
                 Column('guild_id', BigInteger, primary_key=True),
                 Column('owner_id', BigInteger, ForeignKey('users.user_id')),
@@ -527,36 +527,36 @@ class DiscordSqlHandler:
             self.logger.debug(f"User mention: {id}")
             ins = p_insert(self.tb_user_mentions) \
                     .values({
-                        'user_id': id,
+                        'mentioned_user_id': id,
                         'message_id': message.id,
                         'channel_id': message.channel.id,
                         'guild_id': message.guild.id,
                     }) \
-                    .on_conflict_do_nothing(index_elements=['user_id', 'message_id'])
+                    .on_conflict_do_nothing(index_elements=['mentioned_user_id', 'message_id'])
             trans.execute(ins)
 
         for id in message.raw_role_mentions:
             self.logger.debug(f"Role mention: {id}")
             ins = p_insert(self.tb_role_mentions) \
                     .values({
-                        'role_id': id,
+                        'mentioned_role_id': id,
                         'message_id': message.id,
                         'channel_id': message.channel.id,
                         'guild_id': message.guild.id,
                     }) \
-                    .on_conflict_do_nothing(index_elements=['role_id', 'message_id'])
+                    .on_conflict_do_nothing(index_elements=['mentioned_role_id', 'message_id'])
             trans.execute(ins)
 
         for id in message.raw_channel_mentions:
             self.logger.debug(f"Channel mention: {id}")
             ins = p_insert(self.tb_channel_mentions) \
                     .values({
-                        'channel_id': id,
+                        'mentioned_channel_id': id,
                         'message_id': message.id,
                         'channel_id': message.channel.id,
                         'guild_id': message.guild.id,
                     }) \
-                    .on_conflict_do_nothing(index_elements=['channel_id', 'message_id'])
+                    .on_conflict_do_nothing(index_elements=['mentioned_channel_id', 'message_id'])
             trans.execute(ins)
 
     # Typing
@@ -657,9 +657,9 @@ class DiscordSqlHandler:
 
     def update_role(self, trans, role):
         if role.id in self.role_cache:
-            self._update_role(self, role)
+            self._update_role(trans, role)
         else:
-            self.upsert_role(self, role)
+            self.upsert_role(trans, role)
 
     def remove_role(self, trans, role):
         self.logger.info(f"Deleting role {role.id}")
