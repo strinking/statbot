@@ -48,7 +48,7 @@ class EmojiData:
             self.managed = getattr(emoji, 'managed', None)
             self.name = [emoji.name]
             self.category = ['custom']
-            self.roles = emoji.roles
+            self.roles = getattr(emoji, 'roles', None)
             self.guild = getattr(emoji, 'guild', None)
 
     @property

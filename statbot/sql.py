@@ -371,7 +371,7 @@ class DiscordSqlHandler:
                 Column('is_deleted', Boolean),
                 Column('name', ARRAY(String)),
                 Column('category', ARRAY(String)),
-                Column('roles', ARRAY(BigInteger)),
+                Column('roles', ARRAY(BigInteger), nullable=True),
                 Column('guild_id', BigInteger, nullable=True),
                 UniqueConstraint('emoji_id', 'emoji_unicode', name='uq_emoji'))
         self.tb_roles = Table('roles', meta,
