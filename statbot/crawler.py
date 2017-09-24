@@ -14,7 +14,6 @@ from datetime import datetime
 import asyncio
 import discord
 
-from .message_history import MessageHistory
 from .range import Range
 from .util import null_logger
 
@@ -55,8 +54,7 @@ class DiscordHistoryCrawler:
                             mhist = self.sql.lookup_message_hist(trans, channel)
 
                             if mhist is None:
-                                mhist = MessageHistory()
-                                self.sql.insert_message_hist(trans, channel, mhist)
+                                mhist = self.sql.insert_message_hist(trans, channel)
 
                             self.progress[channel.id] = mhist
 
@@ -156,11 +154,10 @@ class DiscordHistoryCrawler:
             return
 
         self.logger.info(f"Adding #{channel.name} to tracked channels")
-        mhist = MessageHistory()
-        self.progress[channel.id] = mhist
 
         with self.sql.transaction() as trans:
-            self.sql.insert_message_hist(trans, channel, mhist)
+            mhist = self.sql.insert_message_hist(trans, channel)
+        self.progress[channel.id] = mhist
 
     async def _channel_delete_hook(self, channel):
         self.logger.info(f"Removing #{channel.name} from tracked channels")
@@ -175,11 +172,10 @@ class DiscordHistoryCrawler:
                 return
 
             self.logger.info(f"Updating #{after.name} - adding to list")
-            mhist = MessageHistory()
-            self.progress[after.id] = mhist
 
             with self.sql.transaction() as trans:
-                self.sql.insert_message_hist(trans, after, mhist)
+                mhist = self.sql.insert_message_hist(trans, after)
+            self.progress[after.id] = mhist
         else:
             self.logger.info(f"Updating #{after.name} - removing from list")
             self.progress.pop(after.id, None)
