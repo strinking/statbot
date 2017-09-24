@@ -16,6 +16,7 @@ __all__ = [
     '__version__',
     'client',
     'config',
+    'message_history',
     'message_utils',
     'range',
     'sql',
