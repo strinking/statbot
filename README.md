@@ -36,3 +36,11 @@ python3 -m statbot [-q] [-d] your_config_file.json
 A sample `docker-compose.yaml` configuration is also provided in `misc/` in case you would
 like to host your PostgreSQL database via Docker.
 
+### Questions
+**How do I use statbot as a selfbot?**
+
+You shouldn't. Each person who you collect data from must explicitly agree to it. If you are
+running a server you have the ability to enforce this, but that also means you may as well
+just use an actual bot account. We will not support forks that add selfbot support to statbot,
+and we will not accept patches that do so either.
+
