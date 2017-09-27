@@ -13,6 +13,7 @@
 import asyncio
 import discord
 
+from .emoji import EmojiData
 from .util import null_logger
 
 __all__ = [
@@ -122,7 +123,7 @@ class EventIngestionClient(discord.Client):
 
     def _log_react(self, reaction, user, action):
         name = user.display_name
-        emote = 'TODO: emote name (reaction.emoji)'
+        emote = EmojiData(reaction.emoji)
         count = reaction.count
         id = reaction.message.id
 
@@ -146,9 +147,8 @@ class EventIngestionClient(discord.Client):
                 self.sql.upsert_role(trans, role)
 
             self.logger.debug(f"Processing {len(guild.emojis)} emojis...")
-            # Emojis not ready yet
-            #for emoji in guild.emojis:
-            #    self.sql.upsert_emoji(trans, emoji)
+            for emoji in guild.emojis:
+                self.sql.upsert_emoji(trans, emoji)
 
             self.logger.debug(f"Processing {len(guild.members)} members...")
             for member in guild.members:
@@ -244,9 +244,8 @@ class EventIngestionClient(discord.Client):
 
         self._log_react(reaction, user, 'reacted with')
 
-        self.logger.warn("TODO: handling for on_reaction_add")
-        #with self.sql.transaction() as trans:
-            #self.sql.add_reaction(trans, reaction, user)
+        with self.sql.transaction() as trans:
+            self.sql.add_reaction(trans, reaction, user)
 
     async def on_reaction_remove(self, reaction, user):
         self._log_ignored(f"Reaction {reaction.emoji} removed")
@@ -255,9 +254,8 @@ class EventIngestionClient(discord.Client):
 
         self._log_react(reaction, user, 'removed a reaction of ')
 
-        self.logger.warn("TODO: handling for on_reaction_remove")
-        #with self.sql.transaction() as trans:
-            #self.sql.remove_reaction(trans, reaction, user)
+        with self.sql.transaction() as trans:
+            self.sql.remove_reaction(trans, reaction, user)
 
     async def on_reaction_clear(self, message, reactions):
         self._log_ignored(f"Reactions from {message.id} cleared")
@@ -266,9 +264,8 @@ class EventIngestionClient(discord.Client):
 
         self.logger.info(f"All reactions on message id {message.id} cleared")
 
-        self.logger.warn("TODO: handling for on_reaction_clear")
-        #with self.sql.transaction() as trans:
-            #self.sql.clear_reactions(trans, message)
+        with self.sql.transaction() as trans:
+            self.sql.clear_reactions(trans, message)
 
     async def on_guild_channel_create(self, channel):
         self._log_ignored(f"Channel was created in guild {channel.guild.id}")
