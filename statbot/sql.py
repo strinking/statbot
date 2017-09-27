@@ -24,8 +24,6 @@ from sqlalchemy.dialects.postgresql import insert as p_insert
 
 from .emoji import EmojiData
 from .mention import MentionType
-from .message_history import MessageHistory
-from .range import Range
 from .util import null_logger
 
 Column = functools.partial(Column, nullable=False)
@@ -167,15 +165,6 @@ def reaction_values(reaction, user):
         'guild_id': reaction.message.guild.id,
     }
 
-def message_hist_values(channel, mhist):
-    starts, ends = mhist.to_ranges()
-    return {
-        'channel_id': channel.id,
-        'first_message_id': mhist.first,
-        'start_ranges': starts,
-        'end_ranges': ends,
-    }
-
 class _Transaction:
     __slots__ = (
         'sql',
@@ -240,7 +229,8 @@ class DiscordSqlHandler:
         'tb_role_membership',
         'tb_emojis',
         'tb_roles',
-        'tb_crawl_ranges',
+        'tb_channel_crawl',
+        'tb_audit_log_crawl',
 
         'guild_cache',
         'channel_cache',
@@ -391,11 +381,15 @@ class DiscordSqlHandler:
                 Column('is_mentionable', Boolean),
                 Column('is_deleted', Boolean),
                 Column('position', Integer))
-        self.tb_crawl_ranges = Table('crawl_ranges', meta,
-                Column('channel_id', BigInteger, primary_key=True),
-                Column('first_message_id', BigInteger, nullable=True),
-                Column('start_ranges', ARRAY(BigInteger)),
-                Column('end_ranges', ARRAY(BigInteger)))
+        self.tb_channel_crawl = Table('channel_crawl', meta,
+                Column('channel_id', BigInteger,
+                    ForeignKey('channels.channel_id'), primary_key=True),
+                Column('last_message_id', BigInteger,
+                    ForeignKey('messages.message_id')))
+        self.tb_audit_log_crawl = Table('audit_log_crawl', meta,
+                Column('guild_id', BigInteger,
+                    ForeignKey('guilds.guild_id'), primary_key=True),
+                Column('audit_id', BigInteger))
 
         # Lookup caches
         self.guild_cache = {}
@@ -1006,47 +1000,43 @@ class DiscordSqlHandler:
         trans.execute(ups)
         self.emoji_cache[data.cache_id] = values
 
-    # Message History
-    def lookup_message_hist(self, trans, channel):
-        self.logger.info(f"Looking up message history for #{channel.name}")
-        sel = select([self.tb_crawl_ranges]) \
-                .where(self.tb_crawl_ranges.c.channel_id == channel.id)
+    # Crawling history
+    def lookup_channel_crawl(self, trans, channel):
+        self.logger.info(f"Looking up crawl progress for {channel.guild.name} #{channel.name}")
+        sel = select([self.tb_channel_crawl]) \
+                .where(self.tb_channel_crawl.c.channel_id == channel.id)
         result = trans.execute(sel)
 
         if result.rowcount:
-            _, first, starts, ends = result.fetchone()
-            assert len(starts) == len(ends)
-            ranges = (Range(*r) for r in zip(starts, ends))
-            result.close()
-            return MessageHistory(*ranges, first=first)
+            _, last_id = result.fetchone()
+            return last_id
         else:
             return None
 
-    def insert_message_hist(self, trans, channel, first):
-        self.logger.info(f"Inserting new message history for #{channel.name}")
-        mhist = MessageHistory(first=first)
-        values = message_hist_values(channel, mhist)
+    def insert_channel_crawl(self, trans, channel, last_id):
+        self.logger.info(f"Inserting new crawl progress for {channel.guild.name} #{channel.name}")
 
-        ins = self.tb_crawl_ranges \
+        ins = self.tb_channel_crawl \
                 .insert() \
-                .values(values)
+                .values({
+                    'channel_id': channel.id,
+                    'last_message_id': last_id,
+                })
         trans.execute(ins)
-        return mhist
 
-    def update_message_hist(self, trans, channel, mhist):
-        self.logger.info(f"Updating message history for #{channel.name}: {mhist}")
-        values = message_hist_values(channel, mhist)
+    def update_message_hist(self, trans, channel, last_id):
+        self.logger.info(f"Updating crawl progress for {channel.guild.name} #{channel.name}: {last_id}")
 
-        upd = self.tb_crawl_ranges \
+        upd = self.tb_channel_crawl \
                 .update() \
-                .values(values) \
-                .where(self.tb_crawl_ranges.c.channel_id == channel.id)
+                .values(last_message_id=last_id) \
+                .where(self.tb_channel_crawl.c.channel_id == channel.id)
         trans.execute(upd)
 
     def delete_message_hist(self, trans, channel):
-        self.logger.info(f"Deleting message history for #{channel.name}")
+        self.logger.info(f"Deleting crawl progress for {channel.guild.name} #{channel.name}")
 
-        delet = self.tb_crawl_ranges \
+        delet = self.tb_channel_crawl \
                 .delete() \
-                .where(self.tb_crawl_ranges.c.channel_id == channel.id)
+                .where(self.tb_channel_crawl.c.channel_id == channel.id)
         trans.execute(delet)
