@@ -22,6 +22,7 @@ from sqlalchemy import ForeignKey, MetaData, UniqueConstraint
 from sqlalchemy.sql import select
 from sqlalchemy.dialects.postgresql import insert as p_insert
 
+from .mention import MentionType
 from .message_history import MessageHistory
 from .range import Range
 from .util import null_logger
@@ -256,9 +257,7 @@ class DiscordSqlHandler:
         'tb_reactions',
         'tb_typing',
         'tb_pins',
-        'tb_user_mentions',
-        'tb_role_mentions',
-        'tb_channel_mentions',
+        'tb_mentions',
         'tb_guilds',
         'tb_channels',
         'tb_voice_channels',
@@ -320,24 +319,13 @@ class DiscordSqlHandler:
                 Column('user_id', BigInteger, ForeignKey('users.user_id')),
                 Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
-        self.tb_user_mentions = Table('user_mentions', meta,
-                Column('mentioned_user_id', BigInteger),
-                Column('message_id', BigInteger, ForeignKey('messages.message_id')),
+        self.tb_mentions = Table('mentions', meta,
+                Column('mentioned_id', BigInteger, primary_key=True),
+                Column('type', Enum(MentionType), primary_key=True),
+                Column('message_id', BigInteger, ForeignKey('messages.message_id'), primary_key=True),
                 Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
-                UniqueConstraint('mentioned_user_id', 'message_id', name='uq_user_mention'))
-        self.tb_role_mentions = Table('role_mentions', meta,
-                Column('mentioned_role_id', BigInteger),
-                Column('message_id', BigInteger, ForeignKey('messages.message_id')),
-                Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
-                Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
-                UniqueConstraint('mentioned_role_id', 'message_id', name='uq_role_mention'))
-        self.tb_channel_mentions = Table('channel_mentions', meta,
-                Column('mentioned_channel_id', BigInteger),
-                Column('message_id', BigInteger, ForeignKey('messages.message_id')),
-                Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
-                Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
-                UniqueConstraint('mentioned_channel_id', 'message_id', name='uq_channel_mention'))
+                UniqueConstraint('mentioned_id', 'type', 'message_id', name='uq_mention'))
         self.tb_guilds = Table('guilds', meta,
                 Column('guild_id', BigInteger, primary_key=True),
                 Column('owner_id', BigInteger, ForeignKey('users.user_id')),
@@ -421,8 +409,6 @@ class DiscordSqlHandler:
                 Column('is_mentionable', Boolean),
                 Column('is_deleted', Boolean),
                 Column('position', Integer))
-
-        # History tables
         self.tb_crawl_ranges = Table('crawl_ranges', meta,
                 Column('channel_id', BigInteger,
                     ForeignKey('channels.channel_id'), primary_key=True),
@@ -525,38 +511,41 @@ class DiscordSqlHandler:
 
         for id in message.raw_mentions:
             self.logger.debug(f"User mention: {id}")
-            ins = p_insert(self.tb_user_mentions) \
+            ins = p_insert(self.tb_mentions) \
                     .values({
-                        'mentioned_user_id': id,
+                        'mentioned_id': id,
+                        'type': MentionType.USER,
                         'message_id': message.id,
                         'channel_id': message.channel.id,
                         'guild_id': message.guild.id,
                     }) \
-                    .on_conflict_do_nothing(index_elements=['mentioned_user_id', 'message_id'])
+                    .on_conflict_do_nothing(index_elements=['mentioned_id', 'type', 'message_id'])
             trans.execute(ins)
 
         for id in message.raw_role_mentions:
             self.logger.debug(f"Role mention: {id}")
-            ins = p_insert(self.tb_role_mentions) \
+            ins = p_insert(self.tb_mentions) \
                     .values({
-                        'mentioned_role_id': id,
+                        'mentioned_id': id,
+                        'type': MentionType.ROLE,
                         'message_id': message.id,
                         'channel_id': message.channel.id,
                         'guild_id': message.guild.id,
                     }) \
-                    .on_conflict_do_nothing(index_elements=['mentioned_role_id', 'message_id'])
+                    .on_conflict_do_nothing(index_elements=['mentioned_id', 'type', 'message_id'])
             trans.execute(ins)
 
         for id in message.raw_channel_mentions:
             self.logger.debug(f"Channel mention: {id}")
-            ins = p_insert(self.tb_channel_mentions) \
+            ins = p_insert(self.tb_mentions) \
                     .values({
-                        'mentioned_channel_id': id,
+                        'mentioned_id': id,
+                        'type': MentionType.CHANNEL,
                         'message_id': message.id,
                         'channel_id': message.channel.id,
                         'guild_id': message.guild.id,
                     }) \
-                    .on_conflict_do_nothing(index_elements=['mentioned_channel_id', 'message_id'])
+                    .on_conflict_do_nothing(index_elements=['mentioned_id', 'type', 'message_id'])
             trans.execute(ins)
 
     # Typing
