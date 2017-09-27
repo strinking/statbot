@@ -11,7 +11,7 @@
         "batch-size": 256,
         "queue-size": 32,
         "yield-delay": 0.5,
-        "long-delay": 120
+        "long-delay": 3600
     },
     "token": "bot-discord-token-here",
 
