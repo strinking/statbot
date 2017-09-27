@@ -156,12 +156,12 @@ def role_values(role):
 def reaction_values(reaction, user, current):
     data = EmojiData(reaction.emoji)
     return {
-        'timestamp': datetime.now() if current else None,
         'message_id': reaction.message.id,
         'emoji_id': data.id,
         'emoji_unicode': data.unicode,
         'user_id': user.id,
-        'is_deleted': False,
+        'created_at': datetime.now() if current else None,
+        'deleted_at': None,
         'channel_id': reaction.message.channel.id,
         'guild_id': reaction.message.guild.id,
     }
@@ -275,8 +275,8 @@ class DiscordSqlHandler:
                 Column('emoji_id', BigInteger),
                 Column('emoji_unicode', Unicode(7)),
                 Column('user_id', BigInteger, ForeignKey('users.user_id')),
-                Column('timestamp', DateTime, nullable=True),
-                Column('is_deleted', Boolean),
+                Column('created_at', DateTime, nullable=True),
+                Column('deleted_at', DateTime, nullable=True),
                 Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
                 UniqueConstraint('message_id', 'emoji_id', 'emoji_unicode',
@@ -467,9 +467,7 @@ class DiscordSqlHandler:
         self.logger.info(f"Deleting message {message.id}")
         upd = self.tb_messages \
                 .update() \
-                .values({
-                    'deleted_at': datetime.now(),
-                }) \
+                .values(deleted_at=datetime.now()) \
                 .where(self.tb_messages.c.message_id == message.id)
         trans.execute(upd)
 
@@ -555,7 +553,7 @@ class DiscordSqlHandler:
         data = EmojiData(reaction.emoji)
         upd = self.tb_reactions \
                 .update() \
-                .values(is_deleted=True) \
+                .values(deleted_at=datetime.now()) \
                 .where(self.tb_reactions.c.message_id == reaction.message.id) \
                 .where(self.tb_reactions.c.emoji_id == data.id) \
                 .where(self.tb_reactions.c.emoji_unicode == data.unicode) \
@@ -579,7 +577,7 @@ class DiscordSqlHandler:
         self.logger.info(f"Deleting all reactions on message {message.id}")
         upd = self.tb_reactions \
                 .update() \
-                .values(is_deleted=True) \
+                .values(deleted_at=datetime.now()) \
                 .where(self.tb_reactions.c.message_id == message.id)
         trans.execute(upd)
 
