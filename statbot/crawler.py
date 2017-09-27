@@ -141,7 +141,10 @@ class DiscordHistoryCrawler:
                 with self.sql.transaction() as trans:
                     for message in messages:
                         self.sql.insert_message(trans, message)
-
+                        for reaction in message.reactions:
+                            users = await reaction.users().flatten()
+                            self.sql.upsert_emoji(trans, reaction.emoji)
+                            self.sql.insert_reaction(trans, reaction, users)
                 with self.sql.transaction() as trans:
                     self.sql.update_message_hist(trans, channel, mhist)
             except Exception:
