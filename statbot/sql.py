@@ -391,8 +391,7 @@ class DiscordSqlHandler:
                 Column('position', Integer))
         self.tb_crawl_ranges = Table('crawl_ranges', meta,
                 Column('channel_id', BigInteger, primary_key=True),
-                Column('first_message_id', BigInteger,
-                    ForeignKey('messages.message_id'), nullable=True),
+                Column('first_message_id', BigInteger, nullable=True),
                 Column('start_ranges', ARRAY(BigInteger)),
                 Column('end_ranges', ARRAY(BigInteger)))
 
