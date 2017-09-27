@@ -507,7 +507,7 @@ class DiscordSqlHandler:
 
     # Mentions
     def insert_mentions(self, trans, message):
-        self.logger.info(f"Inserting all mentions in message {message.id}")
+        self.logger.debug(f"Inserting all mentions in message {message.id}")
 
         for id in message.raw_mentions:
             self.logger.debug(f"User mention: {id}")
@@ -951,7 +951,7 @@ class DiscordSqlHandler:
         # (do nothing)
 
     def upsert_member(self, trans, member):
-        self.logger.info(f"Upserting member data for {member.id}")
+        self.logger.debug(f"Upserting member data for {member.id}")
         values = nick_values(member)
         ups = p_insert(self.tb_nicknames) \
                 .values(values) \
