@@ -44,6 +44,11 @@ class DiscordHistoryCrawler:
         self.progress = {} # {channel_id : MessageHistory}
         self.queue = asyncio.Queue(self.config['crawler']['queue-size'])
 
+    async def _chan_first(self, chan):
+        async for msg in chan.history(limit=1, after=discord.utils.snowflake_time(0)):
+            return msg.id
+        return None
+
     async def _init_channels(self):
         with self.sql.transaction() as trans:
             for guild in self.client.guilds:
@@ -54,7 +59,8 @@ class DiscordHistoryCrawler:
                             mhist = self.sql.lookup_message_hist(trans, channel)
 
                             if mhist is None:
-                                mhist = self.sql.insert_message_hist(trans, channel)
+                                first = await self._chan_first(channel)
+                                mhist = self.sql.insert_message_hist(trans, channel, first)
 
                             self.progress[channel.id] = mhist
 
@@ -117,18 +123,17 @@ class DiscordHistoryCrawler:
             self.logger.info("No messages found in this range")
             return False
 
+        result = True
         earliest = messages[-1].id
         messages = list(filter(lambda m: m.id not in mhist, messages))
         mhist.add(Range(earliest, start_id))
-
-        if len(messages) < limit:
-            # This channel has been exhausted
+        if earliest == mhist.first:
             self.logger.info(f"{channel.guild.name} #{channel.name} has now been exhausted")
-            mhist.first = earliest
+            result = False
 
         await self.queue.put((channel, mhist, messages))
         self.logger.info(f"Queued {len(messages)} messages for ingestion")
-        return True
+        return result
 
     async def consumer(self):
         self.logger.info("Consumer coroutine started!")
@@ -159,7 +164,7 @@ class DiscordHistoryCrawler:
         self.logger.info(f"Adding #{channel.name} to tracked channels")
 
         with self.sql.transaction() as trans:
-            mhist = self.sql.insert_message_hist(trans, channel)
+            mhist = self.sql.insert_message_hist(trans, channel, None)
         self.progress[channel.id] = mhist
 
     async def _channel_delete_hook(self, channel):
@@ -175,9 +180,9 @@ class DiscordHistoryCrawler:
                 return
 
             self.logger.info(f"Updating #{after.name} - adding to list")
-
             with self.sql.transaction() as trans:
-                mhist = self.sql.insert_message_hist(trans, after)
+                first = await self._chan_first(after)
+                mhist = self.sql.insert_message_hist(trans, after, first)
             self.progress[after.id] = mhist
         else:
             self.logger.info(f"Updating #{after.name} - removing from list")
