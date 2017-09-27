@@ -1023,9 +1023,9 @@ class DiscordSqlHandler:
         else:
             return None
 
-    def insert_message_hist(self, trans, channel):
+    def insert_message_hist(self, trans, channel, first):
         self.logger.info(f"Inserting new message history for #{channel.name}")
-        mhist = MessageHistory()
+        mhist = MessageHistory(first=first)
         values = message_hist_values(channel, mhist)
 
         ins = self.tb_crawl_ranges \
