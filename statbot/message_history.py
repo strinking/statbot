@@ -26,6 +26,8 @@ class MessageHistory(MultiRange):
         self.first = first
 
     def find_first_hole(self, start):
+        ''' Finds the first hole in the MultiRange starting from the given point '''
+
         current = start
         for range in reversed(self.ranges):
             if start > range.max():
@@ -38,6 +40,8 @@ class MessageHistory(MultiRange):
             return None
 
     def to_ranges(self):
+        ''' Converts this object into two lists for insertion into the database '''
+
         starts = []
         ends = []
 

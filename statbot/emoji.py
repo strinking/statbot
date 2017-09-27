@@ -63,6 +63,11 @@ class EmojiData:
         return (self.id, self.unicode)
 
     def values(self):
+        if self.roles is not None:
+            roles = list(map(lambda r: r.id, self.roles))
+        else:
+            roles = []
+
         return {
             'emoji_id': self.id,
             'emoji_unicode': self.unicode,
@@ -71,7 +76,7 @@ class EmojiData:
             'is_deleted': False,
             'name': self.name,
             'category': self.category,
-            'roles': [role.id for role in self.roles],
+            'roles': roles,
             'guild_id': getattr(self.guild, 'id', None),
         }
 

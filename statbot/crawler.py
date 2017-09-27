@@ -44,6 +44,11 @@ class DiscordHistoryCrawler:
         self.progress = {} # {channel_id : MessageHistory}
         self.queue = asyncio.Queue(self.config['crawler']['queue-size'])
 
+    async def _chan_first(self, chan):
+        async for msg in chan.history(limit=1, after=discord.utils.snowflake_time(0)):
+            return msg.id
+        return None
+
     async def _init_channels(self):
         with self.sql.transaction() as trans:
             for guild in self.client.guilds:
@@ -55,6 +60,7 @@ class DiscordHistoryCrawler:
 
                             if mhist is None:
                                 mhist = self.sql.insert_message_hist(trans, channel)
+                                mhist.first = await self._chan_first(channel)
 
                             self.progress[channel.id] = mhist
 
@@ -117,18 +123,17 @@ class DiscordHistoryCrawler:
             self.logger.info("No messages found in this range")
             return False
 
+        result = True
         earliest = messages[-1].id
         messages = list(filter(lambda m: m.id not in mhist, messages))
         mhist.add(Range(earliest, start_id))
-
-        if len(messages) < limit:
-            # This channel has been exhausted
+        if earliest == mhist.first:
             self.logger.info(f"{channel.guild.name} #{channel.name} has now been exhausted")
-            mhist.first = earliest
+            result = False
 
         await self.queue.put((channel, mhist, messages))
         self.logger.info(f"Queued {len(messages)} messages for ingestion")
-        return True
+        return result
 
     async def consumer(self):
         self.logger.info("Consumer coroutine started!")
