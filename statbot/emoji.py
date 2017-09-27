@@ -71,7 +71,7 @@ class EmojiData:
             'is_deleted': False,
             'name': self.name,
             'category': self.category,
-            'roles': [role.id for role in self.roles],
+            'roles': list(map(lambda r: r.id, self.roles or [])),
             'guild_id': getattr(self.guild, 'id', None),
         }
 

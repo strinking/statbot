@@ -65,8 +65,7 @@ def message_values(message):
         'message_id': message.id,
         'created_at': message.created_at,
         'edited_at': message.edited_at,
-        'is_edited': message.edited_at is not None,
-        'is_deleted': False,
+        'deleted_at': None,
         'message_type': message.type,
         'system_content': system_content,
         'content': message.content,
@@ -154,10 +153,10 @@ def role_values(role):
         'position': role.position,
     }
 
-def reaction_values(reaction, user):
+def reaction_values(reaction, user, current):
     data = EmojiData(reaction.emoji)
     return {
-        'timestamp': datetime.now(),
+        'timestamp': datetime.now() if current else None,
         'message_id': reaction.message.id,
         'emoji_id': data.id,
         'emoji_unicode': data.unicode,
@@ -261,8 +260,7 @@ class DiscordSqlHandler:
                 Column('message_id', BigInteger, primary_key=True),
                 Column('created_at', DateTime),
                 Column('edited_at', DateTime, nullable=True),
-                Column('is_edited', Boolean),
-                Column('is_deleted', Boolean),
+                Column('deleted_at', DateTime, nullable=True),
                 Column('message_type', Enum(discord.MessageType)),
                 Column('system_content', UnicodeText),
                 Column('content', UnicodeText),
@@ -273,15 +271,15 @@ class DiscordSqlHandler:
                 Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
         self.tb_reactions = Table('reactions', meta,
-                Column('timestamp', DateTime),
                 Column('message_id', BigInteger),
                 Column('emoji_id', BigInteger),
                 Column('emoji_unicode', Unicode(7)),
                 Column('user_id', BigInteger, ForeignKey('users.user_id')),
+                Column('timestamp', DateTime, nullable=True),
                 Column('is_deleted', Boolean),
                 Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
-                UniqueConstraint('timestamp', 'message_id', 'emoji_id', 'emoji_unicode',
+                UniqueConstraint('message_id', 'emoji_id', 'emoji_unicode',
                     name='uq_reactions'))
         self.tb_typing = Table('typing', meta,
                 Column('timestamp', DateTime),
@@ -459,7 +457,6 @@ class DiscordSqlHandler:
                 .update() \
                 .values({
                     'edited_at': after.edited_at,
-                    'is_edited': before.content != after.content,
                     'content': after.content,
                     'embeds': embeds_to_json(after.embeds),
                 }) \
@@ -472,7 +469,9 @@ class DiscordSqlHandler:
         self.logger.info(f"Deleting message {message.id}")
         upd = self.tb_messages \
                 .update() \
-                .values(is_deleted=True) \
+                .values({
+                    'deleted_at': datetime.now(),
+                }) \
                 .where(self.tb_messages.c.message_id == message.id)
         trans.execute(upd)
 
@@ -545,9 +544,9 @@ class DiscordSqlHandler:
 
     # Reactions
     def add_reaction(self, trans, reaction, user):
-        self.logger.info(f"Inserting reaction for user {user.id} on message {reaction.message.id}")
+        self.logger.info(f"Inserting live reaction for user {user.id} on message {reaction.message.id}")
         self.upsert_emoji(trans, reaction.emoji)
-        values = reaction_values(reaction, user)
+        values = reaction_values(reaction, user, True)
         ins = self.tb_reactions \
                 .insert() \
                 .values(values)
@@ -566,16 +565,15 @@ class DiscordSqlHandler:
         trans.execute(upd)
 
     def insert_reaction(self, trans, reaction, users):
-        self.logger.info(f"Inserting reactions for {reaction.message.id}")
+        self.logger.info(f"Inserting past reactions for {reaction.message.id}")
         data = EmojiData(reaction.emoji)
         for user in users:
-            values = reaction_values(reaction, user)
+            values = reaction_values(reaction, user, False)
             self.logger.debug(f"Inserting single reaction {data} from {user.id}")
             ins = p_insert(self.tb_reactions) \
                     .values(values) \
                     .on_conflict_do_nothing(index_elements=[
-                        'timestamp', 'message_id',
-                        'emoji_id', 'emoji_unicode',
+                        'message_id', 'emoji_id', 'emoji_unicode',
                     ])
             trans.execute(ins)
 
