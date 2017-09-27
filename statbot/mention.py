@@ -10,13 +10,13 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
-from enum import auto, Enum
+from enum import Enum
 
 __all__ = [
     'MentionType',
 ]
 
 class MentionType(Enum):
-    USER = auto()
-    ROLE = auto()
-    CHANNEL = auto()
+    USER = 0
+    ROLE = 1
+    CHANNEL = 2
