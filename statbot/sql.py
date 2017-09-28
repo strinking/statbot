@@ -382,12 +382,11 @@ class DiscordSqlHandler:
         self.tb_channel_crawl = Table('channel_crawl', meta,
                 Column('channel_id', BigInteger,
                     ForeignKey('channels.channel_id'), primary_key=True),
-                Column('last_message_id', BigInteger,
-                    ForeignKey('messages.message_id')))
+                Column('last_message_id', BigInteger))
         self.tb_audit_log_crawl = Table('audit_log_crawl', meta,
                 Column('guild_id', BigInteger,
                     ForeignKey('guilds.guild_id'), primary_key=True),
-                Column('audit_id', BigInteger))
+                Column('last_audit_entry_id', BigInteger))
 
         # Lookup caches
         self.guild_cache = {}
@@ -998,7 +997,7 @@ class DiscordSqlHandler:
 
     # Crawling history
     def lookup_channel_crawl(self, trans, channel):
-        self.logger.info(f"Looking up crawl progress for {channel.guild.name} #{channel.name}")
+        self.logger.info(f"Looking up channel crawl progress for {channel.guild.name} #{channel.name}")
         sel = select([self.tb_channel_crawl]) \
                 .where(self.tb_channel_crawl.c.channel_id == channel.id)
         result = trans.execute(sel)
@@ -1010,7 +1009,7 @@ class DiscordSqlHandler:
             return None
 
     def insert_channel_crawl(self, trans, channel, last_id):
-        self.logger.info(f"Inserting new crawl progress for {channel.guild.name} #{channel.name}")
+        self.logger.info(f"Inserting new channel crawl progress for {channel.guild.name} #{channel.name}")
 
         ins = self.tb_channel_crawl \
                 .insert() \
@@ -1020,8 +1019,8 @@ class DiscordSqlHandler:
                 })
         trans.execute(ins)
 
-    def update_message_hist(self, trans, channel, last_id):
-        self.logger.info(f"Updating crawl progress for {channel.guild.name} #{channel.name}: {last_id}")
+    def update_channel_crawl(self, trans, channel, last_id):
+        self.logger.info(f"Updating channel crawl progress for {channel.guild.name} #{channel.name}: {last_id}")
 
         upd = self.tb_channel_crawl \
                 .update() \
@@ -1029,10 +1028,50 @@ class DiscordSqlHandler:
                 .where(self.tb_channel_crawl.c.channel_id == channel.id)
         trans.execute(upd)
 
-    def delete_message_hist(self, trans, channel):
-        self.logger.info(f"Deleting crawl progress for {channel.guild.name} #{channel.name}")
+    def delete_channel_crawl(self, trans, channel):
+        self.logger.info(f"Deleting channel crawl progress for {channel.guild.name} #{channel.name}")
 
         delet = self.tb_channel_crawl \
                 .delete() \
                 .where(self.tb_channel_crawl.c.channel_id == channel.id)
+        trans.execute(delet)
+
+    def lookup_audit_log_crawl(self, trans, guild):
+        self.logger.info(f"Looking for audit log crawl progress for {guild.name}")
+        sel = select([self.tb_audit_log_crawl]) \
+                .where(self.tb_audit_log_crawl.c.guild_id == guild.id)
+        result = trans.execute(sel)
+
+        if result.rowcount:
+            _, last_id = result.fetchone()
+            return last_id
+        else:
+            return None
+
+    def insert_audit_log_crawl(self, trans, guild, last_id):
+        self.logger.info(f"Inserting new audit log crawl progress for {guild.name}")
+
+        ins = self.tb_audit_log_crawl \
+                .insert() \
+                .values({
+                    'guild_id': guild.id,
+                    'last_audit_entry_id': last_id,
+                })
+        trans.execute(ins)
+
+    def update_audit_log_crawl(self, trans, guild, last_id):
+        self.logger.info(f"Updating audit log crawl progress for {guild.name}")
+
+        upd = self.tb_audit_log_crawl \
+                .update() \
+                .values(last_audit_entry_id=last_id) \
+                .where(self.tb_audit_log_crawl.c.guild_id == guild.id)
+        trans.execute(upd)
+
+    def delete_audit_log_crawl(self, trans, guild):
+        self.logger.info(f"Delete audit log crawl progress for {guild.name}")
+
+        delet = self.tb_audit_log_crawl \
+                .delete() \
+                .where(self.tb_audit_log_crawl.c.guild_id == guild.id)
         trans.execute(delet)
