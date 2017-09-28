@@ -20,12 +20,6 @@ You can install them all using pip by running:
 pip3 install -r requirements.txt
 ```
 
-### Testing
-You can run the test suite by invoking the following from the command line:
-```sh
-python3 -m unittest
-```
-
 ### Execution
 After preparing a configuration file, (see `misc/sample_config.json`)
 you can call the program as follows:
