@@ -28,6 +28,8 @@ from .util import null_logger
 
 Column = functools.partial(Column, nullable=False)
 
+MAX_ID = (1 << 63) - 1
+
 __all__ = [
     'DiscordSqlHandler',
 ]
@@ -480,6 +482,10 @@ class DiscordSqlHandler:
         self.logger.debug(f"Inserting all mentions in message {message.id}")
 
         for id in message.raw_mentions:
+            if id > MAX_ID:
+                self.logger.error(f"User mention was too long: {id}")
+                continue
+
             self.logger.debug(f"User mention: {id}")
             ins = p_insert(self.tb_mentions) \
                     .values({
@@ -493,6 +499,10 @@ class DiscordSqlHandler:
             trans.execute(ins)
 
         for id in message.raw_role_mentions:
+            if id > MAX_ID:
+                self.logger.error(f"Role mention was too long: {id}")
+                continue
+
             self.logger.debug(f"Role mention: {id}")
             ins = p_insert(self.tb_mentions) \
                     .values({
@@ -506,6 +516,10 @@ class DiscordSqlHandler:
             trans.execute(ins)
 
         for id in message.raw_channel_mentions:
+            if id > MAX_ID:
+                self.logger.error(f"Channel mention was too long: {id}")
+                continue
+
             self.logger.debug(f"Channel mention: {id}")
             ins = p_insert(self.tb_mentions) \
                     .values({
@@ -535,6 +549,7 @@ class DiscordSqlHandler:
     def add_reaction(self, trans, reaction, user):
         self.logger.info(f"Inserting live reaction for user {user.id} on message {reaction.message.id}")
         self.upsert_emoji(trans, reaction.emoji)
+        self.upsert_user(trans, user)
         values = reaction_values(reaction, user, True)
         ins = self.tb_reactions \
                 .insert() \
@@ -555,8 +570,10 @@ class DiscordSqlHandler:
 
     def insert_reaction(self, trans, reaction, users):
         self.logger.info(f"Inserting past reactions for {reaction.message.id}")
+        self.upsert_emoji(trans, reaction.emoji)
         data = EmojiData(reaction.emoji)
         for user in users:
+            self.upsert_user(trans, user)
             values = reaction_values(reaction, user, False)
             self.logger.debug(f"Inserting single reaction {data} from {user.id}")
             ins = p_insert(self.tb_reactions) \
