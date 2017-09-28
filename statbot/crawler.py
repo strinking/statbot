@@ -89,9 +89,11 @@ class AbstractCrawler:
                     events = await self.read(source, last_id)
                     if events is None:
                         done = True
+                        await self.queue.put((source, None, NOW_ID))
+                        self.progress[source] = NOW_ID
                     else:
                         last_id = self.get_last_id(events)
-                        self.queue.put((source, events, last_id))
+                        await self.queue.put((source, events, last_id))
                         self.progress[source] = last_id
                 except Exception:
                     self.logger.error(f"Error reading events from source {source}", exc_info=1)
@@ -112,7 +114,8 @@ class AbstractCrawler:
 
             try:
                 with self.sql.transaction() as trans:
-                    await self.write(trans, events)
+                    if events is not None:
+                        await self.write(trans, events)
                     await self.update(trans, source, last_id)
             except Exception:
                 self.logger.error(f"{self.name}: error during event write", exc_info=1)
