@@ -69,7 +69,7 @@ class AbstractCrawler:
         await self.init()
 
         yield_delay = self.config['crawler']['yield-delay']
-        long_delay = self.config['crawler']['long-delay']
+        long_delay = self.config['crawler']['empty-source-delay']
 
         while True:
             done = False

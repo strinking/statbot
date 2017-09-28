@@ -92,11 +92,11 @@ def check(cfg, logger=null_logger):
         if cfg['crawler']['yield-delay'] <= 0:
             logger.error("Configuration field 'crawler.yield-delay' is zero or negative")
             return False
-        if not isinstance(cfg['crawler']['long-delay'], Number):
-            logger.error("Configuration field 'crawler.long-delay' is not a number")
+        if not isinstance(cfg['crawler']['empty-source-delay'], Number):
+            logger.error("Configuration field 'crawler.empty-source-delay' is not a number")
             return False
-        if cfg['crawler']['long-delay'] <= 0:
-            logger.error("Configuration field 'crawler.long-delay' is zero or negative")
+        if cfg['crawler']['empty-source-delay'] <= 0:
+            logger.error("Configuration field 'crawler.empty-source-delay' is zero or negative")
             return False
 
     except KeyError as err:
