@@ -84,7 +84,7 @@ class DiscordHistoryCrawler:
         await self._init_channels()
 
         yield_delay = self.config['crawler']['yield-delay']
-        long_delay = self.config['crawler']['long-delay']
+        long_delay = self.config['crawler']['empty-source-delay']
 
         while True:
             # tuple() is necessary since the underlying
