@@ -80,7 +80,7 @@ class AbstractCrawler:
         yield_delay = self.config['crawler']['yield-delay']
         long_delay = self.config['crawler']['empty-source-delay']
 
-        done = {source: False for source in self.progress.keys()}
+        done = {source: False for source in self.progress}
         while True:
             # Round-robin between all sources:
             # Tuple because the underlying dictionary may change size
