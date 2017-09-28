@@ -145,7 +145,7 @@ class HistoryCrawler(AbstractCrawler):
                         last_id = self.sql.lookup_channel_crawl(trans, channel)
                         if last_id is None:
                             self.sql.insert_channel_crawl(trans, channel, 0)
-                        self.progress[channel] = last_id
+                        self.progress[channel] = last_id or 0
 
         self.client.hooks['on_guild_channel_create'] = self._channel_create_hook
         self.client.hooks['on_guild_channel_delete'] = self._channel_delete_hook
@@ -226,7 +226,7 @@ class AuditLogCrawler(AbstractCrawler):
                 last_id = self.sql.lookup_audit_log_crawl(trans, guild)
                 if last_id is None:
                     self.sql.insert_audit_log_crawl(trans, guild, 0)
-                self.progress[guild] = last_id
+                self.progress[guild] = last_id or 0
 
     async def read(self, guild, last_id):
         # pylint: disable=arguments-differ
