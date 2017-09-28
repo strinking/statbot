@@ -7,7 +7,7 @@ if [[ $# -ne 1 ]]; then
 fi
 
 repo_dir="$(dirname "$0")"
-dest_dir=~statbot/dev
+dest_dir=~statbot/repo
 
 mkdir -p "$dest_dir"
 cp -a "$repo_dir" "$dest_dir"
