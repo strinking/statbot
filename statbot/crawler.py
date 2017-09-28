@@ -80,25 +80,30 @@ class AbstractCrawler:
         yield_delay = self.config['crawler']['yield-delay']
         long_delay = self.config['crawler']['empty-source-delay']
 
+        done = {source: False for source in self.progress.keys()}
         while True:
-            done = False
             # Round-robin between all sources:
             # Tuple because the underlying dictionary may change size
             for source, last_id in tuple(self.progress.items()):
+                if done[source]:
+                    continue
+
                 try:
                     events = await self.read(source, last_id)
                     if events is None:
-                        done = True
+                        # This source is exhausted
+                        done[source] = True
                         await self.queue.put((source, None, NOW_ID))
                         self.progress[source] = NOW_ID
                     else:
+                        # This source still has more
                         last_id = self.get_last_id(events)
                         await self.queue.put((source, events, last_id))
                         self.progress[source] = last_id
                 except Exception:
                     self.logger.error(f"Error reading events from source {source}", exc_info=1)
 
-            if done:
+            if all(done.values()):
                 self.logger.info(f"{self.name}: all sources are exhausted, sleeping for a while...")
                 delay = long_delay
             else:
