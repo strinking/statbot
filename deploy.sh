@@ -9,13 +9,14 @@ fi
 repo_dir="$(dirname "$0")"
 dest_dir=~statbot/repo
 
+rm -r "$dest_dir"
 mkdir -p "$dest_dir"
 cp -a "$repo_dir" "$dest_dir"
 install -m400 "$1" "$dest_dir/config.yaml"
 chown -R statbot:statbot "$dest_dir"
 echo "Installed source code to '$dest_dir'"
 
-python3.6 -m pip install -r "$repo_dir/requirements.txt"
+python3.6 -m pip install -r "$repo_dir/requirements.txt" > /dev/null
 echo "Installed Python dependencies"
 
 install -m644 "$repo_dir/misc/statbot.service" /etc/systemd/system/statbot.service
