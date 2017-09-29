@@ -98,7 +98,7 @@ if __name__ == '__main__':
         exit(1)
 
     # Create SQL handler
-    sql = DiscordSqlHandler(config['url'], sql_logger)
+    sql = DiscordSqlHandler(config['bot']['db-url'], sql_logger)
 
     # Create client
     main_logger.info("Setting up bot")

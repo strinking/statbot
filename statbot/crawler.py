@@ -77,8 +77,8 @@ class AbstractCrawler:
         await self.client.wait_until_ready()
         await self.init()
 
-        yield_delay = self.config['crawler']['yield-delay']
-        long_delay = self.config['crawler']['empty-source-delay']
+        yield_delay = self.config['crawler']['delays']['yield']
+        long_delay = self.config['crawler']['delays']['empty-source']
 
         done = {source: False for source in self.progress}
         while True:
@@ -132,7 +132,7 @@ class HistoryCrawler(AbstractCrawler):
         AbstractCrawler.__init__(self, 'Channels', client, sql, config, logger)
 
     def _channel_ok(self, channel):
-        if channel.guild.id in self.config['guilds']:
+        if channel.guild.id in self.config['guild-ids']:
             return channel.permissions_for(channel.guild.me).read_message_history
         return False
 
@@ -144,7 +144,7 @@ class HistoryCrawler(AbstractCrawler):
 
     async def init(self):
         with self.sql.transaction() as trans:
-            for guild in map(self.client.get_guild, self.config['guilds']):
+            for guild in map(self.client.get_guild, self.config['guild-ids']):
                 for channel in guild.text_channels:
                     if channel.permissions_for(guild.me).read_message_history:
                         last_id = self.sql.lookup_channel_crawl(trans, channel)
