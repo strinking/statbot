@@ -56,7 +56,7 @@ class EventIngestionClient(discord.Client):
         }
 
     def run_with_token(self):
-        return self.run(self.config['token'])
+        return self.run(self.config['bot']['token'])
 
     async def wait_until_ready(self):
         # Override wait method to wait until SQL data is also ready
@@ -70,7 +70,7 @@ class EventIngestionClient(discord.Client):
             self._log_ignored("Message not from a guild.")
             self._log_ignored("Ignoring message.")
             return False
-        elif getattr(message.guild, 'id', None) not in self.config['guilds']:
+        elif getattr(message.guild, 'id', None) not in self.config['guild-ids']:
             self._log_ignored("Message from a guild we don't care about.")
             self._log_ignored("Ignoring message.")
             return False
@@ -86,7 +86,7 @@ class EventIngestionClient(discord.Client):
         if not hasattr(channel, 'guild'):
             self._log_ignored("Channel not in a guild.")
             self._log_ignored("Ignoring message.")
-        elif getattr(channel.guild, 'id', None) not in self.config['guilds']:
+        elif getattr(channel.guild, 'id', None) not in self.config['guild-ids']:
             self._log_ignored("Event from a guild we don't care about.")
             self._log_ignored("Ignoring message.")
             return False
@@ -96,7 +96,7 @@ class EventIngestionClient(discord.Client):
     async def _accept_guild(self, guild):
         await self.wait_until_ready()
 
-        if getattr(guild, 'id', None) not in self.config['guilds']:
+        if getattr(guild, 'id', None) not in self.config['guild-ids']:
             self._log_ignored("Event from a guild we don't care about.")
             self._log_ignored("Ignoring message.")
             return False
@@ -181,7 +181,7 @@ class EventIngestionClient(discord.Client):
         # Print welcome string
         self.logger.info(f"Logged in as {self.user.name} ({self.user.id})")
         self.logger.info("Recording activity in the following guilds:")
-        for id in self.config['guilds']:
+        for id in self.config['guild-ids']:
             guild = self.get_guild(id)
             self.logger.info(f"* {guild.name} ({id})")
 

@@ -52,7 +52,7 @@ class DiscordHistoryCrawler:
     async def _init_channels(self):
         with self.sql.transaction() as trans:
             for guild in self.client.guilds:
-                if guild.id in self.config['guilds']:
+                if guild.id in self.config['guild-ids']:
                     for channel in guild.text_channels:
                         if channel.permissions_for(guild.me).read_message_history:
                             self.channels[channel.id] = channel
@@ -83,8 +83,8 @@ class DiscordHistoryCrawler:
         await self.client.wait_until_ready()
         await self._init_channels()
 
-        yield_delay = self.config['crawler']['yield-delay']
-        long_delay = self.config['crawler']['empty-source-delay']
+        yield_delay = self.config['crawler']['delays']['yield']
+        long_delay = self.config['crawler']['delays']['empty-source']
 
         while True:
             # tuple() is necessary since the underlying
@@ -189,5 +189,5 @@ class DiscordHistoryCrawler:
             self.progress.pop(after.id, None)
 
     def _channel_ok(self, channel):
-        return channel.guild.id in self.config['guilds'] \
+        return channel.guild.id in self.config['guild-ids'] \
                 and channel.permissions_for(channel.guild.me).read_message_history

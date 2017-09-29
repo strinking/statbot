@@ -1,0 +1,22 @@
+---
+
+guild-ids:
+  - 129409120491092041
+  - 1290192091029091120
+
+logger:
+  full-messages: false
+  ignored-events: false
+
+crawler:
+  batch-size: 256
+  queue-size: 32
+  delays:
+    yield: 0.5
+    empty-source: 3600
+
+bot:
+  username: MyGreatBot#1000
+  token: 'your discord token here'
+  db-url: 'postgresql://username:password@localhost:5432/statbot'
+
