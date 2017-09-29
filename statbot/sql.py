@@ -387,6 +387,7 @@ class DiscordSqlHandler:
                 Column('position', SmallInteger))
         self.tb_audit_log = Table('audit_log', meta,
                 Column('audit_entry_id', BigInteger, primary_key=True),
+                Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
                 Column('action', Enum(discord.AuditLogAction)),
                 Column('user_id', BigInteger, ForeignKey('users.user_id')),
                 Column('reason', Unicode, nullable=True),
@@ -394,6 +395,7 @@ class DiscordSqlHandler:
         self.tb_audit_log_changes = Table('audit_log_changes', meta,
                 Column('audit_entry_id', BigInteger,
                     ForeignKey('audit_log.audit_entry_id'), primary_key=True),
+                Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
                 NullColumn('state', Enum(AuditLogChangeState), primary_key=True),
                 NullColumn('name', Unicode),
                 NullColumn('icon', String),

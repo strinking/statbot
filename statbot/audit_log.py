@@ -50,6 +50,7 @@ class AuditLogData:
     def values(self):
         return {
             'audit_entry_id': self.entry.id,
+            'guild_id': self.guild.id,
             'action': self.entry.action,
             'user_id': self.entry.user.id,
             'reason': self.entry.reason,
@@ -99,6 +100,7 @@ class AuditLogData:
 
         return {
             'audit_entry_id': self.entry.id,
+            'guild_id': self.guild.id,
             'state': state,
             'name': get('name'),
             'icon': get('icon'),
