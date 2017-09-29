@@ -61,7 +61,7 @@ class AbstractCrawler:
         pass
 
     @abc.abstractmethod
-    async def write(self, trans, events):
+    async def write(self, trans, source, events):
         pass
 
     @abc.abstractmethod
@@ -119,7 +119,7 @@ class AbstractCrawler:
             try:
                 with self.sql.transaction() as trans:
                     if events is not None:
-                        await self.write(trans, events)
+                        await self.write(trans, source, events)
                     await self.update(trans, source, last_id)
             except SQLAlchemyError:
                 self.logger.error(f"{self.name}: error during event write", exc_info=1)
@@ -170,7 +170,7 @@ class HistoryCrawler(AbstractCrawler):
             self.logger.info("No messages found in this range")
             return None
 
-    async def write(self, trans, messages):
+    async def write(self, trans, source, messages):
         # pylint: disable=arguments-differ
         for message in messages:
             self.sql.insert_message(trans, message)
@@ -226,11 +226,12 @@ class AuditLogCrawler(AbstractCrawler):
 
     async def init(self):
         with self.sql.transaction() as trans:
-            for guild in map(self.client.get_guild, self.config['guilds']):
-                last_id = self.sql.lookup_audit_log_crawl(trans, guild)
-                if last_id is None:
-                    self.sql.insert_audit_log_crawl(trans, guild, 0)
-                self.progress[guild] = last_id or 0
+            for guild in map(self.client.get_guild, self.config['guild-ids']):
+                if guild.me.guild_permissions.view_audit_log:
+                    last_id = self.sql.lookup_audit_log_crawl(trans, guild)
+                    if last_id is None:
+                        self.sql.insert_audit_log_crawl(trans, guild, 0)
+                    self.progress[guild] = last_id or 0
 
     async def read(self, guild, last_id):
         # pylint: disable=arguments-differ
@@ -247,10 +248,10 @@ class AuditLogCrawler(AbstractCrawler):
             self.logger.info("No audit log entries found in this range")
             return None
 
-    async def write(self, trans, entries):
+    async def write(self, trans, guild, entries):
         # pylint: disable=arguments-differ
         for entry in entries:
-            self.sql.insert_audit_log_entry(entry)
+            self.sql.insert_audit_log_entry(trans, guild, entry)
 
     async def update(self, trans, guild, last_id):
         # pylint: disable=arguments-differ

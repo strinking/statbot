@@ -108,9 +108,8 @@ if __name__ == '__main__':
     # Create crawlers
     hist_crawler = HistoryCrawler(client, sql, config, crawler_logger)
     hist_crawler.start()
-    ## audit_crawler = AuditLogCrawler(client, sql, config, crawler_logger)
-    ## audit_crawler.start()
-    _ = AuditLogCrawler
+    audit_crawler = AuditLogCrawler(client, sql, config, crawler_logger)
+    audit_crawler.start()
 
     # Start main loop
     client.run_with_token()
