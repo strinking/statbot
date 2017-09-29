@@ -25,8 +25,6 @@ __all__ = [
     'AuditLogCrawler',
 ]
 
-NOW_ID = discord.utils.time_snowflake(datetime.now())
-
 class AbstractCrawler:
     __slots__ = (
         'name',
@@ -36,9 +34,11 @@ class AbstractCrawler:
         'logger',
         'progress',
         'queue',
+        'continuous',
+        'current',
     )
 
-    def __init__(self, name, client, sql, config, logger=null_logger):
+    def __init__(self, name, client, sql, config, logger=null_logger, continuous=False):
         self.name = name
         self.client = client
         self.sql = sql
@@ -46,6 +46,11 @@ class AbstractCrawler:
         self.logger = logger
         self.progress = {} # { stream : last_id }
         self.queue = asyncio.Queue(self.config['crawler']['queue-size'])
+        self.continuous = continuous
+        self.current = None
+
+    def _update_current(self):
+        self.current = discord.utils.time_snowflake(datetime.now())
 
     @staticmethod
     def get_last_id(objects):
@@ -84,20 +89,23 @@ class AbstractCrawler:
 
         done = dict.fromkeys(self.progress.keys(), False)
         while True:
+            self._update_current()
+
             # Round-robin between all sources:
             # Tuple because the underlying dictionary may change size
             for source, last_id in tuple(self.progress.items()):
-                if done[source]:
+                if done[source] and not self.continuous:
                     continue
 
                 events = await self.read(source, last_id)
                 if events is None:
                     # This source is exhausted
                     done[source] = True
-                    await self.queue.put((source, None, NOW_ID))
-                    self.progress[source] = NOW_ID
+                    await self.queue.put((source, None, self.current))
+                    self.progress[source] = self.current
                 else:
                     # This source still has more
+                    done[source] = False
                     last_id = self.get_last_id(events)
                     await self.queue.put((source, events, last_id))
                     self.progress[source] = last_id
@@ -222,7 +230,7 @@ class HistoryCrawler(AbstractCrawler):
 
 class AuditLogCrawler(AbstractCrawler):
     def __init__(self, client, sql, config, logger=null_logger):
-        AbstractCrawler.__init__(self, 'Audit Log', client, sql, config, logger)
+        AbstractCrawler.__init__(self, 'Audit Log', client, sql, config, logger, continuous=True)
 
     async def init(self):
         with self.sql.transaction() as trans:
