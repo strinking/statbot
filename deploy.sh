@@ -17,6 +17,8 @@ chown -R statbot:statbot "$dest_dir"
 install -m644 "$repo_dir/misc/statbot.service" /etc/systemd/system/statbot.service
 chown root:root /etc/systemd/system/statbot.service
 
+python3.6 -m pip install --requirements "$repo_dir/requirements.txt"
+
 systemctl daemon-reload
 systemctl restart statbot.service
 

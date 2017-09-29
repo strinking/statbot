@@ -1,3 +1,4 @@
+PyYAML>=3.10
+SQLAlchemy>=1.0
 git+https://github.com/Rapptz/discord.py@rewrite#egg=discord.py[voice]
 psycopg2>=2.7
-SQLAlchemy>=1.0
