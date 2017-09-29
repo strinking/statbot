@@ -105,7 +105,7 @@ class AuditLogData:
             'name': get('name'),
             'icon': get('icon'),
             'owner': get_id('owner'),
-            'region': get('region'),
+            'voice_region': get('region'),
             'afk_channel': get_id('afk_channel'),
             'system_channel': get_id('system_channel'),
             'afk_timeout': get('afk_timeout'),
