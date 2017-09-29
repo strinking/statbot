@@ -5,8 +5,8 @@ After=network.target
 [Service]
 Type=simple
 User=statbot
-ExecStart=/usr/bin/python3.6 -m statbot -d config.json
-WorkingDirectory=/home/statbot/dev
+ExecStart=/usr/bin/env python3.6 -m statbot -d config.json
+WorkingDirectory=/home/statbot/repo
 Restart=always
 RestartSec=600
 
