@@ -35,7 +35,7 @@ class AuditLogPermissionType(Enum):
             1: cls.VOICE_CHANNEL,
             'role': cls.ROLE,
             'member': cls.MEMBER,
-        }[obj]
+        }.get(obj)
 
 class AuditLogData:
     __slots__ = (
@@ -68,8 +68,8 @@ class AuditLogData:
         for target, overwrite in overwrites:
             targets.append(target.id)
             allow, deny = overwrite.pair()
-            allow_perms.append(allow)
-            deny_perms.append(deny)
+            allow_perms.append(allow.value)
+            deny_perms.append(deny.value)
 
         return targets, allow_perms, deny_perms
 
@@ -86,10 +86,10 @@ class AuditLogData:
 
         def get(attr, func=None):
             obj = getattr(diff, attr, None)
-            if func and obj is not None:
-                return func(obj)
-            else:
+            if obj is None or func is None:
                 return obj
+            else:
+                return func(obj)
 
         def get_id(attr):
             return get(attr, lambda x: x.id)
@@ -98,6 +98,7 @@ class AuditLogData:
             return get(attr, lambda x: x.value)
 
         return {
+            'audit_entry_id': self.entry.id,
             'state': state,
             'name': get('name'),
             'icon': get('icon'),

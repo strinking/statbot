@@ -1080,16 +1080,16 @@ class DiscordSqlHandler:
 
         values = data.diff_values(AuditLogChangeState.BEFORE)
         if values is not None:
-            ins = p_insert(self.tb_audit_log) \
+            ins = p_insert(self.tb_audit_log_changes) \
                     .values(values) \
-                    .on_conflict_do_nothing(index_elements=['audit_entry_id'])
+                    .on_conflict_do_nothing(index_elements=['audit_entry_id', 'state'])
             trans.execute(ins)
 
         values = data.diff_values(AuditLogChangeState.AFTER)
         if values is not None:
-            ins = p_insert(self.tb_audit_log) \
+            ins = p_insert(self.tb_audit_log_changes) \
                     .values(values) \
-                    .on_conflict_do_nothing(index_elements=['audit_entry_id'])
+                    .on_conflict_do_nothing(index_elements=['audit_entry_id', 'state'])
             trans.execute(ins)
 
     # Crawling history
