@@ -2,7 +2,7 @@
 set -eu
 
 if [[ $# -ne 1 ]]; then
-	echo >&2 "Usage: $0 statbot-config.json"
+	echo >&2 "Usage: $0 statbot-config.yaml"
 	exit 1
 fi
 
@@ -11,7 +11,7 @@ dest_dir=~statbot/repo
 
 mkdir -p "$dest_dir"
 cp -a "$repo_dir" "$dest_dir"
-install -m400 "$1" "$dest_dir/config.json"
+install -m400 "$1" "$dest_dir/config.yaml"
 chown -R statbot:statbot "$dest_dir"
 
 install -m644 "$repo_dir/misc/statbot.service" /etc/systemd/system/statbot.service
