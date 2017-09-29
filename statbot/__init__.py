@@ -10,17 +10,13 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
-from . import client, config, message_utils, range, sql, util
+from . import client, config, util
 
 __all__ = [
     '__version__',
     'client',
     'config',
-    'message_history',
-    'message_utils',
-    'range',
-    'sql',
     'util',
 ]
 
-__version__ = '0.2.0'
+__version__ = '0.3.0'

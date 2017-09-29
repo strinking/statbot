@@ -11,165 +11,200 @@
 #
 
 from datetime import datetime
+import abc
 import asyncio
+
+from sqlalchemy.exc import SQLAlchemyError
 import discord
 
-from .range import Range
 from .util import null_logger
 
 __all__ = [
-    'DiscordHistoryCrawler',
+    'AbstractCrawler',
+    'HistoryCrawler',
+    'AuditLogCrawler',
 ]
 
 NOW_ID = discord.utils.time_snowflake(datetime.now())
 
-class DiscordHistoryCrawler:
+class AbstractCrawler:
     __slots__ = (
+        'name',
         'client',
         'sql',
         'config',
         'logger',
-        'channels',
-        'finished',
         'progress',
         'queue',
     )
 
-    def __init__(self, client, sql, config, logger=null_logger):
+    def __init__(self, name, client, sql, config, logger=null_logger):
+        self.name = name
         self.client = client
         self.sql = sql
         self.config = config
         self.logger = logger
-        self.channels = {} # {channel_id : channel}
-        self.progress = {} # {channel_id : MessageHistory}
+        self.progress = {} # { stream : last_id }
         self.queue = asyncio.Queue(self.config['crawler']['queue-size'])
 
-    async def _chan_first(self, chan):
-        async for msg in chan.history(limit=1, after=discord.utils.snowflake_time(0)):
-            return msg.id
-        return None
+    @staticmethod
+    def get_last_id(objects):
+        # pylint: disable=arguments-differ
+        return max(map(lambda x: x.id, objects))
 
-    async def _init_channels(self):
-        with self.sql.transaction() as trans:
-            for guild in self.client.guilds:
-                if guild.id in self.config['guild-ids']:
-                    for channel in guild.text_channels:
-                        if channel.permissions_for(guild.me).read_message_history:
-                            self.channels[channel.id] = channel
-                            mhist = self.sql.lookup_message_hist(trans, channel)
+    @abc.abstractmethod
+    async def init(self):
+        pass
 
-                            if mhist is None:
-                                first = await self._chan_first(channel)
-                                mhist = self.sql.insert_message_hist(trans, channel, first)
+    @abc.abstractmethod
+    async def read(self, source, last_id):
+        pass
 
-                            self.progress[channel.id] = mhist
+    @abc.abstractmethod
+    async def write(self, trans, events):
+        pass
 
-        # Remove deleted channels from tracker
-        for channel in set(self.progress.keys()) - set(self.channels.keys()):
-            del self.progress[channel.id]
+    @abc.abstractmethod
+    async def update(self, trans, source, last_id):
+        pass
 
     def start(self):
-        self.client.hooks['on_guild_channel_create'] = self._channel_create_hook
-        self.client.hooks['on_guild_channel_delete'] = self._channel_delete_hook
-        self.client.hooks['on_guild_channel_update'] = self._channel_update_hook
-
         self.client.loop.create_task(self.producer())
         self.client.loop.create_task(self.consumer())
 
     async def producer(self):
-        self.logger.info("Producer coroutine started!")
+        self.logger.info(f"{self.name}: producer coroutine started!")
 
         # Setup
         await self.client.wait_until_ready()
-        await self._init_channels()
+        await self.init()
 
         yield_delay = self.config['crawler']['delays']['yield']
         long_delay = self.config['crawler']['delays']['empty-source']
 
+        done = dict.fromkeys(self.progress.keys(), False)
         while True:
-            # tuple() is necessary since the underlying
-            # dict of channels may change size during
-            # an iteration
-            all_empty = True
-            for cid in tuple(self.progress.keys()):
-                # Do round-robin between all the channels
-                try:
-                    channel = self.channels[cid]
-                    mhist = self.progress[cid]
-                    all_empty &= not await self._read(channel, mhist)
-                except Exception:
-                    self.logger.error(f"Error reading (or syncing) messages from channel id {cid}", exc_info=1)
+            # Round-robin between all sources:
+            # Tuple because the underlying dictionary may change size
+            for source, last_id in tuple(self.progress.items()):
+                if done[source]:
+                    continue
 
-            # Sleep before next cycle
-            if all_empty:
-                self.logger.info("All channels are exhausted, sleeping for a while...")
+                events = await self.read(source, last_id)
+                if events is None:
+                    # This source is exhausted
+                    done[source] = True
+                    await self.queue.put((source, None, NOW_ID))
+                    self.progress[source] = NOW_ID
+                else:
+                    # This source still has more
+                    last_id = self.get_last_id(events)
+                    await self.queue.put((source, events, last_id))
+                    self.progress[source] = last_id
+
+            if all(done.values()):
+                self.logger.info(f"{self.name}: all sources are exhausted, sleeping for a while...")
                 delay = long_delay
             else:
                 delay = yield_delay
             await asyncio.sleep(delay)
 
-    async def _read(self, channel, mhist):
-        start_id = mhist.find_first_hole(NOW_ID)
-        if start_id is None:
-            # No more messages in this channel
-            return False
-
-        start = discord.utils.snowflake_time(start_id)
-        limit = self.config['crawler']['batch-size']
-        self.logger.info(f"Reading through channel {channel.id} (#{channel.name}):")
-        self.logger.info(f"Starting from {start_id} ({start})")
-        messages = await channel.history(before=start, limit=limit).flatten()
-        if not messages:
-            self.logger.info("No messages found in this range")
-            return False
-
-        result = True
-        earliest = messages[-1].id
-        messages = list(filter(lambda m: m.id not in mhist, messages))
-        mhist.add(Range(earliest, start_id))
-        if earliest == mhist.first:
-            self.logger.info(f"{channel.guild.name} #{channel.name} has now been exhausted")
-            result = False
-
-        await self.queue.put((channel, mhist, messages))
-        self.logger.info(f"Queued {len(messages)} messages for ingestion")
-        return result
-
     async def consumer(self):
-        self.logger.info("Consumer coroutine started!")
+        self.logger.info(f"{self.name}: consumer coroutine started!")
 
         while True:
-            channel, mhist, messages = await self.queue.get()
-            self.logger.info("Got group of messages from queue")
+            source, events, last_id = await self.queue.get()
+            self.logger.info(f"{self.name}: got group of events from queue")
 
             try:
                 with self.sql.transaction() as trans:
-                    for message in messages:
-                        self.sql.insert_message(trans, message)
-                        for reaction in message.reactions:
-                            users = await reaction.users().flatten()
-                            self.sql.upsert_emoji(trans, reaction.emoji)
-                            self.sql.insert_reaction(trans, reaction, users)
-                with self.sql.transaction() as trans:
-                    self.sql.update_message_hist(trans, channel, mhist)
-            except Exception:
-                self.logger.error(f"Error in consumer during message write", exc_info=1)
+                    if events is not None:
+                        await self.write(trans, events)
+                    await self.update(trans, source, last_id)
+            except SQLAlchemyError:
+                self.logger.error(f"{self.name}: error during event write", exc_info=1)
 
             self.queue.task_done()
 
+class HistoryCrawler(AbstractCrawler):
+    def __init__(self, client, sql, config, logger=null_logger):
+        AbstractCrawler.__init__(self, 'Channels', client, sql, config, logger)
+
+    def _channel_ok(self, channel):
+        if channel.guild.id in self.config['guild-ids']:
+            return channel.permissions_for(channel.guild.me).read_message_history
+        return False
+
+    @staticmethod
+    async def _channel_first(chan):
+        async for msg in chan.history(limit=1, after=discord.utils.snowflake_time(0)):
+            return msg.id
+        return None
+
+    async def init(self):
+        with self.sql.transaction() as trans:
+            for guild in map(self.client.get_guild, self.config['guild-ids']):
+                for channel in guild.text_channels:
+                    if channel.permissions_for(guild.me).read_message_history:
+                        last_id = self.sql.lookup_channel_crawl(trans, channel)
+                        if last_id is None:
+                            self.sql.insert_channel_crawl(trans, channel, 0)
+                        self.progress[channel] = last_id or 0
+
+        self.client.hooks['on_guild_channel_create'] = self._channel_create_hook
+        self.client.hooks['on_guild_channel_delete'] = self._channel_delete_hook
+        self.client.hooks['on_guild_channel_update'] = self._channel_update_hook
+
+    async def read(self, channel, last_id):
+        # pylint: disable=arguments-differ
+        last = discord.utils.snowflake_time(last_id)
+        limit = self.config['crawler']['batch-size']
+        self.logger.info(f"Reading through channel {channel.id} ({channel.guild.name} #{channel.name}):")
+        self.logger.info(f"Starting from ID {last_id} ({last})")
+
+        messages = await channel.history(after=last, limit=limit).flatten()
+        if messages:
+            self.logger.info(f"Queued {len(messages)} messages for ingestion")
+            return messages
+        else:
+            self.logger.info("No messages found in this range")
+            return None
+
+    async def write(self, trans, messages):
+        # pylint: disable=arguments-differ
+        for message in messages:
+            self.sql.insert_message(trans, message)
+            for reaction in message.reactions:
+                users = await reaction.users().flatten()
+                self.sql.upsert_emoji(trans, reaction.emoji)
+                self.sql.insert_reaction(trans, reaction, users)
+
+    async def update(self, trans, channel, last_id):
+        # pylint: disable=arguments-differ
+        self.sql.update_channel_crawl(trans, channel, last_id)
+
+    def _create_progress(self, channel):
+        self.progress[channel] = None
+
+        with self.sql.transaction() as trans:
+            self.sql.insert_channel_crawl(trans, channel, 0)
+
+    def _delete_progress(self, channel):
+        self.progress.pop(channel, None)
+
+        with self.sql.transaction() as trans:
+            self.sql.delete_channel_crawl(trans, channel)
+
     async def _channel_create_hook(self, channel):
-        if not self._channel_ok(channel) or channel.id in self.progress:
+        if not self._channel_ok(channel) or channel in self.progress:
             return
 
         self.logger.info(f"Adding #{channel.name} to tracked channels")
-
-        with self.sql.transaction() as trans:
-            mhist = self.sql.insert_message_hist(trans, channel, None)
-        self.progress[channel.id] = mhist
+        self._create_progress(channel)
 
     async def _channel_delete_hook(self, channel):
         self.logger.info(f"Removing #{channel.name} from tracked channels")
-        self.progress.pop(channel.id, None)
+        self._delete_progress(channel)
 
     async def _channel_update_hook(self, before, after):
         if not self._channel_ok(before):
@@ -180,14 +215,43 @@ class DiscordHistoryCrawler:
                 return
 
             self.logger.info(f"Updating #{after.name} - adding to list")
-            with self.sql.transaction() as trans:
-                first = await self._chan_first(after)
-                mhist = self.sql.insert_message_hist(trans, after, first)
-            self.progress[after.id] = mhist
+            self._create_progress(after)
         else:
             self.logger.info(f"Updating #{after.name} - removing from list")
-            self.progress.pop(after.id, None)
+            self._delete_progress(after)
 
-    def _channel_ok(self, channel):
-        return channel.guild.id in self.config['guild-ids'] \
-                and channel.permissions_for(channel.guild.me).read_message_history
+class AuditLogCrawler(AbstractCrawler):
+    def __init__(self, client, sql, config, logger=null_logger):
+        AbstractCrawler.__init__(self, 'Audit Log', client, sql, config, logger)
+
+    async def init(self):
+        with self.sql.transaction() as trans:
+            for guild in map(self.client.get_guild, self.config['guilds']):
+                last_id = self.sql.lookup_audit_log_crawl(trans, guild)
+                if last_id is None:
+                    self.sql.insert_audit_log_crawl(trans, guild, 0)
+                self.progress[guild] = last_id or 0
+
+    async def read(self, guild, last_id):
+        # pylint: disable=arguments-differ
+        last = discord.utils.snowflake_time(last_id)
+        limit = self.config['crawler']['batch-size']
+        self.logger.info(f"Reading through {guild.name}'s audit logs")
+        self.logger.info(f"Starting from ID {last_id} ({last})")
+
+        entries = await guild.audit_logs(after=last, limit=limit).flatten()
+        if entries:
+            self.logger.info(f"Queued {len(entries)} audit log entries for ingestion")
+            return entries
+        else:
+            self.logger.info("No audit log entries found in this range")
+            return None
+
+    async def write(self, trans, entries):
+        # pylint: disable=arguments-differ
+        for entry in entries:
+            self.sql.insert_audit_log_entry(entry)
+
+    async def update(self, trans, guild, last_id):
+        # pylint: disable=arguments-differ
+        self.sql.update_audit_log_crawl(trans, guild, last_id)
