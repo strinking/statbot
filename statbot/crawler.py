@@ -13,6 +13,8 @@
 from datetime import datetime
 import abc
 import asyncio
+
+from sqlalchemy.exc import SQLAlchemyError
 import discord
 
 from .util import null_logger
@@ -88,20 +90,17 @@ class AbstractCrawler:
                 if done[source]:
                     continue
 
-                try:
-                    events = await self.read(source, last_id)
-                    if events is None:
-                        # This source is exhausted
-                        done[source] = True
-                        await self.queue.put((source, None, NOW_ID))
-                        self.progress[source] = NOW_ID
-                    else:
-                        # This source still has more
-                        last_id = self.get_last_id(events)
-                        await self.queue.put((source, events, last_id))
-                        self.progress[source] = last_id
-                except:
-                    self.logger.error(f"Error reading events from source {source}", exc_info=1)
+                events = await self.read(source, last_id)
+                if events is None:
+                    # This source is exhausted
+                    done[source] = True
+                    await self.queue.put((source, None, NOW_ID))
+                    self.progress[source] = NOW_ID
+                else:
+                    # This source still has more
+                    last_id = self.get_last_id(events)
+                    await self.queue.put((source, events, last_id))
+                    self.progress[source] = last_id
 
             if all(done.values()):
                 self.logger.info(f"{self.name}: all sources are exhausted, sleeping for a while...")
@@ -122,7 +121,7 @@ class AbstractCrawler:
                     if events is not None:
                         await self.write(trans, events)
                     await self.update(trans, source, last_id)
-            except:
+            except SQLAlchemyError:
                 self.logger.error(f"{self.name}: error during event write", exc_info=1)
 
             self.queue.task_done()
