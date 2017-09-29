@@ -80,7 +80,7 @@ class AbstractCrawler:
         yield_delay = self.config['crawler']['delays']['yield']
         long_delay = self.config['crawler']['delays']['empty-source']
 
-        done = {source: False for source in self.progress}
+        done = dict.fromkeys(self.progress.keys(), False)
         while True:
             # Round-robin between all sources:
             # Tuple because the underlying dictionary may change size
@@ -100,7 +100,7 @@ class AbstractCrawler:
                         last_id = self.get_last_id(events)
                         await self.queue.put((source, events, last_id))
                         self.progress[source] = last_id
-                except Exception:
+                except:
                     self.logger.error(f"Error reading events from source {source}", exc_info=1)
 
             if all(done.values()):
@@ -122,7 +122,7 @@ class AbstractCrawler:
                     if events is not None:
                         await self.write(trans, events)
                     await self.update(trans, source, last_id)
-            except Exception:
+            except:
                 self.logger.error(f"{self.name}: error during event write", exc_info=1)
 
             self.queue.task_done()

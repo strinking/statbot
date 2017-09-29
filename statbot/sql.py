@@ -28,7 +28,7 @@ from .util import null_logger
 
 Column = functools.partial(Column, nullable=False)
 
-MAX_ID = (1 << 63) - 1
+MAX_ID = 2 ** 63 - 1
 
 __all__ = [
     'DiscordSqlHandler',
