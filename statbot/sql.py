@@ -12,7 +12,6 @@
 
 from datetime import datetime
 import functools
-import json
 
 import discord
 from sqlalchemy import create_engine, and_
@@ -34,10 +33,6 @@ MAX_ID = 2 ** 63 - 1
 __all__ = [
     'DiscordSqlHandler',
 ]
-
-# Utility functions
-def embeds_to_json(embeds):
-    return json.dumps([embed.to_dict() for embed in embeds])
 
 # Value builders
 def guild_values(guild):
@@ -70,7 +65,7 @@ def message_values(message):
         'message_type': message.type,
         'system_content': system_content,
         'content': message.content,
-        'embeds': embeds_to_json(message.embeds),
+        'embeds': [embed.to_dict() for embed in message.embeds],
         'attachments': len(message.attachments),
         'webhook_id': message.webhook_id,
         'user_id': message.author.id,
@@ -259,7 +254,7 @@ class DiscordSqlHandler:
                 Column('message_type', Enum(discord.MessageType)),
                 Column('system_content', UnicodeText),
                 Column('content', UnicodeText),
-                Column('embeds', UnicodeText),
+                Column('embeds', JSON),
                 Column('attachments', SmallInteger),
                 Column('webhook_id', BigInteger, nullable=True),
                 Column('user_id', BigInteger),
@@ -467,7 +462,7 @@ class DiscordSqlHandler:
                 .values({
                     'edited_at': after.edited_at,
                     'content': after.content,
-                    'embeds': embeds_to_json(after.embeds),
+                    'embeds': [embed.to_dict() for embed in after.embeds],
                 }) \
                 .where(self.tb_messages.c.message_id == after.id)
         trans.execute(upd)
