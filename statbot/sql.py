@@ -680,7 +680,7 @@ class DiscordSqlHandler:
             self.logger.debug(f"Role lookup for {role.id} is already up-to-date")
             return
 
-        self.logger.info(f"Updating lookup data for role {role.name}")
+        self.logger.debug(f"Updating lookup data for role {role.name}")
         ups = p_insert(self.tb_roles) \
                 .values(values) \
                 .on_conflict_do_update(
@@ -736,7 +736,7 @@ class DiscordSqlHandler:
             self.logger.debug(f"Channel lookup for {channel.id} is already up-to-date")
             return
 
-        self.logger.info(f"Updating lookup data for channel #{channel.name}")
+        self.logger.debug(f"Updating lookup data for channel #{channel.name}")
         ups = p_insert(self.tb_channels) \
                 .values(values) \
                 .on_conflict_do_update(
@@ -792,7 +792,7 @@ class DiscordSqlHandler:
             self.logger.debug(f"Voice channel lookup for {channel.id} is already up-to-date")
             return
 
-        self.logger.info(f"Updating lookup data for voice channel '{channel.name}'")
+        self.logger.debug(f"Updating lookup data for voice channel '{channel.name}'")
         ups = p_insert(self.tb_voice_channels) \
                 .values(values) \
                 .on_conflict_do_update(
@@ -848,7 +848,7 @@ class DiscordSqlHandler:
             self.logger.debug(f"Channel category lookup for {category.id} is already up-to-date")
             return
 
-        self.logger.info(f"Updating lookup data for channel category {category.name}")
+        self.logger.debug(f"Updating lookup data for channel category {category.name}")
         ups = p_insert(self.tb_channel_categories) \
                 .values(values) \
                 .on_conflict_do_update(
@@ -959,7 +959,7 @@ class DiscordSqlHandler:
             trans.execute(ins)
 
     def remove_member(self, trans, member):
-        self.logger.info(f"Deleting member data for {member.id}")
+        self.logger.debug(f"Removing member {member.id} from guild {member.guild.id}")
         upd = self.tb_guild_membership \
                 .update() \
                 .where(and_(
@@ -969,7 +969,22 @@ class DiscordSqlHandler:
                 .values(is_member=False)
         trans.execute(upd)
 
-        # (Don't delete role membership)
+        # Don't delete role membership
+
+    def remove_old_members(self, trans, guild):
+        self.logger.info(f"Deleting old members from guild {guild.name}")
+        sel = select([self.tb_guild_membership]) \
+                .where(and_(
+                    self.tb_guild_membership.c.guild_id == guild.id,
+                    self.tb_guild_membership.c.is_member == True,
+                ))
+        result = trans.execute(sel)
+
+        for row in result.fetchall():
+            user_id = row[0]
+            member = guild.get_member(user_id)
+            if member is not None:
+                self.remove_member(trans, member)
 
     def upsert_member(self, trans, member):
         self.logger.debug(f"Upserting member data for {member.id}")
@@ -1019,7 +1034,7 @@ class DiscordSqlHandler:
             self.logger.debug(f"Emoji lookup for {data} is already up-to-date")
             return
 
-        self.logger.info(f"Upserting emoji {data}")
+        self.logger.debug(f"Upserting emoji {data}")
         ups = p_insert(self.tb_emojis) \
                 .values(values) \
                 .on_conflict_do_update(
