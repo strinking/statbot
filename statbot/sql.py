@@ -121,11 +121,13 @@ def user_values(user, deleted=False):
         'is_bot': user.bot,
     }
 
-def nick_values(member):
+def guild_member_values(member):
     return {
         'user_id': member.id,
         'guild_id': member.guild.id,
-        'nickname': member.nick,
+        'is_member': True,
+        'joined_at': member.joined_at,
+        'nick': member.nick,
     }
 
 def role_member_values(member, role):
@@ -222,7 +224,7 @@ class DiscordSqlHandler:
         'tb_voice_channels',
         'tb_channel_categories',
         'tb_users',
-        'tb_nicknames',
+        'tb_guild_membership',
         'tb_role_membership',
         'tb_emojis',
         'tb_roles',
@@ -345,13 +347,15 @@ class DiscordSqlHandler:
                 Column('avatar', String, nullable=True),
                 Column('is_deleted', Boolean),
                 Column('is_bot', Boolean))
-        self.tb_nicknames = Table('nicknames', meta,
+        self.tb_guild_membership = Table('guild_membership', meta,
                 Column('user_id', BigInteger,
                     ForeignKey('users.user_id'), primary_key=True),
                 Column('guild_id', BigInteger,
                     ForeignKey('guilds.guild_id'), primary_key=True),
-                Column('nickname', Unicode(32), nullable=True),
-                UniqueConstraint('user_id', 'guild_id', name='uq_nickname'))
+                Column('is_member', Boolean),
+                Column('joined_at', DateTime, nullable=True),
+                Column('nick', Unicode(32), nullable=True),
+                UniqueConstraint('user_id', 'guild_id', name='uq_guild_membership'))
         self.tb_role_membership = Table('role_membership', meta,
                 Column('role_id', BigInteger, ForeignKey('roles.role_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
@@ -914,8 +918,8 @@ class DiscordSqlHandler:
     # Members
     def add_member(self, trans, member):
         self.logger.info(f"Inserting member data for {member.id}")
-        values = nick_values(member)
-        ins = self.tb_nicknames \
+        values = guild_member_values(member)
+        ins = self.tb_guild_membership \
                 .insert() \
                 .values(values)
         trans.execute(ins)
@@ -924,16 +928,13 @@ class DiscordSqlHandler:
 
     def update_member(self, trans, member):
         self.logger.info(f"Updating member data for {member.id}")
-        values = {
-            'nickname': member.nick,
-        }
-        upd = self.tb_nicknames \
+        upd = self.tb_guild_membership \
                 .update() \
                 .where(and_(
-                    self.tb_nicknames.c.user_id == member.id,
-                    self.tb_nicknames.c.guild_id == member.guild.id,
+                    self.tb_guild_membership.c.user_id == member.id,
+                    self.tb_guild_membership.c.guild_id == member.guild.id,
                 )) \
-                .values(values)
+                .values(nick=member.nick)
         trans.execute(upd)
 
         self._delete_role_membership(trans, member)
@@ -959,15 +960,24 @@ class DiscordSqlHandler:
 
     def remove_member(self, trans, member):
         self.logger.info(f"Deleting member data for {member.id}")
-        # (do nothing)
+        upd = self.tb_guild_membership \
+                .update() \
+                .where(and_(
+                    self.tb_guild_membership.c.user_id == member.id,
+                    self.tb_guild_membership.c.guild_id == member.guild.id,
+                )) \
+                .values(is_member=False)
+        trans.execute(upd)
+
+        # (Don't delete role membership)
 
     def upsert_member(self, trans, member):
         self.logger.debug(f"Upserting member data for {member.id}")
-        values = nick_values(member)
-        ups = p_insert(self.tb_nicknames) \
+        values = guild_member_values(member)
+        ups = p_insert(self.tb_guild_membership) \
                 .values(values) \
                 .on_conflict_do_update(
-                        constraint='uq_nickname',
+                        constraint='uq_guild_membership',
                         set_=values,
                 )
         trans.execute(ups)
