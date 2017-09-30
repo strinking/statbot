@@ -972,6 +972,7 @@ class DiscordSqlHandler:
         # Don't delete role membership
 
     def remove_old_members(self, trans, guild):
+        # pylint: disable=singleton-comparison
         self.logger.info(f"Deleting old members from guild {guild.name}")
         sel = select([self.tb_guild_membership]) \
                 .where(and_(
