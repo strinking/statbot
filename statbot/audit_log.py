@@ -14,28 +14,56 @@ from enum import Enum
 
 __all__ = [
     'AuditLogChangeState',
-    'AuditLogPermissionType',
     'AuditLogData',
 ]
+
+NAME_ATTRS = (
+    'name',
+    'icon',
+    'region',
+    'afk_timeout',
+    'widget_enabled',
+    'verification_level',
+    'explicit_content_filter',
+    'default_message_notifications',
+    'vanity_url_code',
+    'position',
+    'type',
+    'topic',
+    'bitrate',
+    'nick',
+    'deaf',
+    'mute',
+    'hoist',
+    'mentionable',
+    'code',
+    'max_uses',
+    'uses',
+    'max_age',
+    'temporary',
+    'changed_id',
+    'avatar',
+)
+
+ID_ATTRS = (
+    'owner',
+    'afk_channel',
+    'system_channel',
+    'widget_channel',
+    'channel',
+    'inviter',
+)
+
+VALUE_ATTRS = (
+    'raw_role_permissions',
+    'color',
+    'raw_allow_permissions',
+    'raw_deny_permissions',
+)
 
 class AuditLogChangeState(Enum):
     BEFORE = 0
     AFTER = 1
-
-class AuditLogPermissionType(Enum):
-    TEXT_CHANNEL = 0
-    VOICE_CHANNEL = 1
-    ROLE = 2
-    MEMBER = 3
-
-    @classmethod
-    def from_raw(cls, obj):
-        return {
-            0: cls.TEXT_CHANNEL,
-            1: cls.VOICE_CHANNEL,
-            'role': cls.ROLE,
-            'member': cls.MEMBER,
-        }.get(obj)
 
 class AuditLogData:
     __slots__ = (
@@ -60,7 +88,7 @@ class AuditLogData:
     @staticmethod
     def _get_overwrites(overwrites):
         if overwrites is None:
-            return None, None, None
+            return None
 
         targets = []
         allow_perms = []
@@ -72,7 +100,11 @@ class AuditLogData:
             allow_perms.append(allow.value)
             deny_perms.append(deny.value)
 
-        return targets, allow_perms, deny_perms
+        return {
+            'targets': targets,
+            'allow': allow_perms,
+            'deny': deny_perms,
+        }
 
     def diff_values(self, state):
         if self.entry.category is None:
@@ -83,63 +115,38 @@ class AuditLogData:
         else:
             diff = self.entry.after
 
-        targets, allow_perms, deny_perms = self._get_overwrites(getattr(diff, 'overwrites', None))
+        attributes = {}
 
-        def get(attr, func=None):
+        for attr in NAME_ATTRS:
             obj = getattr(diff, attr, None)
-            if obj is None or func is None:
-                return obj
-            else:
-                return func(obj)
+            if obj is not None:
+                attributes[attr] = obj
 
-        def get_id(attr):
-            return get(attr, lambda x: x.id)
+        for attr in ID_ATTRS:
+            obj = getattr(diff, attr, None)
+            if obj is not None:
+                attributes[attr] = obj.id
 
-        def get_value(attr):
-            return get(attr, lambda x: x.value)
+        for attr in VALUE_ATTRS:
+            obj = getattr(diff, attr, None)
+            if obj is not None:
+                attributes[attr] = obj.value
+
+        obj = getattr(diff, 'mfa_level', None)
+        if obj is not None:
+            attributes['mfa'] = bool(obj)
+
+        obj = getattr(diff, 'roles', None)
+        if obj is not None:
+            attributes['roles'] = list(map(lambda x: x.id, obj))
+
+        obj = self._get_overwrites(getattr(diff, 'overwrites', None))
+        if obj is not None:
+            attributes['overwrites'] = obj
 
         return {
             'audit_entry_id': self.entry.id,
             'guild_id': self.guild.id,
             'state': state,
-            'name': get('name'),
-            'icon': get('icon'),
-            'owner': get_id('owner'),
-            'voice_region': get('region'),
-            'afk_channel': get_id('afk_channel'),
-            'system_channel': get_id('system_channel'),
-            'afk_timeout': get('afk_timeout'),
-            'mfa': get('mfa_level', bool),
-            'widget_enabled': get('widget_enabled'),
-            'widget_channel': get_id('widget_channel'),
-            'verification_level': get('verification_level'),
-            'explicit_content_filter': get('explicit_content_filter'),
-            'default_message_notifications': get('default_message_notifications'),
-            'vanity_url_code': get('vanity_url_code'),
-            'position': get('position'),
-            'type': get('type', AuditLogPermissionType.from_raw),
-            'topic': get('topic'),
-            'bitrate': get('bitrate'),
-            'overwrite_targets': targets,
-            'overwrite_allow_permissions': allow_perms,
-            'overwrite_deny_permissions': deny_perms,
-            'roles': get('roles', lambda roles: [role.id for role in roles]),
-            'nickname': get('nick'),
-            'deaf': get('deaf'),
-            'mute': get('mute'),
-            'raw_role_permissions': get_value('permissions'),
-            'color': get_value('color'),
-            'hoist': get('hoist'),
-            'mentionable': get('mentionable'),
-            'code': get('code'),
-            'channel': get_id('channel'),
-            'inviter': get_id('inviter'),
-            'max_uses': get('max_uses'),
-            'uses': get('uses'),
-            'max_age': get('max_age'),
-            'temporary': get('temporary'),
-            'raw_allow_permissions': get_value('allow'),
-            'raw_deny_permissions': get_value('deny'),
-            'changed_id': get('id'),
-            'avatar': get('avatar'),
+            'attributes': attributes,
         }

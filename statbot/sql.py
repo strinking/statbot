@@ -17,18 +17,17 @@ import json
 import discord
 from sqlalchemy import create_engine, and_
 from sqlalchemy import ARRAY, Boolean, BigInteger, Column, DateTime, Enum
-from sqlalchemy import Integer, SmallInteger, String, Table, Unicode, UnicodeText
+from sqlalchemy import Integer, JSON, SmallInteger, String, Table, Unicode, UnicodeText
 from sqlalchemy import ForeignKey, MetaData, UniqueConstraint
 from sqlalchemy.sql import select
 from sqlalchemy.dialects.postgresql import insert as p_insert
 
-from .audit_log import AuditLogChangeState, AuditLogData, AuditLogPermissionType
+from .audit_log import AuditLogChangeState, AuditLogData
 from .emoji import EmojiData
 from .mention import MentionType
 from .util import null_logger
 
 Column = functools.partial(Column, nullable=False)
-NullColumn = functools.partial(Column, nullable=True)
 
 MAX_ID = 2 ** 63 - 1
 
@@ -396,48 +395,8 @@ class DiscordSqlHandler:
                 Column('audit_entry_id', BigInteger,
                     ForeignKey('audit_log.audit_entry_id'), primary_key=True),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
-                NullColumn('state', Enum(AuditLogChangeState), primary_key=True),
-                NullColumn('name', Unicode),
-                NullColumn('icon', String),
-                NullColumn('splash', String),
-                NullColumn('owner', BigInteger, ForeignKey('users.user_id')),
-                NullColumn('voice_region', String(16)),
-                NullColumn('afk_channel', BigInteger, ForeignKey('voice_channels.voice_channel_id')),
-                NullColumn('system_channel', BigInteger, ForeignKey('channels.channel_id')),
-                NullColumn('afk_timeout', Integer),
-                NullColumn('mfa', Boolean),
-                NullColumn('widget_enabled', Boolean),
-                NullColumn('widget_channel', BigInteger, ForeignKey('channels.channel_id')),
-                NullColumn('verification_level', Enum(discord.VerificationLevel)),
-                NullColumn('explicit_content_filter', Enum(discord.ContentFilter)),
-                NullColumn('default_message_notifications', SmallInteger),
-                NullColumn('vanity_url_code', String),
-                NullColumn('position', SmallInteger),
-                NullColumn('type', Enum(AuditLogPermissionType)),
-                NullColumn('topic', UnicodeText),
-                NullColumn('bitrate', Integer),
-                NullColumn('overwrite_targets', ARRAY(BigInteger)),
-                NullColumn('overwrite_allow_permissions', ARRAY(BigInteger)),
-                NullColumn('overwrite_deny_permissions', ARRAY(BigInteger)),
-                NullColumn('roles', ARRAY(BigInteger)),
-                NullColumn('nickname', Unicode(32)),
-                NullColumn('deaf', Boolean),
-                NullColumn('mute', Boolean),
-                NullColumn('raw_role_permissions', BigInteger),
-                NullColumn('color', Integer),
-                NullColumn('hoist', Boolean),
-                NullColumn('mentionable', Boolean),
-                NullColumn('code', String(16)),
-                NullColumn('channel', BigInteger),
-                NullColumn('inviter', BigInteger, ForeignKey('users.user_id')),
-                NullColumn('max_uses', SmallInteger),
-                NullColumn('uses', SmallInteger),
-                NullColumn('max_age', Integer),
-                NullColumn('temporary', Boolean),
-                NullColumn('raw_allow_permissions', BigInteger),
-                NullColumn('raw_deny_permissions', BigInteger),
-                NullColumn('changed_id', BigInteger),
-                NullColumn('avatar', String(16)))
+                Column('state', Enum(AuditLogChangeState), primary_key=True),
+                Column('attributes', JSON))
         self.tb_channel_crawl = Table('channel_crawl', meta,
                 Column('channel_id', BigInteger,
                     ForeignKey('channels.channel_id'), primary_key=True),
