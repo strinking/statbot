@@ -25,8 +25,6 @@ __all__ = [
     'AuditLogCrawler',
 ]
 
-NOW_ID = discord.utils.time_snowflake(datetime.now())
-
 class AbstractCrawler:
     __slots__ = (
         'name',
@@ -36,9 +34,11 @@ class AbstractCrawler:
         'logger',
         'progress',
         'queue',
+        'continuous',
+        'current',
     )
 
-    def __init__(self, name, client, sql, config, logger=null_logger):
+    def __init__(self, name, client, sql, config, logger=null_logger, continuous=False):
         self.name = name
         self.client = client
         self.sql = sql
@@ -46,6 +46,11 @@ class AbstractCrawler:
         self.logger = logger
         self.progress = {} # { stream : last_id }
         self.queue = asyncio.Queue(self.config['crawler']['queue-size'])
+        self.continuous = continuous
+        self.current = None
+
+    def _update_current(self):
+        self.current = discord.utils.time_snowflake(datetime.now())
 
     @staticmethod
     def get_last_id(objects):
@@ -61,7 +66,7 @@ class AbstractCrawler:
         pass
 
     @abc.abstractmethod
-    async def write(self, trans, events):
+    async def write(self, trans, source, events):
         pass
 
     @abc.abstractmethod
@@ -84,20 +89,23 @@ class AbstractCrawler:
 
         done = dict.fromkeys(self.progress.keys(), False)
         while True:
+            self._update_current()
+
             # Round-robin between all sources:
             # Tuple because the underlying dictionary may change size
             for source, last_id in tuple(self.progress.items()):
-                if done[source]:
+                if done[source] and not self.continuous:
                     continue
 
                 events = await self.read(source, last_id)
                 if events is None:
                     # This source is exhausted
                     done[source] = True
-                    await self.queue.put((source, None, NOW_ID))
-                    self.progress[source] = NOW_ID
+                    await self.queue.put((source, None, self.current))
+                    self.progress[source] = self.current
                 else:
                     # This source still has more
+                    done[source] = False
                     last_id = self.get_last_id(events)
                     await self.queue.put((source, events, last_id))
                     self.progress[source] = last_id
@@ -119,7 +127,7 @@ class AbstractCrawler:
             try:
                 with self.sql.transaction() as trans:
                     if events is not None:
-                        await self.write(trans, events)
+                        await self.write(trans, source, events)
                     await self.update(trans, source, last_id)
             except SQLAlchemyError:
                 self.logger.error(f"{self.name}: error during event write", exc_info=1)
@@ -170,7 +178,7 @@ class HistoryCrawler(AbstractCrawler):
             self.logger.info("No messages found in this range")
             return None
 
-    async def write(self, trans, messages):
+    async def write(self, trans, source, messages):
         # pylint: disable=arguments-differ
         for message in messages:
             self.sql.insert_message(trans, message)
@@ -222,15 +230,16 @@ class HistoryCrawler(AbstractCrawler):
 
 class AuditLogCrawler(AbstractCrawler):
     def __init__(self, client, sql, config, logger=null_logger):
-        AbstractCrawler.__init__(self, 'Audit Log', client, sql, config, logger)
+        AbstractCrawler.__init__(self, 'Audit Log', client, sql, config, logger, continuous=True)
 
     async def init(self):
         with self.sql.transaction() as trans:
-            for guild in map(self.client.get_guild, self.config['guilds']):
-                last_id = self.sql.lookup_audit_log_crawl(trans, guild)
-                if last_id is None:
-                    self.sql.insert_audit_log_crawl(trans, guild, 0)
-                self.progress[guild] = last_id or 0
+            for guild in map(self.client.get_guild, self.config['guild-ids']):
+                if guild.me.guild_permissions.view_audit_log:
+                    last_id = self.sql.lookup_audit_log_crawl(trans, guild)
+                    if last_id is None:
+                        self.sql.insert_audit_log_crawl(trans, guild, 0)
+                    self.progress[guild] = last_id or 0
 
     async def read(self, guild, last_id):
         # pylint: disable=arguments-differ
@@ -240,17 +249,17 @@ class AuditLogCrawler(AbstractCrawler):
         self.logger.info(f"Starting from ID {last_id} ({last})")
 
         entries = await guild.audit_logs(after=last, limit=limit).flatten()
-        if entries:
-            self.logger.info(f"Queued {len(entries)} audit log entries for ingestion")
-            return entries
-        else:
+        if not entries or self.get_last_id(entries) <= last_id:
             self.logger.info("No audit log entries found in this range")
             return None
+        else:
+            self.logger.info(f"Queued {len(entries)} audit log entries for ingestion")
+            return entries
 
-    async def write(self, trans, entries):
+    async def write(self, trans, guild, entries):
         # pylint: disable=arguments-differ
         for entry in entries:
-            self.sql.insert_audit_log_entry(entry)
+            self.sql.insert_audit_log_entry(trans, guild, entry)
 
     async def update(self, trans, guild, last_id):
         # pylint: disable=arguments-differ
