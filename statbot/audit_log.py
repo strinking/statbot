@@ -110,12 +110,11 @@ class AuditLogData:
         if self.entry.category is None:
             return None
 
-        if state == AuditLogChangeState.BEFORE:
+        alcs = AuditLogChangeState(state)
+        if alcs == AuditLogChangeState.BEFORE:
             diff = self.entry.before
-        elif state == AuditLogChangeState.AFTER:
+        elif alcs == AuditLogChangeState.AFTER:
             diff = self.entry.after
-        else:
-            raise ValueError(f"Unknown state: {state}")
 
         attributes = {}
 
