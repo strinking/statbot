@@ -53,9 +53,31 @@ if __name__ == '__main__':
     argparser.add_argument('-q', '--quiet', '--no-stdout',
             dest='stdout', action='store_false',
             help="Don't output to standard out.")
+    argparser.add_argument('-v', '--verbose',
+            dest='verbose', action='count',
+            help="Increase the logger's verbosity.")
     argparser.add_argument('-d', '--debug',
             dest='debug', action='store_true',
             help="Set logging level to debug.")
+    argparser.add_argument('-g', '--guild-id',
+            dest='guild_ids', action='append', type=int,
+            help="Override the list of guild IDs to look at.")
+    argparser.add_argument('-B', '--batch-size',
+            dest='batch_size', type=int,
+            help="Override the batch size used during crawling.")
+    argparser.add_argument('-Q', '--queue-size',
+            dest='queue_size', type=int,
+            help="Override the queue size used during crawling.")
+    argparser.add_argument('-Y', '--yield-delay',
+            dest='yield_delay', type=float,
+            help="Override the yield delay during crawling.")
+    argparser.add_argument('-E', '--empty-source-delay',
+            dest='empty_source_delay', type=float,
+            help="Override the empty source delay during crawling.")
+    argparser.add_argument('-T', '--token', dest='token',
+            help="Override the bot token used to log in.")
+    argparser.add_argument('-U', '--db-url', dest='db_url',
+            help="Override the database URL to connect to.")
     argparser.add_argument('config_file',
             help="Specify a configuration file to use. Keep it secret!")
     args = argparser.parse_args()
@@ -96,6 +118,36 @@ if __name__ == '__main__':
     if not valid:
         main_logger.error("Configuration file was invalid.")
         exit(1)
+
+    # Override configuration settings
+    verbosity = getattr(args, 'verbosity', 0)
+    if verbosity >= 1:
+        config['logger']['full-messages'] = True
+    if verbosity >= 2:
+        config['logger']['ignored-events'] = True
+    if verbosity >= 3:
+        discord_logger.addHandler(log_hndl)
+
+    if args.guild_ids is not None:
+        config['guild-ids'] = args.guild_ids
+
+    if args.batch_size is not None:
+        config['crawler']['batch-size'] = args.batch_size
+
+    if args.queue_size is not None:
+        config['crawler']['queue-size'] = args.queue_size
+
+    if args.yield_delay is not None:
+        config['crawler']['delays']['yield'] = args.yield_delay
+
+    if args.empty_source_delay is not None:
+        config['crawler']['delays']['empty-source'] = args.empty_source_delay
+
+    if args.token is not None:
+        config['bot']['token'] = args.token
+
+    if args.db_url is not None:
+        config['bot']['db-url'] = args.db_url
 
     # Create SQL handler
     sql = DiscordSqlHandler(config['bot']['db-url'], sql_logger)
