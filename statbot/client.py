@@ -40,6 +40,7 @@ class EventIngestionClient(discord.Client):
         'logger',
         'sql',
         'ready',
+        'sql_init',
         'hooks',
     )
 
@@ -49,6 +50,7 @@ class EventIngestionClient(discord.Client):
         self.logger = logger
         self.sql = sql
         self.ready = asyncio.Event()
+        self.sql_init = False
         self.hooks = {
             'on_guild_channel_create': None,
             'on_guild_channel_delete': None,
@@ -188,12 +190,11 @@ class EventIngestionClient(discord.Client):
             guild = self.get_guild(id)
             self.logger.info(f"* {guild.name} ({id})")
 
-        self.logger.info("Setting presence to invisible")
-        self.change_presence(status=discord.Status.invisible)
-
-        self.logger.info("Initializing SQL lookup tables...")
-        with self.sql.transaction() as trans:
-            self._init_sql(trans)
+        if not self.sql_init:
+            self.logger.info("Initializing SQL lookup tables...")
+            with self.sql.transaction() as trans:
+                self._init_sql(trans)
+                self.sql_init = True
 
         # All done setting up
         self.logger.info("")
