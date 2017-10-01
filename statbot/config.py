@@ -56,6 +56,18 @@ def check(cfg, logger=null_logger):
         if not is_int_list(cfg['guild-ids']):
             logger.error("Configuration field 'guilds' is not an int list")
             return False
+        if not isinstance(cfg['cache']['event-size'], int):
+            logger.error("Configuration field 'cache.event-size' is not an int")
+            return False
+        if cfg['cache']['event-size'] <= 0:
+            logger.error("Configuration field 'cache.event-size' is zero or negative")
+            return False
+        if not isinstance(cfg['cache']['lookup-size'], int):
+            logger.error("Configuration field 'cache.lookup-size' is not an int")
+            return False
+        if cfg['cache']['lookup-size'] <= 0:
+            logger.error("Configuration field 'cache.lookup-size' is zero or negative")
+            return False
         if not isinstance(cfg['logger']['full-messages'], bool):
             logger.error("Configuration field 'logger.full-messages' is not a bool")
             return False
