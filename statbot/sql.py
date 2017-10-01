@@ -121,11 +121,13 @@ def user_values(user, deleted=False):
         'is_bot': user.bot,
     }
 
-def nick_values(member):
+def guild_member_values(member):
     return {
         'user_id': member.id,
         'guild_id': member.guild.id,
-        'nickname': member.nick,
+        'is_member': True,
+        'joined_at': member.joined_at,
+        'nick': member.nick,
     }
 
 def role_member_values(member, role):
@@ -222,7 +224,7 @@ class DiscordSqlHandler:
         'tb_voice_channels',
         'tb_channel_categories',
         'tb_users',
-        'tb_nicknames',
+        'tb_guild_membership',
         'tb_role_membership',
         'tb_emojis',
         'tb_roles',
@@ -345,13 +347,15 @@ class DiscordSqlHandler:
                 Column('avatar', String, nullable=True),
                 Column('is_deleted', Boolean),
                 Column('is_bot', Boolean))
-        self.tb_nicknames = Table('nicknames', meta,
+        self.tb_guild_membership = Table('guild_membership', meta,
                 Column('user_id', BigInteger,
                     ForeignKey('users.user_id'), primary_key=True),
                 Column('guild_id', BigInteger,
                     ForeignKey('guilds.guild_id'), primary_key=True),
-                Column('nickname', Unicode(32), nullable=True),
-                UniqueConstraint('user_id', 'guild_id', name='uq_nickname'))
+                Column('is_member', Boolean),
+                Column('joined_at', DateTime, nullable=True),
+                Column('nick', Unicode(32), nullable=True),
+                UniqueConstraint('user_id', 'guild_id', name='uq_guild_membership'))
         self.tb_role_membership = Table('role_membership', meta,
                 Column('role_id', BigInteger, ForeignKey('roles.role_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
@@ -676,7 +680,7 @@ class DiscordSqlHandler:
             self.logger.debug(f"Role lookup for {role.id} is already up-to-date")
             return
 
-        self.logger.info(f"Updating lookup data for role {role.name}")
+        self.logger.debug(f"Updating lookup data for role {role.name}")
         ups = p_insert(self.tb_roles) \
                 .values(values) \
                 .on_conflict_do_update(
@@ -732,7 +736,7 @@ class DiscordSqlHandler:
             self.logger.debug(f"Channel lookup for {channel.id} is already up-to-date")
             return
 
-        self.logger.info(f"Updating lookup data for channel #{channel.name}")
+        self.logger.debug(f"Updating lookup data for channel #{channel.name}")
         ups = p_insert(self.tb_channels) \
                 .values(values) \
                 .on_conflict_do_update(
@@ -788,7 +792,7 @@ class DiscordSqlHandler:
             self.logger.debug(f"Voice channel lookup for {channel.id} is already up-to-date")
             return
 
-        self.logger.info(f"Updating lookup data for voice channel '{channel.name}'")
+        self.logger.debug(f"Updating lookup data for voice channel '{channel.name}'")
         ups = p_insert(self.tb_voice_channels) \
                 .values(values) \
                 .on_conflict_do_update(
@@ -844,7 +848,7 @@ class DiscordSqlHandler:
             self.logger.debug(f"Channel category lookup for {category.id} is already up-to-date")
             return
 
-        self.logger.info(f"Updating lookup data for channel category {category.name}")
+        self.logger.debug(f"Updating lookup data for channel category {category.name}")
         ups = p_insert(self.tb_channel_categories) \
                 .values(values) \
                 .on_conflict_do_update(
@@ -914,8 +918,8 @@ class DiscordSqlHandler:
     # Members
     def add_member(self, trans, member):
         self.logger.info(f"Inserting member data for {member.id}")
-        values = nick_values(member)
-        ins = self.tb_nicknames \
+        values = guild_member_values(member)
+        ins = self.tb_guild_membership \
                 .insert() \
                 .values(values)
         trans.execute(ins)
@@ -924,16 +928,13 @@ class DiscordSqlHandler:
 
     def update_member(self, trans, member):
         self.logger.info(f"Updating member data for {member.id}")
-        values = {
-            'nickname': member.nick,
-        }
-        upd = self.tb_nicknames \
+        upd = self.tb_guild_membership \
                 .update() \
                 .where(and_(
-                    self.tb_nicknames.c.user_id == member.id,
-                    self.tb_nicknames.c.guild_id == member.guild.id,
+                    self.tb_guild_membership.c.user_id == member.id,
+                    self.tb_guild_membership.c.guild_id == member.guild.id,
                 )) \
-                .values(values)
+                .values(nick=member.nick)
         trans.execute(upd)
 
         self._delete_role_membership(trans, member)
@@ -958,16 +959,48 @@ class DiscordSqlHandler:
             trans.execute(ins)
 
     def remove_member(self, trans, member):
-        self.logger.info(f"Deleting member data for {member.id}")
-        # (do nothing)
+        self.logger.debug(f"Removing member {member.id} from guild {member.guild.id}")
+        upd = self.tb_guild_membership \
+                .update() \
+                .where(and_(
+                    self.tb_guild_membership.c.user_id == member.id,
+                    self.tb_guild_membership.c.guild_id == member.guild.id,
+                )) \
+                .values(is_member=False)
+        trans.execute(upd)
+
+        # Don't delete role membership
+
+    def remove_old_members(self, trans, guild):
+        # Since pylint complains about <thing> == True.
+        # We need to do this otherwise silly comparison
+        # because it's not a comparison at all, it's actually
+        # creating a SQLAlchemy "equality" object that is used
+        # to generate the query.
+        #
+        # pylint: disable=singleton-comparison
+
+        self.logger.info(f"Deleting old members from guild {guild.name}")
+        sel = select([self.tb_guild_membership]) \
+                .where(and_(
+                    self.tb_guild_membership.c.guild_id == guild.id,
+                    self.tb_guild_membership.c.is_member == True,
+                ))
+        result = trans.execute(sel)
+
+        for row in result.fetchall():
+            user_id = row[0]
+            member = guild.get_member(user_id)
+            if member is None:
+                self.remove_member(trans, member)
 
     def upsert_member(self, trans, member):
         self.logger.debug(f"Upserting member data for {member.id}")
-        values = nick_values(member)
-        ups = p_insert(self.tb_nicknames) \
+        values = guild_member_values(member)
+        ups = p_insert(self.tb_guild_membership) \
                 .values(values) \
                 .on_conflict_do_update(
-                        constraint='uq_nickname',
+                        constraint='uq_guild_membership',
                         set_=values,
                 )
         trans.execute(ups)
@@ -1009,7 +1042,7 @@ class DiscordSqlHandler:
             self.logger.debug(f"Emoji lookup for {data} is already up-to-date")
             return
 
-        self.logger.info(f"Upserting emoji {data}")
+        self.logger.debug(f"Upserting emoji {data}")
         ups = p_insert(self.tb_emojis) \
                 .values(values) \
                 .on_conflict_do_update(

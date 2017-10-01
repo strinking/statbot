@@ -134,25 +134,28 @@ class EventIngestionClient(discord.Client):
             self.logger.debug(message)
 
     def _init_sql(self, trans):
-        self.logger.debug(f"Processing {len(self.users)} users...")
+        self.logger.info(f"Processing {len(self.users)} users...")
         for user in self.users:
             self.sql.upsert_user(trans, user)
 
-        self.logger.debug(f"Processing {len(self.guilds)} guilds...")
+        self.logger.info(f"Processing {len(self.guilds)} guilds...")
         for guild in self.guilds:
             self.sql.upsert_guild(trans, guild)
 
-            self.logger.debug(f"Processing {len(guild.roles)} roles...")
+            self.logger.info(f"Processing {len(guild.roles)} roles...")
             for role in guild.roles:
                 self.sql.upsert_role(trans, role)
 
-            self.logger.debug(f"Processing {len(guild.emojis)} emojis...")
+            self.logger.info(f"Processing {len(guild.emojis)} emojis...")
             for emoji in guild.emojis:
                 self.sql.upsert_emoji(trans, emoji)
 
-            self.logger.debug(f"Processing {len(guild.members)} members...")
+            self.logger.info(f"Processing {len(guild.members)} members...")
             for member in guild.members:
                 self.sql.upsert_member(trans, member)
+
+            # In case people left while the bot was down
+            self.sql.remove_old_members(trans, guild)
 
             text_channels = []
             voice_channels = []
@@ -165,15 +168,15 @@ class EventIngestionClient(discord.Client):
                 elif isinstance(channel, discord.CategoryChannel):
                     categories.append(channel)
 
-            self.logger.debug(f"Processing {len(categories)} channel categories...")
+            self.logger.info(f"Processing {len(categories)} channel categories...")
             for category in categories:
                 self.sql.upsert_channel_category(trans, category)
 
-            self.logger.debug(f"Processing {len(text_channels)} channels...")
+            self.logger.info(f"Processing {len(text_channels)} channels...")
             for channel in text_channels:
                 self.sql.upsert_channel(trans, channel)
 
-            self.logger.debug(f"Processing {len(voice_channels)} voice channels...")
+            self.logger.info(f"Processing {len(voice_channels)} voice channels...")
             for channel in voice_channels:
                 self.sql.upsert_voice_channel(trans, channel)
 
