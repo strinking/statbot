@@ -22,6 +22,7 @@ from sqlalchemy.sql import select
 from sqlalchemy.dialects.postgresql import insert as p_insert
 
 from .audit_log import AuditLogChangeState, AuditLogData
+from .cache import LruCache
 from .emoji import EmojiData
 from .mention import MentionType
 from .util import null_logger
@@ -57,6 +58,12 @@ def message_values(message):
     else:
         system_content = message.system_content
 
+    attach_urls = '\n'.join(attach.url for attach in message.attachments)
+    if message.content:
+        content = '\n'.join((message.content, attach_urls))
+    else:
+        content = attach_urls
+
     return {
         'message_id': message.id,
         'created_at': message.created_at,
@@ -64,7 +71,7 @@ def message_values(message):
         'deleted_at': None,
         'message_type': message.type,
         'system_content': system_content,
-        'content': message.content,
+        'content': content,
         'embeds': [embed.to_dict() for embed in message.embeds],
         'attachments': len(message.attachments),
         'webhook_id': message.webhook_id,
@@ -233,6 +240,8 @@ class DiscordSqlHandler:
         'tb_channel_crawl',
         'tb_audit_log_crawl',
 
+        'message_cache',
+        'typing_cache',
         'guild_cache',
         'channel_cache',
         'voice_channel_cache',
@@ -242,7 +251,7 @@ class DiscordSqlHandler:
         'role_cache',
     )
 
-    def __init__(self, addr, logger=null_logger):
+    def __init__(self, addr, cache_max_size, logger=null_logger):
         logger.info(f"Opening database: '{addr}'")
         self.db = create_engine(addr)
         meta = MetaData(self.db)
@@ -405,14 +414,16 @@ class DiscordSqlHandler:
                     ForeignKey('guilds.guild_id'), primary_key=True),
                 Column('last_audit_entry_id', BigInteger))
 
-        # Lookup caches
-        self.guild_cache = {}
-        self.channel_cache = {}
-        self.voice_channel_cache = {}
-        self.channel_category_cache = {}
-        self.user_cache = {}
-        self.emoji_cache = {}
-        self.role_cache = {}
+        # Caches
+        self.message_cache = LruCache(cache_max_size)
+        self.typing_cache = LruCache(cache_max_size)
+        self.guild_cache = LruCache(cache_max_size)
+        self.channel_cache = LruCache(cache_max_size)
+        self.voice_channel_cache = LruCache(cache_max_size)
+        self.channel_category_cache = LruCache(cache_max_size)
+        self.user_cache = LruCache(cache_max_size)
+        self.emoji_cache = LruCache(cache_max_size)
+        self.role_cache = LruCache(cache_max_size)
 
         # Create tables
         meta.create_all(self.db)
@@ -442,19 +453,18 @@ class DiscordSqlHandler:
 
     # Messages
     def add_message(self, trans, message):
-        attach_urls = '\n'.join(attach.url for attach in message.attachments)
-        if message.content:
-            content = '\n'.join((message.content, attach_urls))
-        else:
-            content = attach_urls
+        values = message_values(message)
+
+        if self.message_cache.get(message.id) == values:
+            self.logger.debug(f"Message lookup for {message.id} is already up-to-date")
+            return
 
         self.logger.info(f"Inserting message {message.id}")
-        values = message_values(message)
-        values['content'] = content
         ins = self.tb_messages \
                 .insert() \
                 .values(values)
         trans.execute(ins)
+        self.message_cache[message.id] = values
 
         self.upsert_user(trans, message.author)
         self.insert_mentions(trans, message)
@@ -480,14 +490,20 @@ class DiscordSqlHandler:
                 .values(deleted_at=datetime.now()) \
                 .where(self.tb_messages.c.message_id == message.id)
         trans.execute(upd)
+        del self.message_cache[message.id]
 
     def insert_message(self, trans, message):
-        self.logger.debug(f"Inserting message {message.id}")
         values = message_values(message)
+        if self.message_cache.get(message.id) == values:
+            self.logger.debug(f"Message lookup for {message.id} is already up-to-date")
+            return
+
+        self.logger.debug(f"Inserting message {message.id}")
         ins = p_insert(self.tb_messages) \
                 .values(values) \
                 .on_conflict_do_nothing(index_elements=['message_id'])
         trans.execute(ins)
+        self.message_cache[message.id] = values
 
         self.upsert_user(trans, message.author)
         self.insert_mentions(trans, message)
@@ -549,6 +565,11 @@ class DiscordSqlHandler:
 
     # Typing
     def typing(self, trans, channel, user, when):
+        key = (when, user.id, channel.id)
+        if self.typing_cache.get(key, False):
+            self.logger.debug(f"Typing lookup is up-to-date")
+            return
+
         self.logger.info(f"Inserting typing event for user {user.id}")
         ins = self.tb_typing \
                 .insert() \
@@ -559,6 +580,7 @@ class DiscordSqlHandler:
                     'guild_id': channel.guild.id,
                 })
         trans.execute(ins)
+        self.typing_cache[key] = True
 
     # Reactions
     def add_reaction(self, trans, reaction, user):

@@ -4,6 +4,9 @@ guild-ids:
   - 129409120491092041
   - 1290192091029091120
 
+cache:
+  size: 16
+
 logger:
   full-messages: false
   ignored-events: false
