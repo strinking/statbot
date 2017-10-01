@@ -1,11 +1,11 @@
 ---
 
 guild-ids:
-  - 129409120491092041
-  - 1290192091029091120
+  - 193593039650100397
 
 cache:
-  size: 16
+  event-size: 16
+  lookup-size: 384
 
 logger:
   full-messages: false

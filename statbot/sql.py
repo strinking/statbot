@@ -251,7 +251,7 @@ class DiscordSqlHandler:
         'role_cache',
     )
 
-    def __init__(self, addr, cache_max_size, logger=null_logger):
+    def __init__(self, addr, cache_size, logger=null_logger):
         logger.info(f"Opening database: '{addr}'")
         self.db = create_engine(addr)
         meta = MetaData(self.db)
@@ -415,15 +415,15 @@ class DiscordSqlHandler:
                 Column('last_audit_entry_id', BigInteger))
 
         # Caches
-        self.message_cache = LruCache(cache_max_size)
-        self.typing_cache = LruCache(cache_max_size)
-        self.guild_cache = LruCache(cache_max_size)
-        self.channel_cache = LruCache(cache_max_size)
-        self.voice_channel_cache = LruCache(cache_max_size)
-        self.channel_category_cache = LruCache(cache_max_size)
-        self.user_cache = LruCache(cache_max_size)
-        self.emoji_cache = LruCache(cache_max_size)
-        self.role_cache = LruCache(cache_max_size)
+        self.message_cache = LruCache(cache_size['event-size'])
+        self.typing_cache = LruCache(cache_size['event-size'])
+        self.guild_cache = LruCache(cache_size['lookup-size'])
+        self.channel_cache = LruCache(cache_size['lookup-size'])
+        self.voice_channel_cache = LruCache(cache_size['lookup-size'])
+        self.channel_category_cache = LruCache(cache_size['lookup-size'])
+        self.user_cache = LruCache(cache_size['lookup-size'])
+        self.emoji_cache = LruCache(cache_size['lookup-size'])
+        self.role_cache = LruCache(cache_size['lookup-size'])
 
         # Create tables
         meta.create_all(self.db)
