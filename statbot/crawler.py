@@ -97,18 +97,21 @@ class AbstractCrawler:
                 if done[source] and not self.continuous:
                     continue
 
-                events = await self.read(source, last_id)
-                if events is None:
-                    # This source is exhausted
-                    done[source] = True
-                    await self.queue.put((source, None, self.current))
-                    self.progress[source] = self.current
-                else:
-                    # This source still has more
-                    done[source] = False
-                    last_id = self.get_last_id(events)
-                    await self.queue.put((source, events, last_id))
-                    self.progress[source] = last_id
+                try:
+                    events = await self.read(source, last_id)
+                    if events is None:
+                        # This source is exhausted
+                        done[source] = True
+                        await self.queue.put((source, None, self.current))
+                        self.progress[source] = self.current
+                    else:
+                        # This source still has more
+                        done[source] = False
+                        last_id = self.get_last_id(events)
+                        await self.queue.put((source, events, last_id))
+                        self.progress[source] = last_id
+                except discord.DiscordException:
+                    self.logger.error(f"{self.name}: error during event read", exc_info=1)
 
             if all(done.values()):
                 self.logger.info(f"{self.name}: all sources are exhausted, sleeping for a while...")
