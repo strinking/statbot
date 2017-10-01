@@ -972,8 +972,14 @@ class DiscordSqlHandler:
         # Don't delete role membership
 
     def remove_old_members(self, trans, guild):
-        # Since pylint complains about <thing> == True:
+        # Since pylint complains about <thing> == True.
+        # We need to do this otherwise silly comparison
+        # because it's not a comparison at all, it's actually
+        # creating a SQLAlchemy "equality" object that is used
+        # to generate the query.
+        #
         # pylint: disable=singleton-comparison
+
         self.logger.info(f"Deleting old members from guild {guild.name}")
         sel = select([self.tb_guild_membership]) \
                 .where(and_(
