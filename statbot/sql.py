@@ -14,7 +14,7 @@ from datetime import datetime
 import functools
 
 import discord
-from sqlalchemy import create_engine, and_
+from sqlalchemy import create_engine, and_, or_
 from sqlalchemy import ARRAY, Boolean, BigInteger, Column, DateTime, Enum
 from sqlalchemy import Integer, JSON, SmallInteger, String, Table, Unicode, UnicodeText
 from sqlalchemy import ForeignKey, MetaData, UniqueConstraint
@@ -492,6 +492,8 @@ class DiscordSqlHandler:
         trans.execute(upd)
         del self.message_cache[message.id]
 
+        self.remove_pin(trans, message)
+
     def insert_message(self, trans, message):
         values = message_values(message)
         if self.message_cache.get(message.id) == values:
@@ -628,12 +630,9 @@ class DiscordSqlHandler:
                 .where(self.tb_reactions.c.message_id == message.id)
         trans.execute(upd)
 
-    # Pins (TODO)
-    def add_pin(self, trans, announce, message):
-        # pylint: disable=unreachable
-        raise NotImplementedError
-
-        self.logger.info(f"Inserting pin for message {message.id}")
+    # Pins
+    def upsert_pin(self, trans, announce, message):
+        self.logger.info(f"Upserting pin for message {message.id}")
         ins = self.tb_pins \
                 .insert() \
                 .values({
@@ -646,16 +645,26 @@ class DiscordSqlHandler:
                 })
         trans.execute(ins)
 
-    def remove_pin(self, trans, announce, message):
-        # pylint: disable=unreachable
-        raise NotImplementedError
-
-        self.logger.info(f"Deleting pin for message {message.id}")
+    def remove_pin(self, trans, message):
+        self.logger.info(f"Deleting any pins for message {message.id}")
         delet = self.tb_pins \
                 .delete() \
-                .where(self.tb_pins.c.pin_id == announce.id) \
-                .where(self.tb_pins.c.message_id == message.id)
+                .where(or_(
+                    self.tb_pins.c.pin_id == message.id,
+                    self.tb_pins.c.message_id == message.id,
+                ))
         trans.execute(delet)
+
+    def get_pin_announcements(self, trans, channel):
+        self.logger.debug(f"Getting list of pin announcments in {channel.guild.name} #{channel.name}.")
+        sel = select([self.tb_messages]) \
+                .where(and_(
+                    self.tb_messages.c.message_type == discord.MessageType.pins_add,
+                    self.tb_messages.c.channel_id == channel.id,
+                ))
+        result = trans.execute(sel)
+
+        return map(lambda row: row[0], result.fetchall())
 
     # Roles
     def add_role(self, trans, role):

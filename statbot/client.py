@@ -20,6 +20,9 @@ __all__ = [
     'EventIngestionClient',
 ]
 
+def sort_by_id(iterable):
+    return sorted(iterable, key=lambda x: x.id)
+
 def member_needs_update(before, after):
     '''
     See if the given member update is something
@@ -181,6 +184,9 @@ class EventIngestionClient(discord.Client):
             self.logger.info(f"Processing {len(voice_channels)} voice channels...")
             for channel in voice_channels:
                 self.sql.upsert_voice_channel(trans, channel)
+
+        self.logger.info(f"Updating list of pins...")
+        self.update_pins(trans)
 
     async def on_ready(self):
         # Print welcome string
@@ -437,3 +443,19 @@ class EventIngestionClient(discord.Client):
                 self.sql.add_emoji(trans, emoji)
             for emoji in before - after:
                 self.sql.remove_emoji(trans, emoji)
+
+    async def update_pins(self, trans):
+        for channel in self.get_all_channels():
+            if not isinstance(channel, discord.TextChannel):
+                continue
+
+            announce_ids = self.sql.get_pin_announcements(channel)
+            announces = sort_by_id(await channel.get_message(id) for id in announce_ids)
+            messages = await channel.pins()
+            messages.sort()
+
+            if len(announces) != len(messages):
+                self.logger.warn(f"The number of pin announcements and pinned messages are mismatched!")
+
+            for announce, message in zip(announces, messages):
+                self.sql.upsert_pin(trans, announce, message)
