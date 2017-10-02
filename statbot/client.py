@@ -11,6 +11,8 @@
 #
 
 import asyncio
+from itertools import islice
+
 import discord
 
 from .emoji import EmojiData
@@ -19,6 +21,9 @@ from .util import null_logger
 __all__ = [
     'EventIngestionClient',
 ]
+
+def ifirst(iterable):
+    return tuple(islice(iterable, 1))[0]
 
 def sort_by_id(iterable):
     return sorted(iterable, key=lambda x: x.id)
@@ -356,8 +361,23 @@ class EventIngestionClient(discord.Client):
         if not await self._accept_channel(channel):
             return
 
-        self.logger.info(f"Channel #{channel.name} got a pin update")
-        self.logger.warn("TODO: handling for on_guild_channel_pins_update")
+        self.logger.info(f"Channel {channel.guild.name} #{channel.name} got a pin update")
+        if last_pin is None:
+            return
+
+        announce = None
+        async for msg in channel.history():
+            if msg.type == discord.MessageType.pins_add:
+                announce = msg
+                break
+
+        if announce is None:
+            self.logger.error(f"Can't find associated pin announcement")
+            return
+
+        with self.sql.transaction() as trans:
+            message = ifirst(await channel.pins())
+            self.sql.upsert_pin(trans, announce, message)
 
     async def on_member_join(self, member):
         self._log_ignored(f"Member {member.id} joined guild {member.guild.id}")

@@ -80,6 +80,16 @@ def message_values(message):
         'guild_id': message.guild.id,
     }
 
+def pin_values(announce, message):
+    return {
+        'pin_id': announce.id,
+        'message_id': message.id,
+        'pinner_id': announce.author.id,
+        'user_id': message.author.id,
+        'channel_id': message.channel.id,
+        'guild_id': message.guild.id,
+    }
+
 def channel_values(channel):
     return {
         'channel_id': channel.id,
@@ -633,17 +643,18 @@ class DiscordSqlHandler:
     # Pins
     def upsert_pin(self, trans, announce, message):
         self.logger.info(f"Upserting pin for message {message.id}")
-        ins = self.tb_pins \
-                .insert() \
-                .values({
-                    'pin_id': announce.id,
-                    'message_id': message.id,
-                    'pinner_id': announce.author.id,
-                    'user_id': message.author.id,
-                    'channel_id': message.channel.id,
-                    'guild_id': message.guild.id,
-                })
-        trans.execute(ins)
+        values = pin_values(announce, message)
+        ups = p_insert(self.tb_pins) \
+                .values(values) \
+                .on_conflict_do_update(
+                        index_elements=['pin_id', 'message_id'],
+                        index_where=and_(
+                            self.tb_pins.c.pin_id == announce.id,
+                            self.tb_pins.c.message_id == message.id,
+                        ),
+                        set_=values,
+                )
+        trans.execute(ups)
 
     def remove_pin(self, trans, message):
         self.logger.info(f"Deleting any pins for message {message.id}")
