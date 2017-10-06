@@ -21,10 +21,10 @@ pip3 install -r requirements.txt
 ```
 
 ### Execution
-After preparing a configuration file, (see `misc/sample_config.json`)
+After preparing a configuration file, (see `misc/sample_config.yaml1`)
 you can call the program as follows:
 ```sh
-python3 -m statbot [-q] [-d] your_config_file.json
+python3 -m statbot [-q] [-d] your_config_file.yaml
 ```
 
 A sample `docker-compose.yaml` configuration is also provided in `misc/` in case you would
