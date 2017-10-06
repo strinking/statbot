@@ -281,7 +281,7 @@ class DiscordSqlHandler:
                 Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
                 UniqueConstraint('message_id', 'emoji_id', 'emoji_unicode',
-                    name='uq_reactions'))
+                    'user_id', 'created_at', name='uq_reactions'))
         self.tb_typing = Table('typing', meta,
                 Column('timestamp', DateTime),
                 Column('user_id', BigInteger, ForeignKey('users.user_id')),
