@@ -616,7 +616,7 @@ class DiscordSqlHandler:
             ins = p_insert(self.tb_reactions) \
                     .values(values) \
                     .on_conflict_do_nothing(index_elements=[
-                        'message_id', 'emoji_id', 'emoji_unicode',
+                        'message_id', 'emoji_id', 'emoji_unicode', 'user_id', 'created_at',
                     ])
             trans.execute(ins)
 
