@@ -172,6 +172,13 @@ def reaction_values(reaction, user, current):
     }
 
 class _Transaction:
+    __slots__ = (
+        'conn',
+        'logger',
+        'trans',
+        'ok',
+    )
+
     def __init__(self, conn, logger):
         self.conn = conn
         self.logger = logger
@@ -207,6 +214,41 @@ class DiscordSqlHandler:
 
     # disable because we get false positives for dml in sqlalchemy insert/delete
     # pylint: disable=no-value-for-parameter
+
+    __slots__ = (
+        'db',
+        'conn',
+        'logger',
+
+        'tb_messages',
+        'tb_reactions',
+        'tb_typing',
+        'tb_pins',
+        'tb_mentions',
+        'tb_guilds',
+        'tb_channels',
+        'tb_voice_channels',
+        'tb_channel_categories',
+        'tb_users',
+        'tb_guild_membership',
+        'tb_role_membership',
+        'tb_emojis',
+        'tb_roles',
+        'tb_audit_log',
+        'tb_audit_log_changes',
+        'tb_channel_crawl',
+        'tb_audit_log_crawl',
+
+        'message_cache',
+        'typing_cache',
+        'guild_cache',
+        'channel_cache',
+        'voice_channel_cache',
+        'channel_category_cache',
+        'user_cache',
+        'emoji_cache',
+        'role_cache',
+    )
 
     def __init__(self, addr, cache_size, logger=null_logger):
         logger.info(f"Opening database: '{addr}'")
