@@ -173,17 +173,15 @@ def reaction_values(reaction, user, current):
 
 class _Transaction:
     __slots__ = (
-        'sql',
-        'logger',
         'conn',
+        'logger',
         'trans',
         'ok',
     )
 
-    def __init__(self, sql):
-        self.sql = sql
-        self.logger = sql.logger
-        self.conn = sql.db.connect()
+    def __init__(self, conn, logger):
+        self.conn = conn
+        self.logger = logger
         self.trans = None
         self.ok = True
 
@@ -219,6 +217,7 @@ class DiscordSqlHandler:
 
     __slots__ = (
         'db',
+        'conn',
         'logger',
 
         'tb_messages',
@@ -254,6 +253,7 @@ class DiscordSqlHandler:
     def __init__(self, addr, cache_size, logger=null_logger):
         logger.info(f"Opening database: '{addr}'")
         self.db = create_engine(addr)
+        self.conn = self.db.connect()
         meta = MetaData(self.db)
         self.logger = logger
 
@@ -431,7 +431,7 @@ class DiscordSqlHandler:
 
     # Transaction logic
     def transaction(self):
-        return _Transaction(self)
+        return _Transaction(self.conn, self.logger)
 
     # Guild
     def upsert_guild(self, trans, guild):

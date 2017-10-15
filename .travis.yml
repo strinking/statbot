@@ -7,11 +7,21 @@ python:
 
 sudo: false
 
+services:
+  - postgresql
+
+addons:
+  postgresql: '9.5' # on_conflict requires 9.5+
+
 cache: pip
 
 install:
   - pip install --requirement requirements.txt
   - pip install pylint
+
+before_script:
+  - psql -c 'create database statbot_test;' -U postgres
+  - psql -c 'create user statbot_test; grant all privileges on database statbot_test to statbot_test;' -U postgres
 
 script:
   - python3 -m unittest --verbose
