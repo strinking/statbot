@@ -490,7 +490,7 @@ class DiscordSqlHandler:
                 .values(deleted_at=datetime.now()) \
                 .where(self.tb_messages.c.message_id == message.id)
         trans.execute(upd)
-        del self.message_cache[message.id]
+        self.message_cache.pop(message.id, None)
 
     def insert_message(self, trans, message):
         values = message_values(message)
