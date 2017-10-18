@@ -690,9 +690,7 @@ class DiscordSqlHandler:
             self.logger.debug(f"Inserting single reaction {data} from {user.id}")
             ins = p_insert(self.tb_reactions) \
                     .values(values) \
-                    .on_conflict_do_nothing(index_elements=[
-                        'message_id', 'emoji_id', 'emoji_unicode', 'user_id', 'created_at',
-                    ])
+                    .on_conflict_do_nothing(constraint='uq_reactions')
             trans.execute(ins)
 
     def clear_reactions(self, trans, message):
