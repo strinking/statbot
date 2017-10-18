@@ -640,7 +640,7 @@ class DiscordSqlHandler:
                 .values({
                     'timestamp': timestamp,
                     'user_id': member.id,
-                    'status': member.status,
+                    'user_status': member.status,
                 })
         trans.execute(ins)
         self.status_cache[key] = member.status
@@ -662,8 +662,6 @@ class DiscordSqlHandler:
         trans.execute(ins)
         self.activity_cache[key] = values
 
-=======
->>>>>>> Hook in events for status and game changes.
     # Reactions
     def add_reaction(self, trans, reaction, user):
         self.logger.info(f"Inserting live reaction for user {user.id} on message {reaction.message.id}")
