@@ -157,6 +157,7 @@ class EventIngestionClient(discord.Client):
                 self.sql.upsert_member(trans, member)
                 self.sql.playing(trans, member)
                 self.sql.status_change(trans, member)
+                self.sql.activity_change(trans, member)
 
             # In case people left while the bot was down
             self.sql.remove_old_members(trans, guild)
@@ -400,11 +401,11 @@ class EventIngestionClient(discord.Client):
             self.sql.update_user(trans, after)
             self.sql.update_member(trans, after)
 
-            if before.game != after.game:
-                self.sql.playing(trans, after)
-
             if before.status != after.status:
                 self.sql.status_change(trans, after)
+
+            if before.activity != after.activity:
+                self.sql.activity_change(trans, after)
 
     async def on_guild_role_create(self, role):
         self._log_ignored(f"Role {role.id} was created in guild {role.guild.id}")

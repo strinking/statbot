@@ -10,6 +10,7 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
+from collections import defaultdict
 from datetime import datetime
 import functools
 
@@ -24,7 +25,6 @@ from sqlalchemy.dialects.postgresql import insert as p_insert
 from .audit_log import AuditLogData
 from .cache import LruCache
 from .emoji import EmojiData
-from .game import GameType
 from .mention import MentionType
 from .util import null_logger
 
@@ -172,24 +172,25 @@ def reaction_values(reaction, user, current):
         'guild_id': reaction.message.guild.id,
     }
 
-def game_values(member, when):
-    values = {
-        'timestamp': when,
-        'user_id': member.id,
-    }
+def activity_values(member, when):
+    values = defaultdict(lambda: None,
+        timestamp=when,
+        user_id=member.id,
+        other={},
+    )
 
-    if member.game is None:
+    if member.activity is not None:
         values.update(
-            game_type=GameType.NOTHING,
-            name=None,
-            url=None,
+            type=member.activity.type,
+            start_time=member.activity.start,
+            end_time=member.activity.end,
         )
-    else:
-        values.update(
-            game_type=GameType(member.game.type),
-            name=member.game.name,
-            url=member.game.url,
-        )
+
+        for attr in ('url', 'state', 'details', 'twitch_name'):
+            values[attr] = getattr(member.activity, attr, None)
+
+        for attr in ('timestamps', 'assets', 'party'):
+            values['other'][attr] = getattr(member.activity, 'assets', None)
 
     return values
 
@@ -245,8 +246,8 @@ class DiscordSqlHandler:
         'tb_messages',
         'tb_reactions',
         'tb_typing',
-        'tb_playing',
-        'tb_status_changes',
+        'tb_status',
+        'tb_activities',
         'tb_pins',
         'tb_mentions',
         'tb_guilds',
@@ -264,8 +265,8 @@ class DiscordSqlHandler:
 
         'message_cache',
         'typing_cache',
-        'playing_cache',
         'status_cache',
+        'activity_cache',
         'guild_cache',
         'channel_cache',
         'voice_channel_cache',
@@ -314,18 +315,24 @@ class DiscordSqlHandler:
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
                 UniqueConstraint('timestamp', 'user_id', 'channel_id', 'guild_id',
                     name='uq_typing'))
-        self.tb_playing = Table('playing', meta,
+        self.tb_status = Table('status', meta,
                 Column('timestamp', DateTime),
                 Column('user_id', BigInteger, ForeignKey('users.user_id')),
-                Column('game_type', Enum(GameType)),
+                Column('status', Enum(discord.Status)),
+                UniqueConstraint('timestamp', 'user_id', name='uq_status'))
+        self.tb_activities = Table('activities', meta,
+                Column('timestamp', DateTime),
+                Column('user_id', BigInteger, ForeignKey('users.user_id')),
+                Column('type', Enum(discord.ActivityType), nullable=True),
                 Column('name', String, nullable=True),
+                Column('start_time', DateTime, nullable=True),
+                Column('end_time', DateTime, nullable=True),
                 Column('url', String, nullable=True),
-                UniqueConstraint('timestamp', 'user_id', name='uq_playing'))
-        self.tb_status_changes = Table('status_changes', meta,
-                Column('timestamp', DateTime),
-                Column('user_id', BigInteger, ForeignKey('users.user_id')),
-                Column('user_status', Enum(discord.Status)),
-                UniqueConstraint('timestamp', 'user_id', name='uq_status_changes'))
+                Column('state', String, nullable=True),
+                Column('details', String, nullable=True),
+                Column('twitch_name', String, nullable=True),
+                Column('other', JSON),
+                UniqueConstraint('timestamp', 'user_id', name='uq_activities'))
         self.tb_pins = Table('pins', meta,
                 Column('pin_id', BigInteger, primary_key=True),
                 Column('message_id', BigInteger, ForeignKey('messages.message_id'),
@@ -451,8 +458,8 @@ class DiscordSqlHandler:
         # Caches
         self.message_cache = LruCache(cache_size['event-size'])
         self.typing_cache = LruCache(cache_size['event-size'])
-        self.playing_cache = LruCache(cache_size['event-size'])
         self.status_cache = LruCache(cache_size['event-size'])
+        self.activity_cache = LruCache(cache_size['event-size'])
         self.guild_cache = LruCache(cache_size['lookup-size'])
         self.channel_cache = LruCache(cache_size['lookup-size'])
         self.voice_channel_cache = LruCache(cache_size['lookup-size'])
@@ -618,23 +625,6 @@ class DiscordSqlHandler:
         trans.execute(ins)
         self.typing_cache[key] = True
 
-    # Playing
-    def playing(self, trans, member):
-        timestamp = datetime.now()
-        key = (timestamp, member.id)
-        values = game_values(member, timestamp)
-
-        if self.playing_cache.get(key, None):
-            self.logger.debug("Playing lookup is up-to-date")
-            return
-
-        self.logger.info(f"Inserting playing event for user {member.id}")
-        ins = self.tb_playing \
-                .insert() \
-                .values(values)
-        trans.execute(ins)
-        self.playing_cache[key] = values
-
     # Status
     def status_change(self, trans, member):
         timestamp = datetime.now()
@@ -645,15 +635,32 @@ class DiscordSqlHandler:
             return
 
         self.logger.info(f"Inserting status change event for user {member.id}")
-        ins = self.tb_status_changes \
+        ins = self.tb_status \
                 .insert() \
                 .values({
                     'timestamp': timestamp,
                     'user_id': member.id,
-                    'user_status': member.status,
+                    'status': member.status,
                 })
         trans.execute(ins)
         self.status_cache[key] = member.status
+
+    # Activity
+    def activity_change(self, trans, member):
+        timestamp = datetime.now()
+        key = (timestamp, member.id)
+
+        if self.activity_cache.get(key, None):
+            self.logger.debug("Activity change lookup is up-to-date")
+            return
+
+        self.logger.info(f"Inserting activity change event for user {member.id}")
+        values = activity_values(member)
+        ins = self.tb_activities \
+                .insert() \
+                .values(values)
+        trans.execute(ins)
+        self.activity_cache[key] = values
 
     # Reactions
     def add_reaction(self, trans, reaction, user):
