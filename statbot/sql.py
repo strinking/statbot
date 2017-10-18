@@ -25,6 +25,7 @@ from sqlalchemy.dialects.postgresql import insert as p_insert
 from .audit_log import AuditLogData
 from .cache import LruCache
 from .emoji import EmojiData
+from .game import GameType
 from .mention import MentionType
 from .util import null_logger
 
@@ -173,6 +174,34 @@ def reaction_values(reaction, user, current):
         'guild_id': reaction.message.guild.id,
     }
 
+def game_values(member):
+    values = {
+        'timestamp': datetime.now(),
+        'user_id': member.id,
+    }
+
+    if member.game is None:
+        values.update(
+            type=GameType.NOTHING,
+            name=None,
+            url=None,
+        )
+    else:
+        values.update(
+            type=GameType(member.game.type),
+            name=member.game.name,
+            url=member.game.url,
+        )
+
+    return values
+
+def status_values(member):
+    return {
+        'timestamp': datetime.now(),
+        'user_id': member.id,
+        'status': member.status,
+    }
+
 class _Transaction:
     __slots__ = (
         'conn',
@@ -225,6 +254,8 @@ class DiscordSqlHandler:
         'tb_messages',
         'tb_reactions',
         'tb_typing',
+        'tb_playing',
+        'tb_status',
         'tb_pins',
         'tb_mentions',
         'tb_guilds',
@@ -290,6 +321,18 @@ class DiscordSqlHandler:
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
                 UniqueConstraint('timestamp', 'user_id', 'channel_id', 'guild_id',
                     name='uq_typing'))
+        self.tb_playing = Table('playing', meta,
+                Column('timestamp', DateTime),
+                Column('user_id', BigInteger, ForeignKey('users.user_id')),
+                Column('type', Enum(GameType)),
+                Column('name', String, nullable=True),
+                Column('url', String, nullable=True),
+                UniqueConstraint('timestamp', 'user_id', name='uq_playing'))
+        self.tb_status = Table('status', meta,
+                Column('timestamp', DateTime),
+                Column('user_id', BigInteger, ForeignKey('users.user_id')),
+                Column('status', Enum(discord.Status)),
+                UniqueConstraint('timestamp', 'user_id', name='uq_status'))
         self.tb_pins = Table('pins', meta,
                 Column('pin_id', BigInteger, primary_key=True),
                 Column('message_id', BigInteger, ForeignKey('messages.message_id'),
