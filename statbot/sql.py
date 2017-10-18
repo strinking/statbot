@@ -182,25 +182,18 @@ def game_values(member, when):
 
     if member.game is None:
         values.update(
-            type=GameType.NOTHING,
+            game_type=GameType.NOTHING,
             name=None,
             url=None,
         )
     else:
         values.update(
-            type=GameType(member.game.type),
+            game_type=GameType(member.game.type),
             name=member.game.name,
             url=member.game.url,
         )
 
     return values
-
-def status_values(member):
-    return {
-        'timestamp': datetime.now(),
-        'user_id': member.id,
-        'status': member.status,
-    }
 
 class _Transaction:
     __slots__ = (
@@ -255,7 +248,7 @@ class DiscordSqlHandler:
         'tb_reactions',
         'tb_typing',
         'tb_playing',
-        'tb_status',
+        'tb_status_changes',
         'tb_pins',
         'tb_mentions',
         'tb_guilds',
@@ -326,15 +319,15 @@ class DiscordSqlHandler:
         self.tb_playing = Table('playing', meta,
                 Column('timestamp', DateTime),
                 Column('user_id', BigInteger, ForeignKey('users.user_id')),
-                Column('type', Enum(GameType)),
+                Column('game_type', Enum(GameType)),
                 Column('name', String, nullable=True),
                 Column('url', String, nullable=True),
                 UniqueConstraint('timestamp', 'user_id', name='uq_playing'))
-        self.tb_status = Table('status', meta,
+        self.tb_status_changes = Table('status_changes', meta,
                 Column('timestamp', DateTime),
                 Column('user_id', BigInteger, ForeignKey('users.user_id')),
-                Column('status', Enum(discord.Status)),
-                UniqueConstraint('timestamp', 'user_id', name='uq_status'))
+                Column('user_status', Enum(discord.Status)),
+                UniqueConstraint('timestamp', 'user_id', name='uq_status_changes'))
         self.tb_pins = Table('pins', meta,
                 Column('pin_id', BigInteger, primary_key=True),
                 Column('message_id', BigInteger, ForeignKey('messages.message_id'),
@@ -654,12 +647,12 @@ class DiscordSqlHandler:
             return
 
         self.logger.info(f"Inserting status change event for user {member.id}")
-        ins = self.tb_status \
+        ins = self.tb_status_changes \
                 .insert() \
                 .values({
                     'timestamp': timestamp,
                     'user_id': member.id,
-                    'status': member.status,
+                    'user_status': member.status,
                 })
         trans.execute(ins)
         self.status_cache[key] = member.status
