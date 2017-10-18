@@ -10,7 +10,6 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
-from collections import namedtuple
 from datetime import datetime
 import functools
 
@@ -30,7 +29,6 @@ from .mention import MentionType
 from .util import null_logger
 
 Column = functools.partial(Column, nullable=False)
-FakeMember = namedtuple('FakeMember', ('guild', 'id'))
 
 MAX_ID = 2 ** 63 - 1
 
