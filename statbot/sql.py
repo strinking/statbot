@@ -1045,13 +1045,13 @@ class DiscordSqlHandler:
                     .values(values)
             trans.execute(ins)
 
-    def remove_member(self, trans, member):
-        self.logger.debug(f"Removing member {member.id} from guild {member.guild.id}")
+    def remove_member(self, trans, user_id, guild_id):
+        self.logger.debug(f"Removing member {user_id} from guild {guild_id}")
         upd = self.tb_guild_membership \
                 .update() \
                 .where(and_(
-                    self.tb_guild_membership.c.user_id == member.id,
-                    self.tb_guild_membership.c.guild_id == member.guild.id,
+                    self.tb_guild_membership.c.user_id == user_id,
+                    self.tb_guild_membership.c.guild_id == guild_id,
                 )) \
                 .values(is_member=False)
         trans.execute(upd)
@@ -1079,7 +1079,7 @@ class DiscordSqlHandler:
             user_id = row[0]
             member = guild.get_member(user_id)
             if member is None:
-                self.remove_member(trans, FakeMember(id=user_id, guild=guild))
+                self.remove_member(trans, user_id, guild.id)
 
     def upsert_member(self, trans, member):
         self.logger.debug(f"Upserting member data for {member.id}")
