@@ -29,7 +29,7 @@ def member_needs_update(before, after):
     change we will ignore.
     '''
 
-    for attr in ('name', 'discriminator', 'nick', 'avatar', 'roles'):
+    for attr in ('name', 'discriminator', 'nick', 'avatar', 'roles', 'game', 'status'):
         if getattr(before, attr) != getattr(after, attr):
             return True
     return False
@@ -397,6 +397,12 @@ class EventIngestionClient(discord.Client):
         with self.sql.transaction() as trans:
             self.sql.update_user(trans, after)
             self.sql.update_member(trans, after)
+
+            if before.game != after.game:
+                self.sql.playing(trans, after)
+
+            if before.status != after.status:
+                self.sql.status_change(trans, after)
 
     async def on_guild_role_create(self, role):
         self._log_ignored(f"Role {role.id} was created in guild {role.guild.id}")

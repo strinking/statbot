@@ -174,9 +174,9 @@ def reaction_values(reaction, user, current):
         'guild_id': reaction.message.guild.id,
     }
 
-def game_values(member):
+def game_values(member, when):
     values = {
-        'timestamp': datetime.now(),
+        'timestamp': when,
         'user_id': member.id,
     }
 
@@ -273,6 +273,8 @@ class DiscordSqlHandler:
 
         'message_cache',
         'typing_cache',
+        'playing_cache',
+        'status_cache',
         'guild_cache',
         'channel_cache',
         'voice_channel_cache',
@@ -458,6 +460,8 @@ class DiscordSqlHandler:
         # Caches
         self.message_cache = LruCache(cache_size['event-size'])
         self.typing_cache = LruCache(cache_size['event-size'])
+        self.playing_cache = LruCache(cache_size['event-size'])
+        self.status_cache = LruCache(cache_size['event-size'])
         self.guild_cache = LruCache(cache_size['lookup-size'])
         self.channel_cache = LruCache(cache_size['lookup-size'])
         self.voice_channel_cache = LruCache(cache_size['lookup-size'])
@@ -608,7 +612,7 @@ class DiscordSqlHandler:
     def typing(self, trans, channel, user, when):
         key = (when, user.id, channel.id)
         if self.typing_cache.get(key, False):
-            self.logger.debug(f"Typing lookup is up-to-date")
+            self.logger.debug("Typing lookup is up-to-date")
             return
 
         self.logger.info(f"Inserting typing event for user {user.id}")
@@ -622,6 +626,43 @@ class DiscordSqlHandler:
                 })
         trans.execute(ins)
         self.typing_cache[key] = True
+
+    # Playing
+    def playing(self, trans, member):
+        timestamp = datetime.now()
+        key = (timestamp, member.id)
+        values = game_values(member, timestamp)
+
+        if self.playing_cache.get(key, None):
+            self.logger.debug("Playing lookup is up-to-date")
+            return
+
+        self.logger.info(f"Inserting playing event for user {member.id}")
+        ins = self.tb_playing \
+                .insert() \
+                .values(values)
+        trans.execute(ins)
+        self.playing_cache[key] = values
+
+    # Status
+    def status_change(self, trans, member):
+        timestamp = datetime.now()
+        key = (timestamp, member.id)
+
+        if self.status_cache.get(key, None):
+            self.logger.debug("Status change lookup is up-to-date")
+            return
+
+        self.logger.info(f"Inserting status change event for user {member.id}")
+        ins = self.tb_status \
+                .insert() \
+                .values({
+                    'timestamp': timestamp,
+                    'user_id': member.id,
+                    'status': member.status,
+                })
+        trans.execute(ins)
+        self.status_cache[key] = member.status
 
     # Reactions
     def add_reaction(self, trans, reaction, user):
