@@ -1078,8 +1078,7 @@ class DiscordSqlHandler:
                 ))
         result = trans.execute(sel)
 
-        for row in result.fetchall():
-            user_id = row[0]
+        for user_id, _, _, _, _ in result.fetchall():
             member = guild.get_member(user_id)
             if member is None:
                 self.remove_member(trans, user_id, guild.id)
