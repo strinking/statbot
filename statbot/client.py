@@ -155,6 +155,8 @@ class EventIngestionClient(discord.Client):
             self.logger.info(f"Processing {len(guild.members)} members...")
             for member in guild.members:
                 self.sql.upsert_member(trans, member)
+                self.sql.playing(trans, member)
+                self.sql.status_change(trans, member)
 
             # In case people left while the bot was down
             self.sql.remove_old_members(trans, guild)
