@@ -195,6 +195,13 @@ def game_values(member, when):
 
     return values
 
+def status_values(member):
+    return {
+        'timestamp': datetime.now(),
+        'user_id': member.id,
+        'status': member.status,
+    }
+
 class _Transaction:
     __slots__ = (
         'conn',
