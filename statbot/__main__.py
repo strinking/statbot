@@ -30,6 +30,11 @@ LOG_FORMAT = "[%(levelname)s] %(name)s: %(message)s"
 LOG_DATE_FORMAT = "[%d/%m/%Y %H:%M:%S]"
 
 class StderrTee:
+    __slots__ = (
+        'fh',
+        'stderr',
+    )
+
     def __init__(self, filename, mode):
         self.fh = open(filename, mode)
         self.stderr = sys.stderr
