@@ -1013,7 +1013,7 @@ class DiscordSqlHandler:
         for row in result.fetchall():
             user_id = row[0]
             member = guild.get_member(user_id)
-            if member is None:
+            if member is not None:
                 self.remove_member(trans, member)
 
     def upsert_member(self, trans, member):
