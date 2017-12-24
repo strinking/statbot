@@ -71,7 +71,7 @@ def message_values(message):
         'deleted_at': None,
         'message_type': message.type,
         'system_content': system_content,
-        'content': content,
+        'content': content.replace('\0', ' '),
         'embeds': [embed.to_dict() for embed in message.embeds],
         'attachments': len(message.attachments),
         'webhook_id': message.webhook_id,
