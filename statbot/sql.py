@@ -195,7 +195,7 @@ class _Transaction:
             self.logger.debug("Committing transaction...")
             self.trans.commit()
         else:
-            self.logger.error("Exception occurred in 'with' scope!")
+            self.logger.error("Exception occurred in 'with' scope!", exc_info=1)
             self.logger.debug("Rolling back transaction...")
             self.ok = False
             self.trans.rollback()
