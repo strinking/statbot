@@ -19,7 +19,7 @@ echo "Installed source code to '$dest_dir'"
 python3.6 -m pip install -r "$repo_dir/requirements.txt" > /dev/null
 echo "Installed Python dependencies"
 
-install -m644 "$repo_dir/misc/statbot.service" /etc/systemd/system/statbot.service
+install -m644 "$repo_dir/misc/statbot.service" /usr/local/systemd/system/statbot.service
 chown root:root /etc/systemd/system/statbot.service
 echo "Installed systemd service"
 
