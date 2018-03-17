@@ -2,7 +2,7 @@
 # mention.py
 #
 # statbot - Store Discord records for later analysis
-# Copyright (c) 2017 Ammon Smith
+# Copyright (c) 2017-2018 Ammon Smith
 #
 # statbot is available free of charge under the terms of the MIT
 # License. You are free to redistribute and/or modify it under those
