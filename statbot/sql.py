@@ -318,7 +318,7 @@ class DiscordSqlHandler:
         self.tb_status = Table('status', meta,
                 Column('timestamp', DateTime),
                 Column('user_id', BigInteger, ForeignKey('users.user_id')),
-                Column('status', Enum(discord.Status)),
+                Column('user_status', Enum(discord.Status)),
                 UniqueConstraint('timestamp', 'user_id', name='uq_status'))
         self.tb_activities = Table('activities', meta,
                 Column('timestamp', DateTime),
