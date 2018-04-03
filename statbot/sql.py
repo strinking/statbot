@@ -26,6 +26,7 @@ from .audit_log import AuditLogData
 from .cache import LruCache
 from .emoji import EmojiData
 from .mention import MentionType
+from .status import UserStatus
 from .util import null_logger
 
 Column = functools.partial(Column, nullable=False)
@@ -246,7 +247,7 @@ class DiscordSqlHandler:
         'tb_messages',
         'tb_reactions',
         'tb_typing',
-        'tb_status',
+        'tb_statuses',
         'tb_activities',
         'tb_pins',
         'tb_mentions',
@@ -315,10 +316,10 @@ class DiscordSqlHandler:
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
                 UniqueConstraint('timestamp', 'user_id', 'channel_id', 'guild_id',
                     name='uq_typing'))
-        self.tb_status = Table('status', meta,
+        self.tb_statuses = Table('statuses', meta,
                 Column('timestamp', DateTime),
                 Column('user_id', BigInteger, ForeignKey('users.user_id')),
-                Column('user_status', Enum(discord.Status)),
+                Column('user_status', Enum(UserStatus)),
                 UniqueConstraint('timestamp', 'user_id', name='uq_status'))
         self.tb_activities = Table('activities', meta,
                 Column('timestamp', DateTime),
@@ -635,12 +636,12 @@ class DiscordSqlHandler:
             return
 
         self.logger.info(f"Inserting status change event for user {member.id}")
-        ins = self.tb_status \
+        ins = self.tb_statuses \
                 .insert() \
                 .values({
                     'timestamp': timestamp,
                     'user_id': member.id,
-                    'user_status': member.status,
+                    'user_status': UserStatus.convert(member.status),
                 })
         trans.execute(ins)
         self.status_cache[key] = member.status
