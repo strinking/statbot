@@ -938,16 +938,6 @@ class DiscordSqlHandler:
         self.user_cache[user.id] = values
 
     # Members
-    def add_member(self, trans, member):
-        self.logger.info(f"Inserting member data for {member.id}")
-        values = guild_member_values(member)
-        ins = self.tb_guild_membership \
-                .insert() \
-                .values(values)
-        trans.execute(ins)
-
-        self._insert_role_membership(trans, member)
-
     def update_member(self, trans, member):
         self.logger.info(f"Updating member data for {member.id}")
         upd = self.tb_guild_membership \
