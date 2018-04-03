@@ -29,7 +29,7 @@ from .mention import MentionType
 from .util import null_logger
 
 Column = functools.partial(Column, nullable=False)
-FakeMember = namedtuple('guild', 'id')
+FakeMember = namedtuple('FakeMember', ('guild', 'id'))
 
 MAX_ID = 2 ** 63 - 1
 
