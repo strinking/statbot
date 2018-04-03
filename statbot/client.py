@@ -362,7 +362,7 @@ class EventIngestionClient(discord.Client):
 
         with self.sql.transaction() as trans:
             self.sql.upsert_user(trans, member)
-            self.sql.add_member(trans, member)
+            self.sql.upsert_member(trans, member)
 
     async def on_member_remove(self, member):
         self._log_ignored(f"Member {member.id} left guild {member.guild.id}")

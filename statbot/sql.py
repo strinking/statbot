@@ -10,6 +10,7 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
+from collections import namedtuple
 from datetime import datetime
 import functools
 
@@ -28,6 +29,7 @@ from .mention import MentionType
 from .util import null_logger
 
 Column = functools.partial(Column, nullable=False)
+FakeMember = namedtuple('FakeMember', ('guild', 'id'))
 
 MAX_ID = 2 ** 63 - 1
 
@@ -938,16 +940,6 @@ class DiscordSqlHandler:
         self.user_cache[user.id] = values
 
     # Members
-    def add_member(self, trans, member):
-        self.logger.info(f"Inserting member data for {member.id}")
-        values = guild_member_values(member)
-        ins = self.tb_guild_membership \
-                .insert() \
-                .values(values)
-        trans.execute(ins)
-
-        self._insert_role_membership(trans, member)
-
     def update_member(self, trans, member):
         self.logger.info(f"Updating member data for {member.id}")
         upd = self.tb_guild_membership \
@@ -1013,8 +1005,8 @@ class DiscordSqlHandler:
         for row in result.fetchall():
             user_id = row[0]
             member = guild.get_member(user_id)
-            if member is not None:
-                self.remove_member(trans, member)
+            if member is None:
+                self.remove_member(trans, FakeMember(id=user_id, guild=guild))
 
     def upsert_member(self, trans, member):
         self.logger.debug(f"Upserting member data for {member.id}")
