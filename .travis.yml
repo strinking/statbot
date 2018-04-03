@@ -3,6 +3,7 @@ dist: trusty
 
 python:
   - '3.6'
+  - '3.7-dev'
   - 'nightly'
 
 sudo: false
@@ -12,6 +13,11 @@ services:
 
 addons:
   postgresql: '9.5' # on_conflict requires 9.5+
+
+matrix:
+  allow_failures:
+    - python: '3.7-dev'
+    - python: 'nightly'
 
 cache: pip
 
