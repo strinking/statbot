@@ -221,6 +221,7 @@ class _Transaction:
         if (type, value, traceback) == (None, None, None):
             self.logger.debug("Committing transaction...")
             self.trans.commit()
+            self.logger.debug("Committed")
         else:
             self.logger.error("Exception occurred in 'with' scope!", exc_info=1)
             self.logger.debug("Rolling back transaction...")
@@ -515,6 +516,9 @@ class DiscordSqlHandler:
 
         self.upsert_user(trans, message.author)
         self.insert_mentions(trans, message)
+
+        if isinstance(message.author, discord.Member):
+            self.upsert_member(trans, message.author)
 
     def edit_message(self, trans, before, after):
         self.logger.info(f"Updating message {after.id}")
@@ -1030,6 +1034,9 @@ class DiscordSqlHandler:
                 )) \
                 .values(nick=member.nick)
         trans.execute(upd)
+
+        self.status_change(trans, member)
+        self.activity_change(trans, member)
 
         self._delete_role_membership(trans, member)
         self._insert_role_membership(trans, member)
