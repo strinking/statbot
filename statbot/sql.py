@@ -191,7 +191,10 @@ def activity_values(member, when):
             values[attr] = getattr(member.activity, attr, None)
 
         for attr in ('timestamps', 'assets', 'party'):
-            values['other'][attr] = getattr(member.activity, 'assets', None)
+            try:
+                values['other'][attr] = getattr(member.activity, attr)
+            except KeyError:
+                pass
 
     return values
 
