@@ -656,7 +656,7 @@ class DiscordSqlHandler:
             return
 
         self.logger.info(f"Inserting activity change event for user {member.id}")
-        values = activity_values(member)
+        values = activity_values(member, timestamp)
         ins = self.tb_activities \
                 .insert() \
                 .values(values)

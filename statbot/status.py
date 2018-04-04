@@ -23,10 +23,10 @@ __all__ = [
 
 @unique
 class UserStatus(Enum):
-    ONLINE = 'online'
-    OFFLINE = 'offline'
-    IDLE = 'idle'
-    DO_NOT_DISTURB = 'dnd'
+    ONLINE = 'ONLINE'
+    OFFLINE = 'OFFLINE'
+    IDLE = 'IDLE'
+    DO_NOT_DISTURB = 'DO_NOT_DISTURB'
 
     @staticmethod
     def convert(status):

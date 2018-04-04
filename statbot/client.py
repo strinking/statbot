@@ -29,7 +29,7 @@ def member_needs_update(before, after):
     change we will ignore.
     '''
 
-    for attr in ('name', 'discriminator', 'nick', 'avatar', 'roles', 'game', 'status'):
+    for attr in ('name', 'discriminator', 'nick', 'avatar', 'roles', 'activity', 'status'):
         if getattr(before, attr) != getattr(after, attr):
             return True
     return False
@@ -155,7 +155,6 @@ class EventIngestionClient(discord.Client):
             self.logger.info(f"Processing {len(guild.members)} members...")
             for member in guild.members:
                 self.sql.upsert_member(trans, member)
-                self.sql.playing(trans, member)
                 self.sql.status_change(trans, member)
                 self.sql.activity_change(trans, member)
 
@@ -191,11 +190,11 @@ class EventIngestionClient(discord.Client):
         self.logger.info("Recording activity in the following guilds:")
         for id in self.config['guild-ids']:
             guild = self.get_guild(id)
-            if guild is not None:
-                self.logger.info(f"* {guild.name} ({id})")
-            else:
-                self.logger.error(f"Unable to find guild ID {id}")
+            if guild is None:
+                self.logger.error(f"No guild with id {id}!")
                 exit(1)
+
+            self.logger.info(f"* {guild.name} ({id})")
 
         if not self.sql_init:
             self.logger.info("Initializing SQL lookup tables...")
