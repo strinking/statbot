@@ -108,30 +108,42 @@ class AuditLogData:
         attributes = {}
 
         for attr in NAME_ATTRS:
-            obj = getattr(diff, attr, None)
-            if obj is not None:
+            try:
+                obj = getattr(diff, attr)
                 attributes[attr] = obj
+            except AttributeError:
+                pass
 
         for attr in ID_ATTRS:
-            obj = getattr(diff, attr, None)
-            if obj is not None:
+            try:
+                obj = getattr(diff, attr)
                 attributes[attr] = obj.id
+            except AttributeError:
+                pass
 
         for attr in VALUE_ATTRS:
-            obj = getattr(diff, attr, None)
-            if obj is not None:
+            try:
+                obj = getattr(diff, attr)
                 attributes[attr] = obj.value
+            except AttributeError:
+                pass
 
-        obj = getattr(diff, 'mfa_level', None)
-        if obj is not None:
+        try:
+            obj = getattr(diff, 'mfa_level')
             attributes['mfa'] = bool(obj)
+        except AttributeError:
+            pass
 
-        obj = getattr(diff, 'roles', None)
-        if obj is not None:
+        try:
+            obj = getattr(diff, 'roles')
             attributes['roles'] = list(map(lambda x: x.id, obj))
+        except AttributeError:
+            pass
 
-        obj = self._get_overwrites(getattr(diff, 'overwrites', None))
-        if obj is not None:
+        try:
+            obj = self._get_overwrites(getattr(diff, 'overwrites'))
             attributes['overwrites'] = obj
+        except AttributeError:
+            pass
 
         return attributes
