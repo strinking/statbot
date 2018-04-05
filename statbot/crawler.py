@@ -200,6 +200,10 @@ class HistoryCrawler(AbstractCrawler):
         with self.sql.transaction() as trans:
             self.sql.insert_channel_crawl(trans, channel, 0)
 
+    def _update_progress(self, channel):
+        with self.sql.transaction() as trans:
+            self.sql.update_channel_crawl(trans, channel, self.progress[channel])
+
     def _delete_progress(self, channel):
         self.progress.pop(channel, None)
 
@@ -226,7 +230,7 @@ class HistoryCrawler(AbstractCrawler):
                 return
 
             self.logger.info(f"Updating #{after.name} - adding to list")
-            self._create_progress(after)
+            self._update_progress(after)
         else:
             self.logger.info(f"Updating #{after.name} - removing from list")
             self._delete_progress(after)
