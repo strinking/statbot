@@ -22,7 +22,7 @@ from sqlalchemy import ForeignKey, MetaData, UniqueConstraint
 from sqlalchemy.sql import select
 from sqlalchemy.dialects.postgresql import insert as p_insert
 
-from .audit_log import AuditLogChangeState, AuditLogData
+from .audit_log import AuditLogData
 from .cache import LruCache
 from .emoji import EmojiData
 from .mention import MentionType
@@ -237,7 +237,6 @@ class DiscordSqlHandler:
         'tb_emojis',
         'tb_roles',
         'tb_audit_log',
-        'tb_audit_log_changes',
         'tb_channel_crawl',
         'tb_audit_log_crawl',
 
@@ -400,13 +399,10 @@ class DiscordSqlHandler:
                 Column('action', Enum(discord.AuditLogAction)),
                 Column('user_id', BigInteger, ForeignKey('users.user_id')),
                 Column('reason', Unicode, nullable=True),
-                Column('category', Enum(discord.AuditLogActionCategory), nullable=True))
-        self.tb_audit_log_changes = Table('audit_log_changes', meta,
-                Column('audit_entry_id', BigInteger,
-                    ForeignKey('audit_log.audit_entry_id'), primary_key=True),
-                Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
-                Column('state', Enum(AuditLogChangeState), primary_key=True),
-                Column('attributes', JSON))
+                Column('category', Enum(discord.AuditLogActionCategory), nullable=True),
+                Column('before', JSON),
+                Column('after', JSON),
+                UniqueConstraint('audit_entry_id', 'guild_id', name='uq_audit_log'))
         self.tb_channel_crawl = Table('channel_crawl', meta,
                 Column('channel_id', BigInteger,
                     ForeignKey('channels.channel_id'), primary_key=True),
@@ -1074,26 +1070,11 @@ class DiscordSqlHandler:
     def insert_audit_log_entry(self, trans, guild, entry):
         self.logger.debug(f"Inserting audit log entry {entry.id} from {guild.name}")
         data = AuditLogData(entry, guild)
-
         values = data.values()
         ins = p_insert(self.tb_audit_log) \
                 .values(values) \
                 .on_conflict_do_nothing(index_elements=['audit_entry_id'])
         trans.execute(ins)
-
-        values = data.diff_values(AuditLogChangeState.BEFORE)
-        if values is not None:
-            ins = p_insert(self.tb_audit_log_changes) \
-                    .values(values) \
-                    .on_conflict_do_nothing(index_elements=['audit_entry_id', 'state'])
-            trans.execute(ins)
-
-        values = data.diff_values(AuditLogChangeState.AFTER)
-        if values is not None:
-            ins = p_insert(self.tb_audit_log_changes) \
-                    .values(values) \
-                    .on_conflict_do_nothing(index_elements=['audit_entry_id', 'state'])
-            trans.execute(ins)
 
     # Crawling history
     def lookup_channel_crawl(self, trans, channel):
