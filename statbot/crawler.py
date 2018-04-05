@@ -252,12 +252,12 @@ class AuditLogCrawler(AbstractCrawler):
         self.logger.info(f"Starting from ID {last_id} ({last})")
 
         entries = await guild.audit_logs(after=last, limit=limit).flatten()
-        if not entries or self.get_last_id(entries) <= last_id:
-            self.logger.info("No audit log entries found in this range")
-            return None
-        else:
+        if entries and self.get_last_id(entries) != last_id:
             self.logger.info(f"Queued {len(entries)} audit log entries for ingestion")
             return entries
+        else:
+            self.logger.info("No audit log entries found in this range")
+            return None
 
     async def write(self, trans, guild, entries):
         # pylint: disable=arguments-differ
