@@ -10,10 +10,7 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
-from enum import Enum
-
 __all__ = [
-    'AuditLogChangeState',
     'AuditLogData',
 ]
 
@@ -61,10 +58,6 @@ VALUE_ATTRS = (
     'raw_deny_permissions',
 )
 
-class AuditLogChangeState(Enum):
-    BEFORE = 0
-    AFTER = 1
-
 class AuditLogData:
     __slots__ = (
         'entry',
@@ -83,6 +76,8 @@ class AuditLogData:
             'user_id': self.entry.user.id,
             'reason': self.entry.reason,
             'category': self.entry.category,
+            'before': self.diff_values(self.entry.before),
+            'after': self.diff_values(self.entry.after),
         }
 
     @staticmethod
@@ -106,15 +101,9 @@ class AuditLogData:
             'deny': deny_perms,
         }
 
-    def diff_values(self, state):
+    def diff_values(self, diff):
         if self.entry.category is None:
             return None
-
-        alcs = AuditLogChangeState(state)
-        if alcs == AuditLogChangeState.BEFORE:
-            diff = self.entry.before
-        elif alcs == AuditLogChangeState.AFTER:
-            diff = self.entry.after
 
         attributes = {}
 
@@ -145,9 +134,4 @@ class AuditLogData:
         if obj is not None:
             attributes['overwrites'] = obj
 
-        return {
-            'audit_entry_id': self.entry.id,
-            'guild_id': self.guild.id,
-            'state': state,
-            'attributes': attributes,
-        }
+        return attributes
