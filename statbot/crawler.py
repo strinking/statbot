@@ -255,6 +255,10 @@ class AuditLogCrawler(AbstractCrawler):
         self.logger.info(f"Reading through {guild.name}'s audit logs")
         self.logger.info(f"Starting from ID {last_id} ({last})")
 
+        # Weirdly, .audit_logs() behaves differently from other history functions.
+        # It will give us entries not in our specified range of "after=last".
+        # As a simple remedy, we keep on slamming it with requests until it gives
+        # us the same list twice in a row, and then we know we're done.
         entries = await guild.audit_logs(after=last, limit=limit).flatten()
         if entries and self.get_last_id(entries) != last_id:
             self.logger.info(f"Queued {len(entries)} audit log entries for ingestion")
