@@ -193,10 +193,23 @@ def activity_values(member, when):
         for attr in ('timestamps', 'assets', 'party'):
             try:
                 values['other'][attr] = getattr(member.activity, attr)
-            except KeyError:
+            except AttributeError:
                 pass
 
     return values
+
+def voice_event_values(member, when, voice_state):
+    return {
+        'timestamp': when,
+        'user_id': member.id,
+        'guild_id': member.guild.id,
+        'self_deaf': voice_state.self_deaf,
+        'self_mute': voice_state.self_mute,
+        'guild_deaf': voice_state.deaf,
+        'guild_mute': voice_state.mute,
+        'afk': voice_state.afk,
+        'voice_channel_id': getattr(voice_state.channel, 'id', None),
+    }
 
 class _Transaction:
     __slots__ = (
@@ -253,6 +266,7 @@ class DiscordSqlHandler:
         'tb_typing',
         'tb_statuses',
         'tb_activities',
+        'tb_voice_events',
         'tb_pins',
         'tb_mentions',
         'tb_guilds',
@@ -272,6 +286,7 @@ class DiscordSqlHandler:
         'typing_cache',
         'status_cache',
         'activity_cache',
+        'voice_event_cache',
         'guild_cache',
         'channel_cache',
         'voice_channel_cache',
@@ -338,6 +353,18 @@ class DiscordSqlHandler:
                 Column('twitch_name', String, nullable=True),
                 Column('other', JSON),
                 UniqueConstraint('timestamp', 'user_id', name='uq_activities'))
+        self.tb_voice_events = Table('voice_events', meta,
+                Column('timestamp', DateTime, primary_key=True),
+                Column('user_id', BigInteger, ForeignKey('users.user_id'), primary_key=True),
+                Column('guild_id', BigInteger, ForeignKey('guilds.guild_id'), primary_key=True),
+                Column('self_deaf', Boolean),
+                Column('self_mute', Boolean),
+                Column('guild_deaf', Boolean),
+                Column('guild_mute', Boolean),
+                Column('afk', Boolean),
+                Column('voice_channel_id', BigInteger,
+                    ForeignKey('voice_channels.voice_channel_id'), nullable=True),
+                UniqueConstraint('timestamp', 'user_id', 'guild_id', name='uq_voice_events'))
         self.tb_pins = Table('pins', meta,
                 Column('pin_id', BigInteger, primary_key=True),
                 Column('message_id', BigInteger, ForeignKey('messages.message_id'),
@@ -465,6 +492,7 @@ class DiscordSqlHandler:
         self.typing_cache = LruCache(cache_size['event-size'])
         self.status_cache = LruCache(cache_size['event-size'])
         self.activity_cache = LruCache(cache_size['event-size'])
+        self.voice_event_cache = LruCache(cache_size['event-size'])
         self.guild_cache = LruCache(cache_size['lookup-size'])
         self.channel_cache = LruCache(cache_size['lookup-size'])
         self.voice_channel_cache = LruCache(cache_size['lookup-size'])
@@ -669,6 +697,23 @@ class DiscordSqlHandler:
                 .values(values)
         trans.execute(ins)
         self.activity_cache[key] = values
+
+    # Voice state
+    def voice_state_change(self, trans, member, voice_state):
+        timestamp = datetime.now()
+        key = (timestamp, member.id, member.guild.id)
+
+        if self.voice_event_cache.get(key, None):
+            self.logger.debug("Voice state change lookup is up-to-date")
+            return
+
+        self.logger.info(f"Inserting voice state change event for user {member.id}")
+        values = voice_event_values(member, timestamp, voice_state)
+        ins = self.tb_voice_events \
+                .insert() \
+                .values(values)
+        trans.execute(ins)
+        self.voice_event_cache[key] = values
 
     # Reactions
     def add_reaction(self, trans, reaction, user):

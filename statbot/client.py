@@ -406,6 +406,14 @@ class EventIngestionClient(discord.Client):
             if before.activity != after.activity:
                 self.sql.activity_change(trans, after)
 
+    async def on_voice_state_update(self, member, before, after):
+        self._log_ignored(f"Member {member.id} updated their voice state in guild {member.guild.id}")
+        if not await self._accept_guild(member.guild):
+            return
+
+        with self.sql.transaction() as trans:
+            self.sql.voice_state_change(trans, member, after)
+
     async def on_guild_role_create(self, role):
         self._log_ignored(f"Role {role.id} was created in guild {role.guild.id}")
         if not await self._accept_guild(role.guild):
@@ -449,3 +457,9 @@ class EventIngestionClient(discord.Client):
                 self.sql.add_emoji(trans, emoji)
             for emoji in before - after:
                 self.sql.remove_emoji(trans, emoji)
+
+    async def on_guild_available(self, guild):
+        self.logger.info(f"Guild {guild.id} '{guild.name}' is now available.")
+
+    async def on_guild_unavailable(self, guild):
+        self.logger.info(f"Guild {guild.id} '{guild.name}' is unavailable.")
