@@ -21,15 +21,6 @@ __all__ = [
 # Type "discord.Status" type conflicts with some Postgres thing,
 # so we duplicate it here under a different name.
 
-USER_STATUS_CONVERSION = {
-    discord.Status.online: UserStatus.ONLINE,
-    discord.Status.offline: UserStatus.OFFLINE,
-    discord.Status.idle: UserStatus.IDLE,
-    discord.Status.dnd: UserStatus.DO_NOT_DISTURB,
-    discord.Status.do_not_disturb: UserStatus.DO_NOT_DISTURB,
-    discord.Status.invisible: UserStatus.OFFLINE,
-}
-
 @unique
 class UserStatus(Enum):
     ONLINE = 'ONLINE'
@@ -40,3 +31,12 @@ class UserStatus(Enum):
     @staticmethod
     def convert(status):
         return USER_STATUS_CONVERSION[status]
+
+USER_STATUS_CONVERSION = {
+    discord.Status.online: UserStatus.ONLINE,
+    discord.Status.offline: UserStatus.OFFLINE,
+    discord.Status.idle: UserStatus.IDLE,
+    discord.Status.dnd: UserStatus.DO_NOT_DISTURB,
+    discord.Status.do_not_disturb: UserStatus.DO_NOT_DISTURB,
+    discord.Status.invisible: UserStatus.OFFLINE,
+}
