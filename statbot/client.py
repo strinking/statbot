@@ -188,7 +188,10 @@ class EventIngestionClient(discord.Client):
         self.logger.info("Recording activity in the following guilds:")
         for id in self.config['guild-ids']:
             guild = self.get_guild(id)
-            self.logger.info(f"* {guild.name} ({id})")
+            if guild is not None:
+                self.logger.info(f"* {guild.name} ({id})")
+            else:
+                self.logger.error(f"Unable to find guild ID {id}")
 
         if not self.sql_init:
             self.logger.info("Initializing SQL lookup tables...")
