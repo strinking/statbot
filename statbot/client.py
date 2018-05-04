@@ -192,6 +192,7 @@ class EventIngestionClient(discord.Client):
                 self.logger.info(f"* {guild.name} ({id})")
             else:
                 self.logger.error(f"Unable to find guild ID {id}")
+                exit(1)
 
         if not self.sql_init:
             self.logger.info("Initializing SQL lookup tables...")
