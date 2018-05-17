@@ -1132,9 +1132,10 @@ class DiscordSqlHandler:
                     self.tb_guild_membership.c.guild_id == guild.id,
                     self.tb_guild_membership.c.is_member == True,
                 ))
+        sel = sel.with_only_columns([self.tb_guild_membership.c.user_id])
         result = trans.execute(sel)
 
-        for user_id, _, _, _, _ in result.fetchall():
+        for user_id, in result.fetchall():
             member = guild.get_member(user_id)
             if member is None:
                 self.remove_member(trans, user_id, guild.id)
