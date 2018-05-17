@@ -95,7 +95,7 @@ The `mentioned_id` column is the actual thing being mentioned. So if the `type` 
 
 A separate row is produced for each mention in a message. Duplicates in a message are ignored, as you can see from the unique constraint.
 
-Note that `@everyone` and `@here` are special. They are not currently tracked by this table. If you wish to search for them, query on `messages` based on the literal strings `@everyone` or `@here`.
+Note that `@everyone` and `@here` are special. They are not currently tracked by this table. If you wish to search for them, query `messages` based on the literal strings `@everyone` or `@here`.
 
 ### guilds
 | Column Name               | Type            | Other                       |
@@ -290,7 +290,7 @@ The `before` and `after` columns contain the change storted by this log entry. T
 
 /* After */
 {
-    "nick" null
+    "nick": null
 }
 ```
 
