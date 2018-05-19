@@ -186,7 +186,12 @@ class HistoryCrawler(AbstractCrawler):
         for message in messages:
             self.sql.insert_message(trans, message)
             for reaction in message.reactions:
-                users = await reaction.users().flatten()
+                try:
+                    users = await reaction.users().flatten()
+                except discord.NotFound:
+                    self.logger.warn("Unable to find reaction users", exc_info=1)
+                    users = []
+
                 self.sql.upsert_emoji(trans, reaction.emoji)
                 self.sql.insert_reaction(trans, reaction, users)
 
