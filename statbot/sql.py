@@ -10,7 +10,7 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
-from collections import namedtuple
+from collections import defaultdict
 from datetime import datetime
 import functools
 
@@ -26,10 +26,10 @@ from .audit_log import AuditLogData
 from .cache import LruCache
 from .emoji import EmojiData
 from .mention import MentionType
+from .status import UserStatus
 from .util import null_logger
 
 Column = functools.partial(Column, nullable=False)
-FakeMember = namedtuple('FakeMember', ('guild', 'id'))
 
 MAX_ID = 2 ** 63 - 1
 
@@ -173,6 +173,44 @@ def reaction_values(reaction, user, current):
         'guild_id': reaction.message.guild.id,
     }
 
+def activity_values(member, when):
+    values = defaultdict(lambda: None,
+        timestamp=when,
+        user_id=member.id,
+        other={},
+    )
+
+    if member.activity is not None:
+        values.update(
+            type=member.activity.type,
+            start_time=member.activity.start,
+            end_time=member.activity.end,
+        )
+
+        for attr in ('url', 'state', 'details', 'twitch_name'):
+            values[attr] = getattr(member.activity, attr, None)
+
+        for attr in ('timestamps', 'assets', 'party'):
+            try:
+                values['other'][attr] = getattr(member.activity, attr)
+            except AttributeError:
+                pass
+
+    return values
+
+def voice_event_values(member, when, voice_state):
+    return {
+        'timestamp': when,
+        'user_id': member.id,
+        'guild_id': member.guild.id,
+        'self_deaf': voice_state.self_deaf,
+        'self_mute': voice_state.self_mute,
+        'guild_deaf': voice_state.deaf,
+        'guild_mute': voice_state.mute,
+        'afk': voice_state.afk,
+        'voice_channel_id': getattr(voice_state.channel, 'id', None),
+    }
+
 class _Transaction:
     __slots__ = (
         'conn',
@@ -196,6 +234,7 @@ class _Transaction:
         if (type, value, traceback) == (None, None, None):
             self.logger.debug("Committing transaction...")
             self.trans.commit()
+            self.logger.debug("Committed")
         else:
             self.logger.error("Exception occurred in 'with' scope!", exc_info=1)
             self.logger.debug("Rolling back transaction...")
@@ -225,6 +264,9 @@ class DiscordSqlHandler:
         'tb_messages',
         'tb_reactions',
         'tb_typing',
+        'tb_statuses',
+        'tb_activities',
+        'tb_voice_events',
         'tb_pins',
         'tb_mentions',
         'tb_guilds',
@@ -242,6 +284,9 @@ class DiscordSqlHandler:
 
         'message_cache',
         'typing_cache',
+        'status_cache',
+        'activity_cache',
+        'voice_event_cache',
         'guild_cache',
         'channel_cache',
         'voice_channel_cache',
@@ -290,6 +335,36 @@ class DiscordSqlHandler:
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
                 UniqueConstraint('timestamp', 'user_id', 'channel_id', 'guild_id',
                     name='uq_typing'))
+        self.tb_statuses = Table('statuses', meta,
+                Column('timestamp', DateTime),
+                Column('user_id', BigInteger, ForeignKey('users.user_id')),
+                Column('user_status', Enum(UserStatus)),
+                UniqueConstraint('timestamp', 'user_id', name='uq_status'))
+        self.tb_activities = Table('activities', meta,
+                Column('timestamp', DateTime),
+                Column('user_id', BigInteger, ForeignKey('users.user_id')),
+                Column('type', Enum(discord.ActivityType), nullable=True),
+                Column('name', String, nullable=True),
+                Column('start_time', DateTime, nullable=True),
+                Column('end_time', DateTime, nullable=True),
+                Column('url', String, nullable=True),
+                Column('state', String, nullable=True),
+                Column('details', String, nullable=True),
+                Column('twitch_name', String, nullable=True),
+                Column('other', JSON),
+                UniqueConstraint('timestamp', 'user_id', name='uq_activities'))
+        self.tb_voice_events = Table('voice_events', meta,
+                Column('timestamp', DateTime, primary_key=True),
+                Column('user_id', BigInteger, ForeignKey('users.user_id'), primary_key=True),
+                Column('guild_id', BigInteger, ForeignKey('guilds.guild_id'), primary_key=True),
+                Column('self_deaf', Boolean),
+                Column('self_mute', Boolean),
+                Column('guild_deaf', Boolean),
+                Column('guild_mute', Boolean),
+                Column('afk', Boolean),
+                Column('voice_channel_id', BigInteger,
+                    ForeignKey('voice_channels.voice_channel_id'), nullable=True),
+                UniqueConstraint('timestamp', 'user_id', 'guild_id', name='uq_voice_events'))
         self.tb_pins = Table('pins', meta,
                 Column('pin_id', BigInteger, primary_key=True),
                 Column('message_id', BigInteger, ForeignKey('messages.message_id'),
@@ -415,6 +490,9 @@ class DiscordSqlHandler:
         # Caches
         self.message_cache = LruCache(cache_size['event-size'])
         self.typing_cache = LruCache(cache_size['event-size'])
+        self.status_cache = LruCache(cache_size['event-size'])
+        self.activity_cache = LruCache(cache_size['event-size'])
+        self.voice_event_cache = LruCache(cache_size['event-size'])
         self.guild_cache = LruCache(cache_size['lookup-size'])
         self.channel_cache = LruCache(cache_size['lookup-size'])
         self.voice_channel_cache = LruCache(cache_size['lookup-size'])
@@ -466,6 +544,9 @@ class DiscordSqlHandler:
 
         self.upsert_user(trans, message.author)
         self.insert_mentions(trans, message)
+
+        if isinstance(message.author, discord.Member):
+            self.upsert_member(trans, message.author)
 
     def edit_message(self, trans, before, after):
         self.logger.info(f"Updating message {after.id}")
@@ -565,7 +646,7 @@ class DiscordSqlHandler:
     def typing(self, trans, channel, user, when):
         key = (when, user.id, channel.id)
         if self.typing_cache.get(key, False):
-            self.logger.debug(f"Typing lookup is up-to-date")
+            self.logger.debug("Typing lookup is up-to-date")
             return
 
         self.logger.info(f"Inserting typing event for user {user.id}")
@@ -579,6 +660,60 @@ class DiscordSqlHandler:
                 })
         trans.execute(ins)
         self.typing_cache[key] = True
+
+    # Status
+    def status_change(self, trans, member):
+        timestamp = datetime.now()
+        key = (timestamp, member.id)
+
+        if self.status_cache.get(key, None):
+            self.logger.debug("Status change lookup is up-to-date")
+            return
+
+        self.logger.info(f"Inserting status change event for user {member.id}")
+        ins = self.tb_statuses \
+                .insert() \
+                .values({
+                    'timestamp': timestamp,
+                    'user_id': member.id,
+                    'user_status': UserStatus.convert(member.status),
+                })
+        trans.execute(ins)
+        self.status_cache[key] = member.status
+
+    # Activity
+    def activity_change(self, trans, member):
+        timestamp = datetime.now()
+        key = (timestamp, member.id)
+
+        if self.activity_cache.get(key, None):
+            self.logger.debug("Activity change lookup is up-to-date")
+            return
+
+        self.logger.info(f"Inserting activity change event for user {member.id}")
+        values = activity_values(member, timestamp)
+        ins = self.tb_activities \
+                .insert() \
+                .values(values)
+        trans.execute(ins)
+        self.activity_cache[key] = values
+
+    # Voice state
+    def voice_state_change(self, trans, member, voice_state):
+        timestamp = datetime.now()
+        key = (timestamp, member.id, member.guild.id)
+
+        if self.voice_event_cache.get(key, None):
+            self.logger.debug("Voice state change lookup is up-to-date")
+            return
+
+        self.logger.info(f"Inserting voice state change event for user {member.id}")
+        values = voice_event_values(member, timestamp, voice_state)
+        ins = self.tb_voice_events \
+                .insert() \
+                .values(values)
+        trans.execute(ins)
+        self.voice_event_cache[key] = values
 
     # Reactions
     def add_reaction(self, trans, reaction, user):
@@ -613,9 +748,7 @@ class DiscordSqlHandler:
             self.logger.debug(f"Inserting single reaction {data} from {user.id}")
             ins = p_insert(self.tb_reactions) \
                     .values(values) \
-                    .on_conflict_do_nothing(index_elements=[
-                        'message_id', 'emoji_id', 'emoji_unicode', 'user_id', 'created_at',
-                    ])
+                    .on_conflict_do_nothing(constraint='uq_reactions')
             trans.execute(ins)
 
     def clear_reactions(self, trans, message):
@@ -947,6 +1080,9 @@ class DiscordSqlHandler:
                 .values(nick=member.nick)
         trans.execute(upd)
 
+        self.status_change(trans, member)
+        self.activity_change(trans, member)
+
         self._delete_role_membership(trans, member)
         self._insert_role_membership(trans, member)
 
@@ -968,13 +1104,13 @@ class DiscordSqlHandler:
                     .values(values)
             trans.execute(ins)
 
-    def remove_member(self, trans, member):
-        self.logger.debug(f"Removing member {member.id} from guild {member.guild.id}")
+    def remove_member(self, trans, user_id, guild_id):
+        self.logger.debug(f"Removing member {user_id} from guild {guild_id}")
         upd = self.tb_guild_membership \
                 .update() \
                 .where(and_(
-                    self.tb_guild_membership.c.user_id == member.id,
-                    self.tb_guild_membership.c.guild_id == member.guild.id,
+                    self.tb_guild_membership.c.user_id == user_id,
+                    self.tb_guild_membership.c.guild_id == guild_id,
                 )) \
                 .values(is_member=False)
         trans.execute(upd)
@@ -996,13 +1132,13 @@ class DiscordSqlHandler:
                     self.tb_guild_membership.c.guild_id == guild.id,
                     self.tb_guild_membership.c.is_member == True,
                 ))
+        sel = sel.with_only_columns([self.tb_guild_membership.c.user_id])
         result = trans.execute(sel)
 
-        for row in result.fetchall():
-            user_id = row[0]
+        for user_id, in result.fetchall():
             member = guild.get_member(user_id)
             if member is None:
-                self.remove_member(trans, FakeMember(id=user_id, guild=guild))
+                self.remove_member(trans, user_id, guild.id)
 
     def upsert_member(self, trans, member):
         self.logger.debug(f"Upserting member data for {member.id}")

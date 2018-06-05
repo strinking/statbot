@@ -29,7 +29,7 @@ def member_needs_update(before, after):
     change we will ignore.
     '''
 
-    for attr in ('name', 'discriminator', 'nick', 'avatar', 'roles'):
+    for attr in ('name', 'discriminator', 'nick', 'avatar', 'roles', 'activity', 'status'):
         if getattr(before, attr) != getattr(after, attr):
             return True
     return False
@@ -155,6 +155,8 @@ class EventIngestionClient(discord.Client):
             self.logger.info(f"Processing {len(guild.members)} members...")
             for member in guild.members:
                 self.sql.upsert_member(trans, member)
+                self.sql.status_change(trans, member)
+                self.sql.activity_change(trans, member)
 
             # In case people left while the bot was down
             self.sql.remove_old_members(trans, guild)
@@ -188,11 +190,11 @@ class EventIngestionClient(discord.Client):
         self.logger.info("Recording activity in the following guilds:")
         for id in self.config['guild-ids']:
             guild = self.get_guild(id)
-            if guild is not None:
-                self.logger.info(f"* {guild.name} ({id})")
-            else:
-                self.logger.error(f"Unable to find guild ID {id}")
+            if guild is None:
+                self.logger.error(f"No guild with id {id}!")
                 exit(1)
+
+            self.logger.info(f"* {guild.name} ({id})")
 
         if not self.sql_init:
             self.logger.info("Initializing SQL lookup tables...")
@@ -398,6 +400,20 @@ class EventIngestionClient(discord.Client):
             self.sql.update_user(trans, after)
             self.sql.update_member(trans, after)
 
+            if before.status != after.status:
+                self.sql.status_change(trans, after)
+
+            if before.activity != after.activity:
+                self.sql.activity_change(trans, after)
+
+    async def on_voice_state_update(self, member, before, after):
+        self._log_ignored(f"Member {member.id} updated their voice state in guild {member.guild.id}")
+        if not await self._accept_guild(member.guild):
+            return
+
+        with self.sql.transaction() as trans:
+            self.sql.voice_state_change(trans, member, after)
+
     async def on_guild_role_create(self, role):
         self._log_ignored(f"Role {role.id} was created in guild {role.guild.id}")
         if not await self._accept_guild(role.guild):
@@ -441,3 +457,9 @@ class EventIngestionClient(discord.Client):
                 self.sql.add_emoji(trans, emoji)
             for emoji in before - after:
                 self.sql.remove_emoji(trans, emoji)
+
+    async def on_guild_available(self, guild):
+        self.logger.info(f"Guild {guild.id} '{guild.name}' is now available.")
+
+    async def on_guild_unavailable(self, guild):
+        self.logger.info(f"Guild {guild.id} '{guild.name}' is unavailable.")
