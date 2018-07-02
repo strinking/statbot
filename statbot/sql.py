@@ -26,7 +26,7 @@ from .audit_log import AuditLogData
 from .cache import LruCache
 from .emoji import EmojiData
 from .mention import MentionType
-from .util import null_logger
+from .util import int_hash, null_logger
 
 Column = functools.partial(Column, nullable=False)
 FakeMember = namedtuple('FakeMember', ('guild', 'id'))
@@ -77,7 +77,7 @@ def message_values(message):
         'embeds': [embed.to_dict() for embed in message.embeds],
         'attachments': len(message.attachments),
         'webhook_id': message.webhook_id,
-        'user_id': message.author.id,
+        'int_user_id': int_hash(message.author.id),
         'channel_id': message.channel.id,
         'guild_id': message.guild.id,
     }
@@ -122,7 +122,8 @@ def channel_categories_values(category):
 
 def user_values(user, deleted=False):
     return {
-        'user_id': user.id,
+        'int_user_id': int_hash(user.id),
+        'real_user_id': user.id,
         'name': user.name,
         'discriminator': user.discriminator,
         'avatar': user.avatar,
@@ -132,7 +133,7 @@ def user_values(user, deleted=False):
 
 def guild_member_values(member):
     return {
-        'user_id': member.id,
+        'int_user_id': int_hash(member.id),
         'guild_id': member.guild.id,
         'is_member': True,
         'joined_at': member.joined_at,
@@ -143,7 +144,7 @@ def role_member_values(member, role):
     return {
         'role_id': role.id,
         'guild_id': role.guild.id,
-        'user_id': member.id,
+        'int_user_id': int_hash(member.id),
     }
 
 def role_values(role):
@@ -166,7 +167,7 @@ def reaction_values(reaction, user, current):
         'message_id': reaction.message.id,
         'emoji_id': data.id,
         'emoji_unicode': data.unicode,
-        'user_id': user.id,
+        'int_user_id': int_hash(user.id),
         'created_at': datetime.now() if current else None,
         'deleted_at': None,
         'channel_id': reaction.message.channel.id,
@@ -269,33 +270,33 @@ class DiscordSqlHandler:
                 Column('embeds', JSON),
                 Column('attachments', SmallInteger),
                 Column('webhook_id', BigInteger, nullable=True),
-                Column('user_id', BigInteger),
+                Column('int_user_id', BigInteger),
                 Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
         self.tb_reactions = Table('reactions', meta,
                 Column('message_id', BigInteger),
                 Column('emoji_id', BigInteger),
                 Column('emoji_unicode', Unicode(7)),
-                Column('user_id', BigInteger, ForeignKey('users.user_id')),
+                Column('int_user_id', BigInteger, ForeignKey('users.int_user_id')),
                 Column('created_at', DateTime, nullable=True),
                 Column('deleted_at', DateTime, nullable=True),
                 Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
                 UniqueConstraint('message_id', 'emoji_id', 'emoji_unicode',
-                    'user_id', 'created_at', name='uq_reactions'))
+                    'int_user_id', 'created_at', name='uq_reactions'))
         self.tb_typing = Table('typing', meta,
                 Column('timestamp', DateTime),
-                Column('user_id', BigInteger, ForeignKey('users.user_id')),
+                Column('int_user_id', BigInteger, ForeignKey('users.int_user_id')),
                 Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
-                UniqueConstraint('timestamp', 'user_id', 'channel_id', 'guild_id',
+                UniqueConstraint('timestamp', 'int_user_id', 'channel_id', 'guild_id',
                     name='uq_typing'))
         self.tb_pins = Table('pins', meta,
                 Column('pin_id', BigInteger, primary_key=True),
                 Column('message_id', BigInteger, ForeignKey('messages.message_id'),
                     primary_key=True),
-                Column('pinner_id', BigInteger, ForeignKey('users.user_id')),
-                Column('user_id', BigInteger, ForeignKey('users.user_id')),
+                Column('pinner_id', BigInteger, ForeignKey('users.int_user_id')),
+                Column('int_user_id', BigInteger, ForeignKey('users.int_user_id')),
                 Column('channel_id', BigInteger, ForeignKey('channels.channel_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
         self.tb_mentions = Table('mentions', meta,
@@ -307,7 +308,7 @@ class DiscordSqlHandler:
                 UniqueConstraint('mentioned_id', 'type', 'message_id', name='uq_mention'))
         self.tb_guilds = Table('guilds', meta,
                 Column('guild_id', BigInteger, primary_key=True),
-                Column('owner_id', BigInteger, ForeignKey('users.user_id')),
+                Column('owner_id', BigInteger, ForeignKey('users.int_user_id')),
                 Column('name', Unicode),
                 Column('icon', String),
                 Column('voice_region', Enum(discord.VoiceRegion)),
@@ -351,26 +352,27 @@ class DiscordSqlHandler:
                     ForeignKey('channel_categories.category_id'), nullable=True),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')))
         self.tb_users = Table('users', meta,
-                Column('user_id', BigInteger, primary_key=True),
+                Column('int_user_id', BigInteger, primary_key=True),
+                Column('real_user_id', BigInteger),
                 Column('name', Unicode),
                 Column('discriminator', SmallInteger),
                 Column('avatar', String, nullable=True),
                 Column('is_deleted', Boolean),
                 Column('is_bot', Boolean))
         self.tb_guild_membership = Table('guild_membership', meta,
-                Column('user_id', BigInteger,
-                    ForeignKey('users.user_id'), primary_key=True),
+                Column('int_user_id', BigInteger,
+                    ForeignKey('users.int_user_id'), primary_key=True),
                 Column('guild_id', BigInteger,
                     ForeignKey('guilds.guild_id'), primary_key=True),
                 Column('is_member', Boolean),
                 Column('joined_at', DateTime, nullable=True),
                 Column('nick', Unicode(32), nullable=True),
-                UniqueConstraint('user_id', 'guild_id', name='uq_guild_membership'))
+                UniqueConstraint('int_user_id', 'guild_id', name='uq_guild_membership'))
         self.tb_role_membership = Table('role_membership', meta,
                 Column('role_id', BigInteger, ForeignKey('roles.role_id')),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
-                Column('user_id', BigInteger, ForeignKey('users.user_id')),
-                UniqueConstraint('role_id', 'user_id', name='uq_role_membership'))
+                Column('int_user_id', BigInteger, ForeignKey('users.int_user_id')),
+                UniqueConstraint('role_id', 'int_user_id', name='uq_role_membership'))
         self.tb_emojis = Table('emojis', meta,
                 Column('emoji_id', BigInteger),
                 Column('emoji_unicode', Unicode(7)),
@@ -397,7 +399,7 @@ class DiscordSqlHandler:
                 Column('audit_entry_id', BigInteger, primary_key=True),
                 Column('guild_id', BigInteger, ForeignKey('guilds.guild_id')),
                 Column('action', Enum(discord.AuditLogAction)),
-                Column('user_id', BigInteger, ForeignKey('users.user_id')),
+                Column('int_user_id', BigInteger, ForeignKey('users.int_user_id')),
                 Column('reason', Unicode, nullable=True),
                 Column('category', Enum(discord.AuditLogActionCategory), nullable=True),
                 Column('before', JSON),
@@ -573,7 +575,7 @@ class DiscordSqlHandler:
                 .insert() \
                 .values({
                     'timestamp': when,
-                    'user_id': user.id,
+                    'int_user_id': int_hash(user.id),
                     'channel_id': channel.id,
                     'guild_id': channel.guild.id,
                 })
@@ -600,7 +602,7 @@ class DiscordSqlHandler:
                 .where(self.tb_reactions.c.message_id == reaction.message.id) \
                 .where(self.tb_reactions.c.emoji_id == data.id) \
                 .where(self.tb_reactions.c.emoji_unicode == data.unicode) \
-                .where(self.tb_reactions.c.user_id == user.id)
+                .where(self.tb_reactions.c.int_user_id == int_hash(user.id))
         trans.execute(upd)
 
     def insert_reaction(self, trans, reaction, users):
@@ -614,7 +616,7 @@ class DiscordSqlHandler:
             ins = p_insert(self.tb_reactions) \
                     .values(values) \
                     .on_conflict_do_nothing(index_elements=[
-                        'message_id', 'emoji_id', 'emoji_unicode', 'user_id', 'created_at',
+                        'message_id', 'emoji_id', 'emoji_unicode', 'int_user_id', 'created_at',
                     ])
             trans.execute(ins)
 
@@ -638,7 +640,7 @@ class DiscordSqlHandler:
                     'pin_id': announce.id,
                     'message_id': message.id,
                     'pinner_id': announce.author.id,
-                    'user_id': message.author.id,
+                    'int_user_id': int_hash(message.author.id),
                     'channel_id': message.channel.id,
                     'guild_id': message.guild.id,
                 })
@@ -898,7 +900,7 @@ class DiscordSqlHandler:
         values = user_values(user)
         upd = self.tb_users \
                 .update() \
-                .where(self.tb_users.c.user_id == user.id) \
+                .where(self.tb_users.c.int_user_id == int_hash(user.id)) \
                 .values(values)
         trans.execute(upd)
         self.user_cache[user.id] = values
@@ -914,7 +916,7 @@ class DiscordSqlHandler:
         upd = self.tb_users \
                 .update() \
                 .values(is_deleted=True) \
-                .where(self.tb_users.c.user_id == user.id)
+                .where(self.tb_users.c.int_user_id == int_hash(user.id))
         trans.execute(upd)
         self.user_cache.pop(user.id, None)
 
@@ -928,8 +930,8 @@ class DiscordSqlHandler:
         ups = p_insert(self.tb_users) \
                 .values(values) \
                 .on_conflict_do_update(
-                        index_elements=['user_id'],
-                        index_where=(self.tb_users.c.user_id == user.id),
+                        index_elements=['int_user_id'],
+                        index_where=(self.tb_users.c.int_user_id == int_hash(user.id)),
                         set_=values,
                 )
         trans.execute(ups)
@@ -941,7 +943,7 @@ class DiscordSqlHandler:
         upd = self.tb_guild_membership \
                 .update() \
                 .where(and_(
-                    self.tb_guild_membership.c.user_id == member.id,
+                    self.tb_guild_membership.c.int_user_id == int_hash(member.id),
                     self.tb_guild_membership.c.guild_id == member.guild.id,
                 )) \
                 .values(nick=member.nick)
@@ -954,7 +956,7 @@ class DiscordSqlHandler:
         delet = self.tb_role_membership \
                 .delete() \
                 .where(and_(
-                    self.tb_role_membership.c.user_id == member.id,
+                    self.tb_role_membership.c.int_user_id == int_hash(member.id),
                     self.tb_role_membership.c.guild_id == member.guild.id,
                     self.tb_role_membership.c.role_id not in member.roles,
                 ))
@@ -973,7 +975,7 @@ class DiscordSqlHandler:
         upd = self.tb_guild_membership \
                 .update() \
                 .where(and_(
-                    self.tb_guild_membership.c.user_id == member.id,
+                    self.tb_guild_membership.c.int_user_id == int_hash(member.id),
                     self.tb_guild_membership.c.guild_id == member.guild.id,
                 )) \
                 .values(is_member=False)
@@ -1002,7 +1004,7 @@ class DiscordSqlHandler:
             user_id = row[0]
             member = guild.get_member(user_id)
             if member is None:
-                self.remove_member(trans, FakeMember(id=user_id, guild=guild))
+                self.remove_member(trans, FakeMember(id=int_hash(user_id), guild=guild))
 
     def upsert_member(self, trans, member):
         self.logger.debug(f"Upserting member data for {member.id}")

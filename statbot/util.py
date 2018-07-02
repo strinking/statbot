@@ -10,8 +10,12 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
+import hashlib
+import struct
+
 __all__ = [
     'null_logger',
+    'int_hash',
 ]
 
 class _NullLogger:
@@ -33,3 +37,9 @@ class _NullLogger:
         pass
 
 null_logger = _NullLogger()
+
+def int_hash(n):
+    bytez = struct.pack('>Q', n)
+    hashbytes = hashlib.sha512(bytez).digest()
+    result, = struct.unpack('>Q', hashbytes[24:32])
+    return result
