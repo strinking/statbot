@@ -13,6 +13,7 @@
 from collections import namedtuple
 from datetime import datetime
 import functools
+import random
 
 import discord
 from sqlalchemy import create_engine, and_
@@ -1158,3 +1159,20 @@ class DiscordSqlHandler:
                 .delete() \
                 .where(self.tb_audit_log_crawl.c.guild_id == guild.id)
         trans.execute(delet)
+
+    # Data masking for privacy reasons
+    def scrub_user(self, user):
+        self.logger.info(f"Scrubbing user {user.name} for privacy reasons")
+
+        upd = self.tb_users \
+                .update() \
+                .values(
+                    real_user_id=0,
+                    name=f"Removed for legal reasons - {random.getrandbits(24):06x}",
+                    discriminator=0000,
+                    avatar='00000000000000000000000000000000',
+                ) \
+                .where(self.tb_users.c.real_user_id == user.id)
+
+        with self.transaction() as trans:
+            trans.execute(upd)
