@@ -42,7 +42,7 @@ __all__ = [
 def guild_values(guild):
     return {
         'guild_id': guild.id,
-        'owner_id': guild.owner.id,
+        'int_owner_id': int_hash(guild.owner.id),
         'name': guild.name,
         'icon': guild.icon,
         'voice_region': guild.region,
@@ -309,7 +309,7 @@ class DiscordSqlHandler:
                 UniqueConstraint('mentioned_id', 'type', 'message_id', name='uq_mention'))
         self.tb_guilds = Table('guilds', meta,
                 Column('guild_id', BigInteger, primary_key=True),
-                Column('owner_id', BigInteger, ForeignKey('users.int_user_id')),
+                Column('int_owner_id', BigInteger, ForeignKey('users.int_user_id')),
                 Column('name', Unicode),
                 Column('icon', String),
                 Column('voice_region', Enum(discord.VoiceRegion)),
