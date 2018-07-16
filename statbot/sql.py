@@ -416,15 +416,16 @@ class DiscordSqlHandler:
                 Column('last_audit_entry_id', BigInteger))
 
         # Caches
-        self.message_cache = LruCache(cache_size['event-size'])
-        self.typing_cache = LruCache(cache_size['event-size'])
-        self.guild_cache = LruCache(cache_size['lookup-size'])
-        self.channel_cache = LruCache(cache_size['lookup-size'])
-        self.voice_channel_cache = LruCache(cache_size['lookup-size'])
-        self.channel_category_cache = LruCache(cache_size['lookup-size'])
-        self.user_cache = LruCache(cache_size['lookup-size'])
-        self.emoji_cache = LruCache(cache_size['lookup-size'])
-        self.role_cache = LruCache(cache_size['lookup-size'])
+        if cache_size is not None:
+            self.message_cache = LruCache(cache_size['event-size'])
+            self.typing_cache = LruCache(cache_size['event-size'])
+            self.guild_cache = LruCache(cache_size['lookup-size'])
+            self.channel_cache = LruCache(cache_size['lookup-size'])
+            self.voice_channel_cache = LruCache(cache_size['lookup-size'])
+            self.channel_category_cache = LruCache(cache_size['lookup-size'])
+            self.user_cache = LruCache(cache_size['lookup-size'])
+            self.emoji_cache = LruCache(cache_size['lookup-size'])
+            self.role_cache = LruCache(cache_size['lookup-size'])
 
         # Create tables
         meta.create_all(self.db)
@@ -1160,8 +1161,8 @@ class DiscordSqlHandler:
                 .where(self.tb_audit_log_crawl.c.guild_id == guild.id)
         trans.execute(delet)
 
-    # Data masking for privacy reasons
-    def scrub_user(self, user):
+    # Privacy operations
+    def privacy_scrub(self, user):
         self.logger.info(f"Scrubbing user {user.name} for privacy reasons")
 
         upd = self.tb_users \

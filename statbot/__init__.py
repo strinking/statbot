@@ -10,12 +10,17 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
-from . import client, config, util
+from . import audit_log, cache, client, config, emoji, mention, sql, util
 
 __all__ = [
     '__version__',
+    'audit_log',
+    'cache',
     'client',
     'config',
+    'emoji',
+    'mention',
+    'sql',
     'util',
 ]
 
