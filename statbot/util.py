@@ -39,7 +39,7 @@ class _NullLogger:
 null_logger = _NullLogger()
 
 def int_hash(n):
-    bytez = struct.pack('>Q', n)
+    bytez = struct.pack('>q', n)
     hashbytes = hashlib.sha512(bytez).digest()
-    result, = struct.unpack('>Q', hashbytes[24:32])
+    result, = struct.unpack('>q', hashbytes[24:32])
     return result
