@@ -9,6 +9,12 @@ fi
 repo_dir="$(dirname "$0")"
 dest_dir=~statbot/repo
 
+if [[ -f "$repo_dir/statbot.service" ]]; then
+	service="$repo_dir/statbot.service"
+else
+	service="$repo_dir/misc/statbot.service"
+fi
+
 rm -r "$dest_dir"
 mkdir -p "$dest_dir"
 cp -a "$repo_dir" "$dest_dir"
@@ -19,7 +25,7 @@ echo "Installed source code to '$dest_dir'"
 python3.6 -m pip install -r "$repo_dir/requirements.txt"
 echo "Installed Python dependencies"
 
-install -m644 "$repo_dir/misc/statbot.service" /usr/local/lib/systemd/system/statbot.service
+install -m644 "$service" /usr/local/lib/systemd/system/statbot.service
 chown root:root /usr/local/lib/systemd/system/statbot.service
 echo "Installed systemd service"
 
