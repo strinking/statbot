@@ -10,6 +10,8 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
+from .util import int_hash
+
 __all__ = [
     'AuditLogData',
 ]
@@ -73,7 +75,7 @@ class AuditLogData:
             'audit_entry_id': self.entry.id,
             'guild_id': self.guild.id,
             'action': self.entry.action,
-            'user_id': self.entry.user.id,
+            'int_user_id': int_hash(self.entry.user.id),
             'reason': self.entry.reason,
             'category': self.entry.category,
             'before': self.diff_values(self.entry.before),
