@@ -179,30 +179,30 @@ class _Transaction:
     __slots__ = (
         'conn',
         'logger',
-        'trans',
+        'txact',
         'ok',
     )
 
     def __init__(self, conn, logger):
         self.conn = conn
         self.logger = logger
-        self.trans = None
+        self.txact = None
         self.ok = True
 
     def __enter__(self):
         self.logger.debug("Starting transaction...")
-        self.trans = self.conn.begin()
+        self.txact = self.conn.begin()
         return self
 
     def __exit__(self, type, value, traceback):
         if (type, value, traceback) == (None, None, None):
             self.logger.debug("Committing transaction...")
-            self.trans.commit()
+            self.txact.commit()
         else:
             self.logger.error("Exception occurred in 'with' scope!", exc_info=1)
             self.logger.debug("Rolling back transaction...")
             self.ok = False
-            self.trans.rollback()
+            self.txact.rollback()
 
     def execute(self, *args, **kwargs):
         return self.conn.execute(*args, **kwargs)
@@ -436,7 +436,7 @@ class DiscordSqlHandler:
         return _Transaction(self.conn, self.logger)
 
     # Guild
-    def upsert_guild(self, trans, guild):
+    def upsert_guild(self, txact, guild):
         values = guild_values(guild)
         if self.guild_cache.get(guild.id) == values:
             self.logger.debug(f"Guild lookup for {guild.id} is already up-to-date")
@@ -450,11 +450,11 @@ class DiscordSqlHandler:
                         index_where=(self.tb_guilds.c.guild_id == guild.id),
                         set_=values,
                 )
-        trans.conn.execute(ups)
+        txact.conn.execute(ups)
         self.guild_cache[guild.id] = values
 
     # Messages
-    def add_message(self, trans, message):
+    def add_message(self, txact, message):
         values = message_values(message)
 
         if self.message_cache.get(message.id) == values:
@@ -465,13 +465,13 @@ class DiscordSqlHandler:
         ins = self.tb_messages \
                 .insert() \
                 .values(values)
-        trans.execute(ins)
+        txact.execute(ins)
         self.message_cache[message.id] = values
 
-        self.upsert_user(trans, message.author)
-        self.insert_mentions(trans, message)
+        self.upsert_user(txact, message.author)
+        self.insert_mentions(txact, message)
 
-    def edit_message(self, trans, before, after):
+    def edit_message(self, txact, before, after):
         self.logger.info(f"Updating message {after.id}")
         upd = self.tb_messages \
                 .update() \
@@ -481,20 +481,20 @@ class DiscordSqlHandler:
                     'embeds': [embed.to_dict() for embed in after.embeds],
                 }) \
                 .where(self.tb_messages.c.message_id == after.id)
-        trans.execute(upd)
+        txact.execute(upd)
 
-        self.insert_mentions(trans, after)
+        self.insert_mentions(txact, after)
 
-    def remove_message(self, trans, message):
+    def remove_message(self, txact, message):
         self.logger.info(f"Deleting message {message.id}")
         upd = self.tb_messages \
                 .update() \
                 .values(deleted_at=datetime.now()) \
                 .where(self.tb_messages.c.message_id == message.id)
-        trans.execute(upd)
+        txact.execute(upd)
         self.message_cache.pop(message.id, None)
 
-    def insert_message(self, trans, message):
+    def insert_message(self, txact, message):
         values = message_values(message)
         if self.message_cache.get(message.id) == values:
             self.logger.debug(f"Message lookup for {message.id} is already up-to-date")
@@ -504,14 +504,14 @@ class DiscordSqlHandler:
         ins = p_insert(self.tb_messages) \
                 .values(values) \
                 .on_conflict_do_nothing(index_elements=['message_id'])
-        trans.execute(ins)
+        txact.execute(ins)
         self.message_cache[message.id] = values
 
-        self.upsert_user(trans, message.author)
-        self.insert_mentions(trans, message)
+        self.upsert_user(txact, message.author)
+        self.insert_mentions(txact, message)
 
     # Mentions
-    def insert_mentions(self, trans, message):
+    def insert_mentions(self, txact, message):
         self.logger.debug(f"Inserting all mentions in message {message.id}")
 
         for id in message.raw_mentions:
@@ -529,7 +529,7 @@ class DiscordSqlHandler:
                         'guild_id': message.guild.id,
                     }) \
                     .on_conflict_do_nothing(index_elements=['mentioned_id', 'type', 'message_id'])
-            trans.execute(ins)
+            txact.execute(ins)
 
         for id in message.raw_role_mentions:
             if id > MAX_ID:
@@ -546,7 +546,7 @@ class DiscordSqlHandler:
                         'guild_id': message.guild.id,
                     }) \
                     .on_conflict_do_nothing(index_elements=['mentioned_id', 'type', 'message_id'])
-            trans.execute(ins)
+            txact.execute(ins)
 
         for id in message.raw_channel_mentions:
             if id > MAX_ID:
@@ -563,10 +563,10 @@ class DiscordSqlHandler:
                         'guild_id': message.guild.id,
                     }) \
                     .on_conflict_do_nothing(index_elements=['mentioned_id', 'type', 'message_id'])
-            trans.execute(ins)
+            txact.execute(ins)
 
     # Typing
-    def typing(self, trans, channel, user, when):
+    def typing(self, txact, channel, user, when):
         key = (when, user.id, channel.id)
         if self.typing_cache.get(key, False):
             self.logger.debug(f"Typing lookup is up-to-date")
@@ -581,21 +581,21 @@ class DiscordSqlHandler:
                     'channel_id': channel.id,
                     'guild_id': channel.guild.id,
                 })
-        trans.execute(ins)
+        txact.execute(ins)
         self.typing_cache[key] = True
 
     # Reactions
-    def add_reaction(self, trans, reaction, user):
+    def add_reaction(self, txact, reaction, user):
         self.logger.info(f"Inserting live reaction for user {user.id} on message {reaction.message.id}")
-        self.upsert_emoji(trans, reaction.emoji)
-        self.upsert_user(trans, user)
+        self.upsert_emoji(txact, reaction.emoji)
+        self.upsert_user(txact, user)
         values = reaction_values(reaction, user, True)
         ins = self.tb_reactions \
                 .insert() \
                 .values(values)
-        trans.execute(ins)
+        txact.execute(ins)
 
-    def remove_reaction(self, trans, reaction, user):
+    def remove_reaction(self, txact, reaction, user):
         self.logger.info(f"Deleting reaction for user {user.id} on message {reaction.message.id}")
         data = EmojiData(reaction.emoji)
         upd = self.tb_reactions \
@@ -605,14 +605,14 @@ class DiscordSqlHandler:
                 .where(self.tb_reactions.c.emoji_id == data.id) \
                 .where(self.tb_reactions.c.emoji_unicode == data.unicode) \
                 .where(self.tb_reactions.c.int_user_id == int_hash(user.id))
-        trans.execute(upd)
+        txact.execute(upd)
 
-    def insert_reaction(self, trans, reaction, users):
+    def insert_reaction(self, txact, reaction, users):
         self.logger.info(f"Inserting past reactions for {reaction.message.id}")
-        self.upsert_emoji(trans, reaction.emoji)
+        self.upsert_emoji(txact, reaction.emoji)
         data = EmojiData(reaction.emoji)
         for user in users:
-            self.upsert_user(trans, user)
+            self.upsert_user(txact, user)
             values = reaction_values(reaction, user, False)
             self.logger.debug(f"Inserting single reaction {data} from {user.id}")
             ins = p_insert(self.tb_reactions) \
@@ -620,18 +620,18 @@ class DiscordSqlHandler:
                     .on_conflict_do_nothing(index_elements=[
                         'message_id', 'emoji_id', 'emoji_unicode', 'int_user_id', 'created_at',
                     ])
-            trans.execute(ins)
+            txact.execute(ins)
 
-    def clear_reactions(self, trans, message):
+    def clear_reactions(self, txact, message):
         self.logger.info(f"Deleting all reactions on message {message.id}")
         upd = self.tb_reactions \
                 .update() \
                 .values(deleted_at=datetime.now()) \
                 .where(self.tb_reactions.c.message_id == message.id)
-        trans.execute(upd)
+        txact.execute(upd)
 
     # Pins (TODO)
-    def add_pin(self, trans, announce, message):
+    def add_pin(self, txact, announce, message):
         # pylint: disable=unreachable
         raise NotImplementedError
 
@@ -646,9 +646,9 @@ class DiscordSqlHandler:
                     'channel_id': message.channel.id,
                     'guild_id': message.guild.id,
                 })
-        trans.execute(ins)
+        txact.execute(ins)
 
-    def remove_pin(self, trans, announce, message):
+    def remove_pin(self, txact, announce, message):
         # pylint: disable=unreachable
         raise NotImplementedError
 
@@ -657,10 +657,10 @@ class DiscordSqlHandler:
                 .delete() \
                 .where(self.tb_pins.c.pin_id == announce.id) \
                 .where(self.tb_pins.c.message_id == message.id)
-        trans.execute(delet)
+        txact.execute(delet)
 
     # Roles
-    def add_role(self, trans, role):
+    def add_role(self, txact, role):
         if role.id in self.role_cache:
             self.logger.debug(f"Role {role.id} already inserted.")
             return
@@ -670,35 +670,35 @@ class DiscordSqlHandler:
         ins = self.tb_roles \
                 .insert() \
                 .values(values)
-        trans.execute(ins)
+        txact.execute(ins)
         self.role_cache[role.id] = values
 
-    def _update_role(self, trans, role):
+    def _update_role(self, txact, role):
         self.logger.info(f"Updating role {role.id} in guild {role.guild.id}")
         values = role_values(role)
         upd = self.tb_roles \
                 .update() \
                 .where(self.tb_roles.c.role_id == role.id) \
                 .values(values)
-        trans.execute(upd)
+        txact.execute(upd)
         self.role_cache[role.id] = values
 
-    def update_role(self, trans, role):
+    def update_role(self, txact, role):
         if role.id in self.role_cache:
-            self._update_role(trans, role)
+            self._update_role(txact, role)
         else:
-            self.upsert_role(trans, role)
+            self.upsert_role(txact, role)
 
-    def remove_role(self, trans, role):
+    def remove_role(self, txact, role):
         self.logger.info(f"Deleting role {role.id}")
         upd = self.tb_roles \
                 .update() \
                 .values(is_deleted=True) \
                 .where(self.tb_roles.c.role_id == role.id)
-        trans.execute(upd)
+        txact.execute(upd)
         self.role_cache.pop(role.id, None)
 
-    def upsert_role(self, trans, role):
+    def upsert_role(self, txact, role):
         values = role_values(role)
         if self.role_cache.get(role.id) == values:
             self.logger.debug(f"Role lookup for {role.id} is already up-to-date")
@@ -712,11 +712,11 @@ class DiscordSqlHandler:
                         index_where=(self.tb_roles.c.role_id == role.id),
                         set_=values,
                 )
-        trans.execute(ups)
+        txact.execute(ups)
         self.role_cache[role.id] = values
 
     # Channels
-    def add_channel(self, trans, channel):
+    def add_channel(self, txact, channel):
         if channel.id in self.channel_cache:
             self.logger.debug(f"Channel {channel.id} already inserted.")
             return
@@ -726,35 +726,35 @@ class DiscordSqlHandler:
         ins = self.tb_channels \
                 .insert() \
                 .values(values)
-        trans.execute(ins)
+        txact.execute(ins)
         self.channel_cache[channel.id] = values
 
-    def _update_channel(self, trans, channel):
+    def _update_channel(self, txact, channel):
         self.logger.info(f"Updating channel {channel.id} in guild {channel.guild.id}")
         values = channel_values(channel)
         upd = self.tb_channels \
                 .update() \
                 .where(self.tb_channels.c.channel_id == channel.id) \
                 .values(values)
-        trans.execute(upd)
+        txact.execute(upd)
         self.channel_cache[channel.id] = values
 
-    def update_channel(self, trans, channel):
+    def update_channel(self, txact, channel):
         if channel.id in self.channel_cache:
-            self._update_channel(trans, channel)
+            self._update_channel(txact, channel)
         else:
-            self.upsert_channel(trans, channel)
+            self.upsert_channel(txact, channel)
 
-    def remove_channel(self, trans, channel):
+    def remove_channel(self, txact, channel):
         self.logger.info(f"Deleting channel {channel.id} in guild {channel.guild.id}")
         upd = self.tb_channels \
                 .update() \
                 .values(is_deleted=True) \
                 .where(self.tb_channels.c.channel_id == channel.id)
-        trans.execute(upd)
+        txact.execute(upd)
         self.channel_cache.pop(channel.id, None)
 
-    def upsert_channel(self, trans, channel):
+    def upsert_channel(self, txact, channel):
         values = channel_values(channel)
         if self.channel_cache.get(channel.id) == values:
             self.logger.debug(f"Channel lookup for {channel.id} is already up-to-date")
@@ -768,11 +768,11 @@ class DiscordSqlHandler:
                         index_where=(self.tb_channels.c.channel_id == channel.id),
                         set_=values,
                 )
-        trans.execute(ups)
+        txact.execute(ups)
         self.channel_cache[channel.id] = values
 
     # Voice Channels
-    def add_voice_channel(self, trans, channel):
+    def add_voice_channel(self, txact, channel):
         if channel in self.voice_channel_cache:
             self.logger.debug(f"Voice channel {channel.id} already inserted")
             return
@@ -782,35 +782,35 @@ class DiscordSqlHandler:
         ins = self.tb_voice_channels \
                 .insert() \
                 .values(values)
-        trans.execute(ins)
+        txact.execute(ins)
         self.voice_channel_cache[channel.id] = values
 
-    def _update_voice_channel(self, trans, channel):
+    def _update_voice_channel(self, txact, channel):
         self.logger.info(f"Updating voice channel {channel.id} in guild {channel.guild.id}")
         values = voice_channel_values(channel)
         upd = self.tb_voice_channels \
                 .update() \
                 .where(self.tb_voice_channels.c.voice_channel_id == channel.id) \
                 .values(values)
-        trans.execute(upd)
+        txact.execute(upd)
         self.voice_channel_cache[channel.id] = values
 
-    def update_voice_channel(self, trans, channel):
+    def update_voice_channel(self, txact, channel):
         if channel.id in self.voice_channel_cache:
-            self._update_voice_channel(trans, channel)
+            self._update_voice_channel(txact, channel)
         else:
-            self.upsert_channel(trans, channel)
+            self.upsert_channel(txact, channel)
 
-    def remove_voice_channel(self, trans, channel):
+    def remove_voice_channel(self, txact, channel):
         self.logger.info(f"Deleting voice channel {channel.id} in guild {channel.guild.id}")
         upd = self.tb_voice_channels \
                 .update() \
                 .values(is_deleted=True) \
                 .where(self.tb_voice_channels.c.voice_channel_id == channel.id)
-        trans.execute(upd)
+        txact.execute(upd)
         self.voice_channel_cache.pop(channel.id, None)
 
-    def upsert_voice_channel(self, trans, channel):
+    def upsert_voice_channel(self, txact, channel):
         values = voice_channel_values(channel)
         if self.voice_channel_cache.get(channel.id) == values:
             self.logger.debug(f"Voice channel lookup for {channel.id} is already up-to-date")
@@ -824,11 +824,11 @@ class DiscordSqlHandler:
                         index_where=(self.tb_voice_channels.c.voice_channel_id == channel.id),
                         set_=values,
                 )
-        trans.execute(ups)
+        txact.execute(ups)
         self.voice_channel_cache[channel.id] = values
 
     # Channel Categories
-    def add_channel_category(self, trans, category):
+    def add_channel_category(self, txact, category):
         if category.id in self.channel_category_cache:
             self.logger.debug(f"Channel category {category.id} already inserted.")
             return
@@ -838,35 +838,35 @@ class DiscordSqlHandler:
         ins = self.tb_channel_categories \
                 .insert() \
                 .values(values)
-        trans.execute(ins)
+        txact.execute(ins)
         self.channel_category_cache[category.id] = values
 
-    def _update_channel_category(self, trans, category):
+    def _update_channel_category(self, txact, category):
         self.logger.info(f"Updating channel category {category.id} in guild {category.guild.id}")
         values = channel_categories_values(category)
         upd = self.tb_channel_categories \
                 .update() \
                 .where(self.tb_channel_categories.c.category_id == category.id) \
                 .values(values)
-        trans.execute(upd)
+        txact.execute(upd)
         self.channel_category_cache[category.id] = values
 
-    def update_channel_category(self, trans, category):
+    def update_channel_category(self, txact, category):
         if category.id in self.channel_category_cache:
-            self._update_channel_category(trans, category)
+            self._update_channel_category(txact, category)
         else:
-            self.upsert_channel_category(trans, category)
+            self.upsert_channel_category(txact, category)
 
-    def remove_channel_category(self, trans, category):
+    def remove_channel_category(self, txact, category):
         self.logger.info(f"Deleting channel category {category.id} in guild {category.guild.id}")
         upd = self.tb_channel_categories \
                 .update() \
                 .values(is_deleted=True) \
                 .where(self.tb_channels.c.category_id == category.id)
-        trans.execute(upd)
+        txact.execute(upd)
         self.channel_category_cache.pop(category.id, None)
 
-    def upsert_channel_category(self, trans, category):
+    def upsert_channel_category(self, txact, category):
         values = channel_categories_values(category)
         if self.channel_cache.get(category.id) == values:
             self.logger.debug(f"Channel category lookup for {category.id} is already up-to-date")
@@ -880,11 +880,11 @@ class DiscordSqlHandler:
                         index_where=(self.tb_channel_categories.c.category_id == category.id),
                         set_=values,
                 )
-        trans.execute(ups)
+        txact.execute(ups)
         self.channel_category_cache[category.id] = values
 
     # Users
-    def add_user(self, trans, user):
+    def add_user(self, txact, user):
         if user.id in self.user_cache:
             self.logger.debug(f"User {user.id} already inserted.")
             return
@@ -894,35 +894,35 @@ class DiscordSqlHandler:
         ins = self.tb_users \
                 .insert() \
                 .values(values)
-        trans.execute(ins)
+        txact.execute(ins)
         self.user_cache[user.id] = values
 
-    def _update_user(self, trans, user):
+    def _update_user(self, txact, user):
         self.logger.info(f"Updating user {user.id}")
         values = user_values(user)
         upd = self.tb_users \
                 .update() \
                 .where(self.tb_users.c.int_user_id == int_hash(user.id)) \
                 .values(values)
-        trans.execute(upd)
+        txact.execute(upd)
         self.user_cache[user.id] = values
 
-    def update_user(self, trans, user):
+    def update_user(self, txact, user):
         if user.id in self.user_cache:
-            self._update_user(trans, user)
+            self._update_user(txact, user)
         else:
-            self.upsert_user(trans, user)
+            self.upsert_user(txact, user)
 
-    def remove_user(self, trans, user):
+    def remove_user(self, txact, user):
         self.logger.info(f"Removing user {user.id}")
         upd = self.tb_users \
                 .update() \
                 .values(is_deleted=True) \
                 .where(self.tb_users.c.int_user_id == int_hash(user.id))
-        trans.execute(upd)
+        txact.execute(upd)
         self.user_cache.pop(user.id, None)
 
-    def upsert_user(self, trans, user):
+    def upsert_user(self, txact, user):
         self.logger.debug(f"Upserting user {user.id}")
         values = user_values(user)
         if self.user_cache.get(user.id) == values:
@@ -936,11 +936,11 @@ class DiscordSqlHandler:
                         index_where=(self.tb_users.c.int_user_id == int_hash(user.id)),
                         set_=values,
                 )
-        trans.execute(ups)
+        txact.execute(ups)
         self.user_cache[user.id] = values
 
     # Members
-    def update_member(self, trans, member):
+    def update_member(self, txact, member):
         self.logger.info(f"Updating member data for {member.id}")
         upd = self.tb_guild_membership \
                 .update() \
@@ -949,12 +949,12 @@ class DiscordSqlHandler:
                     self.tb_guild_membership.c.guild_id == member.guild.id,
                 )) \
                 .values(nick=member.nick)
-        trans.execute(upd)
+        txact.execute(upd)
 
-        self._delete_role_membership(trans, member)
-        self._insert_role_membership(trans, member)
+        self._delete_role_membership(txact, member)
+        self._insert_role_membership(txact, member)
 
-    def _delete_role_membership(self, trans, member):
+    def _delete_role_membership(self, txact, member):
         delet = self.tb_role_membership \
                 .delete() \
                 .where(and_(
@@ -962,17 +962,17 @@ class DiscordSqlHandler:
                     self.tb_role_membership.c.guild_id == member.guild.id,
                     self.tb_role_membership.c.role_id not in member.roles,
                 ))
-        trans.execute(delet)
+        txact.execute(delet)
 
-    def _insert_role_membership(self, trans, member):
+    def _insert_role_membership(self, txact, member):
         for role in member.roles:
             values = role_member_values(member, role)
             ins = self.tb_role_membership \
                     .insert() \
                     .values(values)
-            trans.execute(ins)
+            txact.execute(ins)
 
-    def remove_member(self, trans, member):
+    def remove_member(self, txact, member):
         self.logger.debug(f"Removing member {member.id} from guild {member.guild.id}")
         upd = self.tb_guild_membership \
                 .update() \
@@ -981,11 +981,11 @@ class DiscordSqlHandler:
                     self.tb_guild_membership.c.guild_id == member.guild.id,
                 )) \
                 .values(is_member=False)
-        trans.execute(upd)
+        txact.execute(upd)
 
         # Don't delete role membership
 
-    def remove_old_members(self, trans, guild):
+    def remove_old_members(self, txact, guild):
         # Since pylint complains about <thing> == True.
         # We need to do this otherwise silly comparison
         # because it's not a comparison at all, it's actually
@@ -1000,15 +1000,15 @@ class DiscordSqlHandler:
                     self.tb_guild_membership.c.guild_id == guild.id,
                     self.tb_guild_membership.c.is_member == True,
                 ))
-        result = trans.execute(sel)
+        result = txact.execute(sel)
 
         for row in result.fetchall():
             user_id = row[0]
             member = guild.get_member(user_id)
             if member is None:
-                self.remove_member(trans, FakeMember(id=int_hash(user_id), guild=guild))
+                self.remove_member(txact, FakeMember(id=int_hash(user_id), guild=guild))
 
-    def upsert_member(self, trans, member):
+    def upsert_member(self, txact, member):
         self.logger.debug(f"Upserting member data for {member.id}")
         values = guild_member_values(member)
         ups = p_insert(self.tb_guild_membership) \
@@ -1017,13 +1017,13 @@ class DiscordSqlHandler:
                         constraint='uq_guild_membership',
                         set_=values,
                 )
-        trans.execute(ups)
+        txact.execute(ups)
 
-        self._delete_role_membership(trans, member)
-        self._insert_role_membership(trans, member)
+        self._delete_role_membership(txact, member)
+        self._insert_role_membership(txact, member)
 
     # Emojis
-    def add_emoji(self, trans, emoji):
+    def add_emoji(self, txact, emoji):
         data = EmojiData(emoji)
         if data.cache_id in self.emoji_cache:
             self.logger.debug(f"Emoji {data} already inserted.")
@@ -1034,10 +1034,10 @@ class DiscordSqlHandler:
         ins = self.tb_emojis \
                 .insert() \
                 .values(values)
-        trans.execute(ins)
+        txact.execute(ins)
         self.emoji_cache[data.cache_id] = values
 
-    def remove_emoji(self, trans, emoji):
+    def remove_emoji(self, txact, emoji):
         data = EmojiData(emoji)
         self.logger.info(f"Deleting emoji {data}")
 
@@ -1046,10 +1046,10 @@ class DiscordSqlHandler:
                 .values(is_deleted=True) \
                 .where(self.tb_emojis.c.emoji_id == data.id) \
                 .where(self.tb_emojis.c.emoji_unicode == data.unicode)
-        trans.execute(upd)
+        txact.execute(upd)
         self.emoji_cache.pop(data.cache_id, None)
 
-    def upsert_emoji(self, trans, emoji):
+    def upsert_emoji(self, txact, emoji):
         data = EmojiData(emoji)
         values = data.values()
         if self.emoji_cache.get(data.cache_id) == values:
@@ -1067,25 +1067,25 @@ class DiscordSqlHandler:
                     ),
                     set_=values,
                 )
-        trans.execute(ups)
+        txact.execute(ups)
         self.emoji_cache[data.cache_id] = values
 
     # Audit log
-    def insert_audit_log_entry(self, trans, guild, entry):
+    def insert_audit_log_entry(self, txact, guild, entry):
         self.logger.debug(f"Inserting audit log entry {entry.id} from {guild.name}")
         data = AuditLogData(entry, guild)
         values = data.values()
         ins = p_insert(self.tb_audit_log) \
                 .values(values) \
                 .on_conflict_do_nothing(index_elements=['audit_entry_id'])
-        trans.execute(ins)
+        txact.execute(ins)
 
     # Crawling history
-    def lookup_channel_crawl(self, trans, channel):
+    def lookup_channel_crawl(self, txact, channel):
         self.logger.info(f"Looking up channel crawl progress for {channel.guild.name} #{channel.name}")
         sel = select([self.tb_channel_crawl]) \
                 .where(self.tb_channel_crawl.c.channel_id == channel.id)
-        result = trans.execute(sel)
+        result = txact.execute(sel)
 
         if result.rowcount:
             _, last_id = result.fetchone()
@@ -1093,7 +1093,7 @@ class DiscordSqlHandler:
         else:
             return None
 
-    def insert_channel_crawl(self, trans, channel, last_id):
+    def insert_channel_crawl(self, txact, channel, last_id):
         self.logger.info(f"Inserting new channel crawl progress for {channel.guild.name} #{channel.name}")
 
         ins = self.tb_channel_crawl \
@@ -1102,30 +1102,30 @@ class DiscordSqlHandler:
                     'channel_id': channel.id,
                     'last_message_id': last_id,
                 })
-        trans.execute(ins)
+        txact.execute(ins)
 
-    def update_channel_crawl(self, trans, channel, last_id):
+    def update_channel_crawl(self, txact, channel, last_id):
         self.logger.info(f"Updating channel crawl progress for {channel.guild.name} #{channel.name}: {last_id}")
 
         upd = self.tb_channel_crawl \
                 .update() \
                 .values(last_message_id=last_id) \
                 .where(self.tb_channel_crawl.c.channel_id == channel.id)
-        trans.execute(upd)
+        txact.execute(upd)
 
-    def delete_channel_crawl(self, trans, channel):
+    def delete_channel_crawl(self, txact, channel):
         self.logger.info(f"Deleting channel crawl progress for {channel.guild.name} #{channel.name}")
 
         delet = self.tb_channel_crawl \
                 .delete() \
                 .where(self.tb_channel_crawl.c.channel_id == channel.id)
-        trans.execute(delet)
+        txact.execute(delet)
 
-    def lookup_audit_log_crawl(self, trans, guild):
+    def lookup_audit_log_crawl(self, txact, guild):
         self.logger.info(f"Looking for audit log crawl progress for {guild.name}")
         sel = select([self.tb_audit_log_crawl]) \
                 .where(self.tb_audit_log_crawl.c.guild_id == guild.id)
-        result = trans.execute(sel)
+        result = txact.execute(sel)
 
         if result.rowcount:
             _, last_id = result.fetchone()
@@ -1133,7 +1133,7 @@ class DiscordSqlHandler:
         else:
             return None
 
-    def insert_audit_log_crawl(self, trans, guild, last_id):
+    def insert_audit_log_crawl(self, txact, guild, last_id):
         self.logger.info(f"Inserting new audit log crawl progress for {guild.name}")
 
         ins = self.tb_audit_log_crawl \
@@ -1142,24 +1142,24 @@ class DiscordSqlHandler:
                     'guild_id': guild.id,
                     'last_audit_entry_id': last_id,
                 })
-        trans.execute(ins)
+        txact.execute(ins)
 
-    def update_audit_log_crawl(self, trans, guild, last_id):
+    def update_audit_log_crawl(self, txact, guild, last_id):
         self.logger.info(f"Updating audit log crawl progress for {guild.name}")
 
         upd = self.tb_audit_log_crawl \
                 .update() \
                 .values(last_audit_entry_id=last_id) \
                 .where(self.tb_audit_log_crawl.c.guild_id == guild.id)
-        trans.execute(upd)
+        txact.execute(upd)
 
-    def delete_audit_log_crawl(self, trans, guild):
+    def delete_audit_log_crawl(self, txact, guild):
         self.logger.info(f"Delete audit log crawl progress for {guild.name}")
 
         delet = self.tb_audit_log_crawl \
                 .delete() \
                 .where(self.tb_audit_log_crawl.c.guild_id == guild.id)
-        trans.execute(delet)
+        txact.execute(delet)
 
     # Privacy operations
     def privacy_scrub(self, user):
@@ -1175,5 +1175,5 @@ class DiscordSqlHandler:
                 ) \
                 .where(self.tb_users.c.real_user_id == user.id)
 
-        with self.transaction() as trans:
-            trans.execute(upd)
+        with self.transaction() as txact:
+            txact.execute(upd)

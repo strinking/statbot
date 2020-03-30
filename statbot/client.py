@@ -135,29 +135,29 @@ class EventIngestionClient(discord.Client):
         if self.config['logger']['ignored-events']:
             self.logger.debug(message)
 
-    def _init_sql(self, trans):
+    def _init_sql(self, txact):
         self.logger.info(f"Processing {len(self.users)} users...")
         for user in self.users:
-            self.sql.upsert_user(trans, user)
+            self.sql.upsert_user(txact, user)
 
         self.logger.info(f"Processing {len(self.guilds)} guilds...")
         for guild in self.guilds:
-            self.sql.upsert_guild(trans, guild)
+            self.sql.upsert_guild(txact, guild)
 
             self.logger.info(f"Processing {len(guild.roles)} roles...")
             for role in guild.roles:
-                self.sql.upsert_role(trans, role)
+                self.sql.upsert_role(txact, role)
 
             self.logger.info(f"Processing {len(guild.emojis)} emojis...")
             for emoji in guild.emojis:
-                self.sql.upsert_emoji(trans, emoji)
+                self.sql.upsert_emoji(txact, emoji)
 
             self.logger.info(f"Processing {len(guild.members)} members...")
             for member in guild.members:
-                self.sql.upsert_member(trans, member)
+                self.sql.upsert_member(txact, member)
 
             # In case people left while the bot was down
-            self.sql.remove_old_members(trans, guild)
+            self.sql.remove_old_members(txact, guild)
 
             text_channels = []
             voice_channels = []
@@ -172,15 +172,15 @@ class EventIngestionClient(discord.Client):
 
             self.logger.info(f"Processing {len(categories)} channel categories...")
             for category in categories:
-                self.sql.upsert_channel_category(trans, category)
+                self.sql.upsert_channel_category(txact, category)
 
             self.logger.info(f"Processing {len(text_channels)} channels...")
             for channel in text_channels:
-                self.sql.upsert_channel(trans, channel)
+                self.sql.upsert_channel(txact, channel)
 
             self.logger.info(f"Processing {len(voice_channels)} voice channels...")
             for channel in voice_channels:
-                self.sql.upsert_voice_channel(trans, channel)
+                self.sql.upsert_voice_channel(txact, channel)
 
     async def on_ready(self):
         # Print welcome string
@@ -196,8 +196,8 @@ class EventIngestionClient(discord.Client):
 
         if not self.sql_init:
             self.logger.info("Initializing SQL lookup tables...")
-            with self.sql.transaction() as trans:
-                self._init_sql(trans)
+            with self.sql.transaction() as txact:
+                self._init_sql(txact)
                 self.sql_init = True
 
         # All done setting up
@@ -212,8 +212,8 @@ class EventIngestionClient(discord.Client):
 
         self._log(message, 'created')
 
-        with self.sql.transaction() as trans:
-            self.sql.add_message(trans, message)
+        with self.sql.transaction() as txact:
+            self.sql.add_message(txact, message)
 
     async def on_message_edit(self, before, after):
         self._log_ignored(f"Message id {after.id} edited")
@@ -222,8 +222,8 @@ class EventIngestionClient(discord.Client):
 
         self._log(after, 'edited')
 
-        with self.sql.transaction() as trans:
-            self.sql.edit_message(trans, before, after)
+        with self.sql.transaction() as txact:
+            self.sql.edit_message(txact, before, after)
 
     async def on_message_delete(self, message):
         self._log_ignored(f"Message id {message.id} deleted")
@@ -232,8 +232,8 @@ class EventIngestionClient(discord.Client):
 
         self._log(message, 'deleted')
 
-        with self.sql.transaction() as trans:
-            self.sql.remove_message(trans, message)
+        with self.sql.transaction() as txact:
+            self.sql.remove_message(txact, message)
 
     async def on_typing(self, channel, user, when):
         self._log_ignored(f"User id {user.id} is typing")
@@ -242,8 +242,8 @@ class EventIngestionClient(discord.Client):
 
         self._log_typing(channel, user)
 
-        with self.sql.transaction() as trans:
-            self.sql.typing(trans, channel, user, when)
+        with self.sql.transaction() as txact:
+            self.sql.typing(txact, channel, user, when)
 
     async def on_reaction_add(self, reaction, user):
         self._log_ignored(f"Reaction {reaction.emoji} added")
@@ -252,8 +252,8 @@ class EventIngestionClient(discord.Client):
 
         self._log_react(reaction, user, 'reacted with')
 
-        with self.sql.transaction() as trans:
-            self.sql.add_reaction(trans, reaction, user)
+        with self.sql.transaction() as txact:
+            self.sql.add_reaction(txact, reaction, user)
 
     async def on_reaction_remove(self, reaction, user):
         self._log_ignored(f"Reaction {reaction.emoji} removed")
@@ -262,8 +262,8 @@ class EventIngestionClient(discord.Client):
 
         self._log_react(reaction, user, 'removed a reaction of ')
 
-        with self.sql.transaction() as trans:
-            self.sql.remove_reaction(trans, reaction, user)
+        with self.sql.transaction() as txact:
+            self.sql.remove_reaction(txact, reaction, user)
 
     async def on_reaction_clear(self, message, reactions):
         self._log_ignored(f"Reactions from {message.id} cleared")
@@ -272,8 +272,8 @@ class EventIngestionClient(discord.Client):
 
         self.logger.info(f"All reactions on message id {message.id} cleared")
 
-        with self.sql.transaction() as trans:
-            self.sql.clear_reactions(trans, message)
+        with self.sql.transaction() as txact:
+            self.sql.clear_reactions(txact, message)
 
     async def on_guild_channel_create(self, channel):
         self._log_ignored(f"Channel was created in guild {channel.guild.id}")
@@ -282,13 +282,13 @@ class EventIngestionClient(discord.Client):
 
         if isinstance(channel, discord.VoiceChannel):
             self.logger.info(f"Voice channel {channel.name} deleted in {channel.guild.name}")
-            with self.sql.transaction() as trans:
-                self.sql.add_voice_channel(trans, channel)
+            with self.sql.transaction() as txact:
+                self.sql.add_voice_channel(txact, channel)
             return
 
         self.logger.info(f"Channel #{channel.name} created in {channel.guild.name}")
-        with self.sql.transaction() as trans:
-            self.sql.add_channel(trans, channel)
+        with self.sql.transaction() as txact:
+            self.sql.add_channel(txact, channel)
 
         # pylint: disable=not-callable
         hook = self.hooks['on_guild_channel_create']
@@ -303,13 +303,13 @@ class EventIngestionClient(discord.Client):
 
         if isinstance(channel, discord.VoiceChannel):
             self.logger.info(f"Voice channel {channel.name} deleted in {channel.guild.name}")
-            with self.sql.transaction() as trans:
-                self.sql.remove_voice_channel(trans, channel)
+            with self.sql.transaction() as txact:
+                self.sql.remove_voice_channel(txact, channel)
             return
 
         self.logger.info(f"Channel #{channel.name} deleted in {channel.guild.name}")
-        with self.sql.transaction() as trans:
-            self.sql.remove_channel(trans, channel)
+        with self.sql.transaction() as txact:
+            self.sql.remove_channel(txact, channel)
 
         # pylint: disable=not-callable
         hook = self.hooks['on_guild_channel_delete']
@@ -330,8 +330,8 @@ class EventIngestionClient(discord.Client):
         if isinstance(after, discord.TextChannel):
             self.logger.info(f"Channel #{before.name}{changed} was changed in {after.guild.name}")
 
-            with self.sql.transaction() as trans:
-                self.sql.update_channel(trans, after)
+            with self.sql.transaction() as txact:
+                self.sql.update_channel(txact, after)
 
             # pylint: disable=not-callable
             hook = self.hooks['on_guild_channel_update']
@@ -341,13 +341,13 @@ class EventIngestionClient(discord.Client):
         elif isinstance(after, discord.VoiceChannel):
             self.logger.info("Voice channel {before.name}{changed} was changed in {after.guild.name}")
 
-            with self.sql.transaction() as trans:
-                self.sql.update_voice_channel(trans, after)
+            with self.sql.transaction() as txact:
+                self.sql.update_voice_channel(txact, after)
         elif isinstance(after, discord.CategoryChannel):
             self.logger.info(f"Channel category {before.name}{changed} was changed in {after.guild.name}")
 
-            with self.sql.transaction() as trans:
-                self.sql.update_channel_category(trans, after)
+            with self.sql.transaction() as txact:
+                self.sql.update_channel_category(txact, after)
 
     async def on_guild_channel_pins_update(self, channel, last_pin):
         self._log_ignored(f"Channel {channel.id} got a pin update")
@@ -364,9 +364,9 @@ class EventIngestionClient(discord.Client):
 
         self.logger.info(f"Member {member.name} has joined {member.guild.name}")
 
-        with self.sql.transaction() as trans:
-            self.sql.upsert_user(trans, member)
-            self.sql.upsert_member(trans, member)
+        with self.sql.transaction() as txact:
+            self.sql.upsert_user(txact, member)
+            self.sql.upsert_member(txact, member)
 
     async def on_member_remove(self, member):
         self._log_ignored(f"Member {member.id} left guild {member.guild.id}")
@@ -375,9 +375,9 @@ class EventIngestionClient(discord.Client):
 
         self.logger.info(f"Member {member.name} has left {member.guild.name}")
 
-        with self.sql.transaction() as trans:
-            self.sql.remove_user(trans, member)
-            self.sql.remove_member(trans, member)
+        with self.sql.transaction() as txact:
+            self.sql.remove_user(txact, member)
+            self.sql.remove_member(txact, member)
 
     async def on_member_update(self, before, after):
         self._log_ignored(f"Member {after.id} was updated in guild {after.guild.id}")
@@ -394,9 +394,9 @@ class EventIngestionClient(discord.Client):
             changed = ''
         self.logger.info(f"Member {before.display_name}{changed} was changed in {after.guild.name}")
 
-        with self.sql.transaction() as trans:
-            self.sql.update_user(trans, after)
-            self.sql.update_member(trans, after)
+        with self.sql.transaction() as txact:
+            self.sql.update_user(txact, after)
+            self.sql.update_member(txact, after)
 
     async def on_guild_role_create(self, role):
         self._log_ignored(f"Role {role.id} was created in guild {role.guild.id}")
@@ -405,8 +405,8 @@ class EventIngestionClient(discord.Client):
 
         self.logger.info(f"Role {role.name} was created in {role.guild.name}")
 
-        with self.sql.transaction() as trans:
-            self.sql.add_role(trans, role)
+        with self.sql.transaction() as txact:
+            self.sql.add_role(txact, role)
 
     async def on_guild_role_delete(self, role):
         self._log_ignored(f"Role {role.id} was created in guild {role.guild.id}")
@@ -415,8 +415,8 @@ class EventIngestionClient(discord.Client):
 
         self.logger.info(f"Role {role.name} was deleted in {role.guild.name}")
 
-        with self.sql.transaction() as trans:
-            self.sql.remove_role(trans, role)
+        with self.sql.transaction() as txact:
+            self.sql.remove_role(txact, role)
 
     async def on_guild_role_update(self, before, after):
         self._log_ignored(f"Role {after.id} was created in guild {after.guild.id}")
@@ -429,15 +429,15 @@ class EventIngestionClient(discord.Client):
             changed = ''
         self.logger.info(f"Role {before.name}{changed} was changed in {after.guild.name}")
 
-        with self.sql.transaction() as trans:
-            self.sql.update_role(trans, after)
+        with self.sql.transaction() as txact:
+            self.sql.update_role(txact, after)
 
     async def on_guild_emojis_update(self, guild, before, after):
         before = set(before)
         after = set(before)
 
-        with self.sql.transaction() as trans:
+        with self.sql.transaction() as txact:
             for emoji in after - before:
-                self.sql.add_emoji(trans, emoji)
+                self.sql.add_emoji(txact, emoji)
             for emoji in before - after:
-                self.sql.remove_emoji(trans, emoji)
+                self.sql.remove_emoji(txact, emoji)

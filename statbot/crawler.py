@@ -66,11 +66,11 @@ class AbstractCrawler:
         pass
 
     @abc.abstractmethod
-    async def write(self, trans, source, events):
+    async def write(self, txact, source, events):
         pass
 
     @abc.abstractmethod
-    async def update(self, trans, source, last_id):
+    async def update(self, txact, source, last_id):
         pass
 
     def start(self):
@@ -128,10 +128,10 @@ class AbstractCrawler:
             self.logger.info(f"{self.name}: got group of events from queue")
 
             try:
-                with self.sql.transaction() as trans:
+                with self.sql.transaction() as txact:
                     if events is not None:
-                        await self.write(trans, source, events)
-                    await self.update(trans, source, last_id)
+                        await self.write(txact, source, events)
+                    await self.update(txact, source, last_id)
             except SQLAlchemyError:
                 self.logger.error(f"{self.name}: error during event write", exc_info=1)
 
@@ -153,13 +153,13 @@ class HistoryCrawler(AbstractCrawler):
         return None
 
     async def init(self):
-        with self.sql.transaction() as trans:
+        with self.sql.transaction() as txact:
             for guild in map(self.client.get_guild, self.config['guild-ids']):
                 for channel in guild.text_channels:
                     if channel.permissions_for(guild.me).read_message_history:
-                        last_id = self.sql.lookup_channel_crawl(trans, channel)
+                        last_id = self.sql.lookup_channel_crawl(txact, channel)
                         if last_id is None:
-                            self.sql.insert_channel_crawl(trans, channel, 0)
+                            self.sql.insert_channel_crawl(txact, channel, 0)
                         self.progress[channel] = last_id or 0
 
         self.client.hooks['on_guild_channel_create'] = self._channel_create_hook
@@ -181,10 +181,10 @@ class HistoryCrawler(AbstractCrawler):
             self.logger.info("No messages found in this range")
             return None
 
-    async def write(self, trans, source, messages):
+    async def write(self, txact, source, messages):
         # pylint: disable=arguments-differ
         for message in messages:
-            self.sql.insert_message(trans, message)
+            self.sql.insert_message(txact, message)
             for reaction in message.reactions:
                 try:
                     users = await reaction.users().flatten()
@@ -192,28 +192,28 @@ class HistoryCrawler(AbstractCrawler):
                     self.logger.warn("Unable to find reaction users", exc_info=1)
                     users = []
 
-                self.sql.upsert_emoji(trans, reaction.emoji)
-                self.sql.insert_reaction(trans, reaction, users)
+                self.sql.upsert_emoji(txact, reaction.emoji)
+                self.sql.insert_reaction(txact, reaction, users)
 
-    async def update(self, trans, channel, last_id):
+    async def update(self, txact, channel, last_id):
         # pylint: disable=arguments-differ
-        self.sql.update_channel_crawl(trans, channel, last_id)
+        self.sql.update_channel_crawl(txact, channel, last_id)
 
     def _create_progress(self, channel):
         self.progress[channel] = None
 
-        with self.sql.transaction() as trans:
-            self.sql.insert_channel_crawl(trans, channel, 0)
+        with self.sql.transaction() as txact:
+            self.sql.insert_channel_crawl(txact, channel, 0)
 
     def _update_progress(self, channel):
-        with self.sql.transaction() as trans:
-            self.sql.update_channel_crawl(trans, channel, self.progress[channel])
+        with self.sql.transaction() as txact:
+            self.sql.update_channel_crawl(txact, channel, self.progress[channel])
 
     def _delete_progress(self, channel):
         self.progress.pop(channel, None)
 
-        with self.sql.transaction() as trans:
-            self.sql.delete_channel_crawl(trans, channel)
+        with self.sql.transaction() as txact:
+            self.sql.delete_channel_crawl(txact, channel)
 
     async def _channel_create_hook(self, channel):
         if not self._channel_ok(channel) or channel in self.progress:
@@ -245,12 +245,12 @@ class AuditLogCrawler(AbstractCrawler):
         AbstractCrawler.__init__(self, 'Audit Log', client, sql, config, logger, continuous=True)
 
     async def init(self):
-        with self.sql.transaction() as trans:
+        with self.sql.transaction() as txact:
             for guild in map(self.client.get_guild, self.config['guild-ids']):
                 if guild.me.guild_permissions.view_audit_log:
-                    last_id = self.sql.lookup_audit_log_crawl(trans, guild)
+                    last_id = self.sql.lookup_audit_log_crawl(txact, guild)
                     if last_id is None:
-                        self.sql.insert_audit_log_crawl(trans, guild, 0)
+                        self.sql.insert_audit_log_crawl(txact, guild, 0)
                     self.progress[guild] = last_id or 0
 
     async def read(self, guild, last_id):
@@ -272,11 +272,11 @@ class AuditLogCrawler(AbstractCrawler):
             self.logger.info("No audit log entries found in this range")
             return None
 
-    async def write(self, trans, guild, entries):
+    async def write(self, txact, guild, entries):
         # pylint: disable=arguments-differ
         for entry in entries:
-            self.sql.insert_audit_log_entry(trans, guild, entry)
+            self.sql.insert_audit_log_entry(txact, guild, entry)
 
-    async def update(self, trans, guild, last_id):
+    async def update(self, txact, guild, last_id):
         # pylint: disable=arguments-differ
-        self.sql.update_audit_log_crawl(trans, guild, last_id)
+        self.sql.update_audit_log_crawl(txact, guild, last_id)
