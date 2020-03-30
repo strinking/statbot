@@ -122,7 +122,7 @@ if __name__ == '__main__':
     config, valid = load_config(args.config_file, main_logger)
     if not valid:
         main_logger.error("Configuration file was invalid.")
-        exit(1)
+        sys.exit(1)
 
     # Override configuration settings
     verbosity = getattr(args, 'verbosity', 0)
