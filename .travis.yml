@@ -26,8 +26,7 @@ install:
   - pip install pylint
 
 before_script:
-  - psql -c 'create database statbot_test;' -U postgres
-  - psql -c 'create user statbot_test; grant all privileges on database statbot_test to statbot_test;' -U postgres
+  - psql -f .travis/setup.sql -U postgres
 
 script:
   - python3 -m unittest --verbose
