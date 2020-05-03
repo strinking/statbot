@@ -10,7 +10,7 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
-from . import audit_log, cache, client, config, emoji, mention, sql, util
+from . import audit_log, cache, client, config, download, emoji, mention, sql, util
 
 __all__ = [
     "__version__",
@@ -18,6 +18,7 @@ __all__ = [
     "cache",
     "client",
     "config",
+    "download",
     "emoji",
     "mention",
     "sql",
