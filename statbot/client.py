@@ -14,10 +14,10 @@ import re
 import sys
 
 from datetime import datetime
+from io import BytesIO
 import asyncio
 import discord
 
-from .download import download_link
 from .emoji import EmojiData
 from .util import null_logger
 
@@ -461,8 +461,11 @@ class EventIngestionClient(discord.Client):
             if before.name != after.name:
                 self.sql.add_username(txact, before, now, after.name)
 
-    async def get_avatar(self, avatar_url):
-        avatar = await download_link(avatar_url)
+    async def get_avatar(self, asset):
+        avatar = BytesIO()
+        avatar_url = str(asset)
+        await asset.save(avatar)
+
         match = EXTENSION_REGEX.findall(avatar_url)
         if not match:
             raise ValueError(f"Avatar URL does not match extension regex: {avatar_url}")
