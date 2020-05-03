@@ -16,10 +16,27 @@ import functools
 import random
 
 import discord
-from sqlalchemy import create_engine, and_
-from sqlalchemy import ARRAY, Boolean, BigInteger, Column, DateTime, Enum
-from sqlalchemy import Integer, JSON, SmallInteger, String, Table, Unicode, UnicodeText
-from sqlalchemy import ForeignKey, MetaData, UniqueConstraint
+from sqlalchemy import (
+    create_engine,
+    and_,
+    ARRAY,
+    Boolean,
+    BigInteger,
+    Column,
+    DateTime,
+    Enum,
+    Integer,
+    JSON,
+    LargeBinary,
+    SmallInteger,
+    String,
+    Table,
+    Unicode,
+    UnicodeText,
+    ForeignKey,
+    MetaData,
+    UniqueConstraint,
+)
 from sqlalchemy.sql import select
 from sqlalchemy.dialects.postgresql import insert as p_insert
 
@@ -246,6 +263,9 @@ class DiscordSqlHandler:
         "tb_users",
         "tb_guild_membership",
         "tb_role_membership",
+        "tb_alias_avatars",
+        "tb_alias_usernames",
+        "tb_alias_nicknames",
         "tb_emojis",
         "tb_roles",
         "tb_audit_log",
@@ -451,6 +471,28 @@ class DiscordSqlHandler:
             Column("guild_id", BigInteger, ForeignKey("guilds.guild_id")),
             Column("int_user_id", BigInteger, ForeignKey("users.int_user_id")),
             UniqueConstraint("role_id", "int_user_id", name="uq_role_membership"),
+        )
+        self.tb_alias_avatars = Table(
+            "alias_avatars",
+            meta,
+            Column("user_id", BigInteger, primary_key=True),
+            Column("timestamp", DateTime, primary_key=True),
+            Column("avatar", LargeBinary),
+            Column("avatar_ext", String),
+        )
+        self.tb_alias_usernames = Table(
+            "alias_usernames",
+            meta,
+            Column("user_id", BigInteger, primary_key=True),
+            Column("timestamp", DateTime, primary_key=True),
+            Column("username", Unicode),
+        )
+        self.tb_alias_nicknames = Table(
+            "alias_nicknames",
+            meta,
+            Column("user_id", BigInteger, primary_key=True),
+            Column("timestamp", DateTime, primary_key=True),
+            Column("nickname", Unicode),
         )
         self.tb_emojis = Table(
             "emojis",
