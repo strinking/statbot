@@ -13,8 +13,9 @@
 from enum import Enum
 
 __all__ = [
-    'MentionType',
+    "MentionType",
 ]
+
 
 class MentionType(Enum):
     USER = 0

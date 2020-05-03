@@ -14,9 +14,10 @@ import hashlib
 import struct
 
 __all__ = [
-    'null_logger',
-    'int_hash',
+    "null_logger",
+    "int_hash",
 ]
+
 
 class _NullLogger:
     __slots__ = ()
@@ -36,10 +37,12 @@ class _NullLogger:
     def error(self, *args, **kwargs):
         pass
 
+
 null_logger = _NullLogger()
 
+
 def int_hash(n):
-    bytez = struct.pack('>q', n)
+    bytez = struct.pack(">q", n)
     hashbytes = hashlib.sha512(bytez).digest()
-    result, = struct.unpack('>q', hashbytes[24:32])
+    (result,) = struct.unpack(">q", hashbytes[24:32])
     return result

@@ -19,31 +19,33 @@ from .emoji import EmojiData
 from .util import null_logger
 
 __all__ = [
-    'EventIngestionClient',
+    "EventIngestionClient",
 ]
 
+
 def member_needs_update(before, after):
-    '''
+    """
     See if the given member update is something
     we care about.
 
     Returns 'False' for no difference or
     change we will ignore.
-    '''
+    """
 
-    for attr in ('name', 'discriminator', 'nick', 'avatar', 'roles'):
+    for attr in ("name", "discriminator", "nick", "avatar", "roles"):
         if getattr(before, attr) != getattr(after, attr):
             return True
     return False
 
+
 class EventIngestionClient(discord.Client):
     __slots__ = (
-        'config',
-        'logger',
-        'sql',
-        'ready',
-        'sql_init',
-        'hooks',
+        "config",
+        "logger",
+        "sql",
+        "ready",
+        "sql_init",
+        "hooks",
     )
 
     def __init__(self, config, sql, logger=null_logger):
@@ -54,13 +56,13 @@ class EventIngestionClient(discord.Client):
         self.ready = asyncio.Event()
         self.sql_init = False
         self.hooks = {
-            'on_guild_channel_create': None,
-            'on_guild_channel_delete': None,
-            'on_guild_channel_update': None,
+            "on_guild_channel_create": None,
+            "on_guild_channel_delete": None,
+            "on_guild_channel_update": None,
         }
 
     def run_with_token(self):
-        return self.run(self.config['bot']['token'])
+        return self.run(self.config["bot"]["token"])
 
     async def wait_until_ready(self):
         # Override wait method to wait until SQL data is also ready
@@ -70,11 +72,11 @@ class EventIngestionClient(discord.Client):
     async def _accept_message(self, message):
         await self.wait_until_ready()
 
-        if not hasattr(message, 'guild'):
+        if not hasattr(message, "guild"):
             self._log_ignored("Message not from a guild.")
             self._log_ignored("Ignoring message.")
             return False
-        elif getattr(message.guild, 'id', None) not in self.config['guild-ids']:
+        elif getattr(message.guild, "id", None) not in self.config["guild-ids"]:
             self._log_ignored("Message from a guild we don't care about.")
             self._log_ignored("Ignoring message.")
             return False
@@ -87,10 +89,10 @@ class EventIngestionClient(discord.Client):
     async def _accept_channel(self, channel):
         await self.wait_until_ready()
 
-        if not hasattr(channel, 'guild'):
+        if not hasattr(channel, "guild"):
             self._log_ignored("Channel not in a guild.")
             self._log_ignored("Ignoring message.")
-        elif getattr(channel.guild, 'id', None) not in self.config['guild-ids']:
+        elif getattr(channel.guild, "id", None) not in self.config["guild-ids"]:
             self._log_ignored("Event from a guild we don't care about.")
             self._log_ignored("Ignoring message.")
             return False
@@ -100,7 +102,7 @@ class EventIngestionClient(discord.Client):
     async def _accept_guild(self, guild):
         await self.wait_until_ready()
 
-        if getattr(guild, 'id', None) not in self.config['guild-ids']:
+        if getattr(guild, "id", None) not in self.config["guild-ids"]:
             self._log_ignored("Event from a guild we don't care about.")
             self._log_ignored("Ignoring message.")
             return False
@@ -113,7 +115,7 @@ class EventIngestionClient(discord.Client):
         chan = message.channel.name
 
         self.logger.info(f"Message {action} by {name} in {guild} #{chan}")
-        if self.config['logger']['full-messages']:
+        if self.config["logger"]["full-messages"]:
             self.logger.info("<bom>")
             self.logger.info(message.content)
             self.logger.info("<eom>")
@@ -134,7 +136,7 @@ class EventIngestionClient(discord.Client):
         self.logger.info(f"{name} {action} {emote} (total {count}) on message id {id}")
 
     def _log_ignored(self, message):
-        if self.config['logger']['ignored-events']:
+        if self.config["logger"]["ignored-events"]:
             self.logger.debug(message)
 
     def _init_sql(self, txact):
@@ -188,7 +190,7 @@ class EventIngestionClient(discord.Client):
         # Print welcome string
         self.logger.info(f"Logged in as {self.user.name} ({self.user.id})")
         self.logger.info("Recording activity in the following guilds:")
-        for id in self.config['guild-ids']:
+        for id in self.config["guild-ids"]:
             guild = self.get_guild(id)
             if guild is not None:
                 self.logger.info(f"* {guild.name} ({id})")
@@ -212,7 +214,7 @@ class EventIngestionClient(discord.Client):
         if not await self._accept_message(message):
             return
 
-        self._log(message, 'created')
+        self._log(message, "created")
 
         with self.sql.transaction() as txact:
             self.sql.add_message(txact, message)
@@ -222,7 +224,7 @@ class EventIngestionClient(discord.Client):
         if not await self._accept_message(after):
             return
 
-        self._log(after, 'edited')
+        self._log(after, "edited")
 
         with self.sql.transaction() as txact:
             self.sql.edit_message(txact, before, after)
@@ -232,7 +234,7 @@ class EventIngestionClient(discord.Client):
         if not await self._accept_message(message):
             return
 
-        self._log(message, 'deleted')
+        self._log(message, "deleted")
 
         with self.sql.transaction() as txact:
             self.sql.remove_message(txact, message)
@@ -252,7 +254,7 @@ class EventIngestionClient(discord.Client):
         if not await self._accept_message(reaction.message):
             return
 
-        self._log_react(reaction, user, 'reacted with')
+        self._log_react(reaction, user, "reacted with")
 
         with self.sql.transaction() as txact:
             self.sql.add_reaction(txact, reaction, user)
@@ -262,7 +264,7 @@ class EventIngestionClient(discord.Client):
         if not await self._accept_message(reaction.message):
             return
 
-        self._log_react(reaction, user, 'removed a reaction of ')
+        self._log_react(reaction, user, "removed a reaction of ")
 
         with self.sql.transaction() as txact:
             self.sql.remove_reaction(txact, reaction, user)
@@ -283,7 +285,9 @@ class EventIngestionClient(discord.Client):
             return
 
         if isinstance(channel, discord.VoiceChannel):
-            self.logger.info(f"Voice channel {channel.name} deleted in {channel.guild.name}")
+            self.logger.info(
+                f"Voice channel {channel.name} deleted in {channel.guild.name}"
+            )
             with self.sql.transaction() as txact:
                 self.sql.add_voice_channel(txact, channel)
             return
@@ -293,7 +297,7 @@ class EventIngestionClient(discord.Client):
             self.sql.add_channel(txact, channel)
 
         # pylint: disable=not-callable
-        hook = self.hooks['on_guild_channel_create']
+        hook = self.hooks["on_guild_channel_create"]
         if hook:
             self.logger.debug(f"Found hook {hook!r}, calling it")
             await hook(channel)
@@ -304,7 +308,9 @@ class EventIngestionClient(discord.Client):
             return
 
         if isinstance(channel, discord.VoiceChannel):
-            self.logger.info(f"Voice channel {channel.name} deleted in {channel.guild.name}")
+            self.logger.info(
+                f"Voice channel {channel.name} deleted in {channel.guild.name}"
+            )
             with self.sql.transaction() as txact:
                 self.sql.remove_voice_channel(txact, channel)
             return
@@ -314,7 +320,7 @@ class EventIngestionClient(discord.Client):
             self.sql.remove_channel(txact, channel)
 
         # pylint: disable=not-callable
-        hook = self.hooks['on_guild_channel_delete']
+        hook = self.hooks["on_guild_channel_delete"]
         if hook:
             self.logger.debug(f"Found hook {hook!r}, calling it")
             await hook(channel)
@@ -325,28 +331,34 @@ class EventIngestionClient(discord.Client):
             return
 
         if before.name != after.name:
-            changed = f' (now {after.name})'
+            changed = f" (now {after.name})"
         else:
-            changed = ''
+            changed = ""
 
         if isinstance(after, discord.TextChannel):
-            self.logger.info(f"Channel #{before.name}{changed} was changed in {after.guild.name}")
+            self.logger.info(
+                f"Channel #{before.name}{changed} was changed in {after.guild.name}"
+            )
 
             with self.sql.transaction() as txact:
                 self.sql.update_channel(txact, after)
 
             # pylint: disable=not-callable
-            hook = self.hooks['on_guild_channel_update']
+            hook = self.hooks["on_guild_channel_update"]
             if hook:
                 self.logger.debug(f"Found hook {hook!r}, calling it")
                 await hook(before, after)
         elif isinstance(after, discord.VoiceChannel):
-            self.logger.info("Voice channel {before.name}{changed} was changed in {after.guild.name}")
+            self.logger.info(
+                "Voice channel {before.name}{changed} was changed in {after.guild.name}"
+            )
 
             with self.sql.transaction() as txact:
                 self.sql.update_voice_channel(txact, after)
         elif isinstance(after, discord.CategoryChannel):
-            self.logger.info(f"Channel category {before.name}{changed} was changed in {after.guild.name}")
+            self.logger.info(
+                f"Channel category {before.name}{changed} was changed in {after.guild.name}"
+            )
 
             with self.sql.transaction() as txact:
                 self.sql.update_channel_category(txact, after)
@@ -391,10 +403,12 @@ class EventIngestionClient(discord.Client):
             return
 
         if before.display_name != after.display_name:
-            changed = f' (now {after.name})'
+            changed = f" (now {after.name})"
         else:
-            changed = ''
-        self.logger.info(f"Member {before.display_name}{changed} was changed in {after.guild.name}")
+            changed = ""
+        self.logger.info(
+            f"Member {before.display_name}{changed} was changed in {after.guild.name}"
+        )
 
         with self.sql.transaction() as txact:
             self.sql.update_user(txact, after)
@@ -426,10 +440,12 @@ class EventIngestionClient(discord.Client):
             return
 
         if before.name != after.name:
-            changed = f' (now {after.name})'
+            changed = f" (now {after.name})"
         else:
-            changed = ''
-        self.logger.info(f"Role {before.name}{changed} was changed in {after.guild.name}")
+            changed = ""
+        self.logger.info(
+            f"Role {before.name}{changed} was changed in {after.guild.name}"
+        )
 
         with self.sql.transaction() as txact:
             self.sql.update_role(txact, after)

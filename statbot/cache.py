@@ -14,13 +14,14 @@ from collections import OrderedDict
 from collections.abc import MutableMapping
 
 __all__ = [
-    'LruCache',
+    "LruCache",
 ]
+
 
 class LruCache(MutableMapping):
     __slots__ = (
-        'store',
-        'max_size',
+        "store",
+        "max_size",
     )
 
     def __init__(self, max_size=None):

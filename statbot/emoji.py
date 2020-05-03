@@ -13,20 +13,21 @@
 import unicodedata
 
 __all__ = [
-    'EmojiData',
+    "EmojiData",
 ]
+
 
 class EmojiData:
     __slots__ = (
-        'raw',
-        'id',
-        'unicode',
-        'custom',
-        'managed',
-        'name',
-        'category',
-        'roles',
-        'guild',
+        "raw",
+        "id",
+        "unicode",
+        "custom",
+        "managed",
+        "name",
+        "category",
+        "roles",
+        "guild",
     )
 
     def __init__(self, emoji):
@@ -43,18 +44,18 @@ class EmojiData:
             self.guild = None
         else:
             self.id = emoji.id
-            self.unicode = ''
+            self.unicode = ""
             self.custom = True
-            self.managed = getattr(emoji, 'managed', None)
+            self.managed = getattr(emoji, "managed", None)
             self.name = [emoji.name]
-            self.category = ['custom']
-            self.roles = getattr(emoji, 'roles', None)
-            self.guild = getattr(emoji, 'guild', None)
+            self.category = ["custom"]
+            self.roles = getattr(emoji, "roles", None)
+            self.guild = getattr(emoji, "guild", None)
 
     @property
     def mention(self):
         if self.id:
-            return f'<:{self.name[0]}:{self.id}>'
+            return f"<:{self.name[0]}:{self.id}>"
         else:
             return self.unicode
 
@@ -64,19 +65,19 @@ class EmojiData:
 
     def values(self):
         return {
-            'emoji_id': self.id,
-            'emoji_unicode': self.unicode,
-            'is_custom': self.custom,
-            'is_managed': self.managed,
-            'is_deleted': False,
-            'name': self.name,
-            'category': self.category,
-            'roles': list(map(lambda r: r.id, self.roles or [])),
-            'guild_id': getattr(self.guild, 'id', None),
+            "emoji_id": self.id,
+            "emoji_unicode": self.unicode,
+            "is_custom": self.custom,
+            "is_managed": self.managed,
+            "is_deleted": False,
+            "name": self.name,
+            "category": self.category,
+            "roles": list(map(lambda r: r.id, self.roles or [])),
+            "guild_id": getattr(self.guild, "id", None),
         }
 
     def __str__(self):
         return str(self.id or self.unicode)
 
     def __repr__(self):
-        return f'<EmojiData {self}>'
+        return f"<EmojiData {self}>"

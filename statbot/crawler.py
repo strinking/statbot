@@ -20,22 +20,23 @@ import discord
 from .util import null_logger
 
 __all__ = [
-    'AbstractCrawler',
-    'HistoryCrawler',
-    'AuditLogCrawler',
+    "AbstractCrawler",
+    "HistoryCrawler",
+    "AuditLogCrawler",
 ]
+
 
 class AbstractCrawler:
     __slots__ = (
-        'name',
-        'client',
-        'sql',
-        'config',
-        'logger',
-        'progress',
-        'queue',
-        'continuous',
-        'current',
+        "name",
+        "client",
+        "sql",
+        "config",
+        "logger",
+        "progress",
+        "queue",
+        "continuous",
+        "current",
     )
 
     def __init__(self, name, client, sql, config, logger=null_logger, continuous=False):
@@ -44,8 +45,8 @@ class AbstractCrawler:
         self.sql = sql
         self.config = config
         self.logger = logger
-        self.progress = {} # { stream : last_id }
-        self.queue = asyncio.Queue(self.config['crawler']['queue-size'])
+        self.progress = {}  # { stream : last_id }
+        self.queue = asyncio.Queue(self.config["crawler"]["queue-size"])
         self.continuous = continuous
         self.current = None
 
@@ -84,8 +85,8 @@ class AbstractCrawler:
         await self.client.wait_until_ready()
         await self.init()
 
-        yield_delay = self.config['crawler']['delays']['yield']
-        long_delay = self.config['crawler']['delays']['empty-source']
+        yield_delay = self.config["crawler"]["delays"]["yield"]
+        long_delay = self.config["crawler"]["delays"]["empty-source"]
 
         done = dict.fromkeys(self.progress.keys(), False)
         while True:
@@ -111,10 +112,14 @@ class AbstractCrawler:
                         await self.queue.put((source, events, last_id))
                         self.progress[source] = last_id
                 except discord.DiscordException:
-                    self.logger.error(f"{self.name}: error during event read", exc_info=1)
+                    self.logger.error(
+                        f"{self.name}: error during event read", exc_info=1
+                    )
 
             if all(done.values()):
-                self.logger.info(f"{self.name}: all sources are exhausted, sleeping for a while...")
+                self.logger.info(
+                    f"{self.name}: all sources are exhausted, sleeping for a while..."
+                )
                 delay = long_delay
             else:
                 delay = yield_delay
@@ -137,12 +142,13 @@ class AbstractCrawler:
 
             self.queue.task_done()
 
+
 class HistoryCrawler(AbstractCrawler):
     def __init__(self, client, sql, config, logger=null_logger):
-        AbstractCrawler.__init__(self, 'Channels', client, sql, config, logger)
+        AbstractCrawler.__init__(self, "Channels", client, sql, config, logger)
 
     def _channel_ok(self, channel):
-        if channel.guild.id in self.config['guild-ids']:
+        if channel.guild.id in self.config["guild-ids"]:
             return channel.permissions_for(channel.guild.me).read_message_history
         return False
 
@@ -154,7 +160,7 @@ class HistoryCrawler(AbstractCrawler):
 
     async def init(self):
         with self.sql.transaction() as txact:
-            for guild in map(self.client.get_guild, self.config['guild-ids']):
+            for guild in map(self.client.get_guild, self.config["guild-ids"]):
                 for channel in guild.text_channels:
                     if channel.permissions_for(guild.me).read_message_history:
                         last_id = self.sql.lookup_channel_crawl(txact, channel)
@@ -162,15 +168,17 @@ class HistoryCrawler(AbstractCrawler):
                             self.sql.insert_channel_crawl(txact, channel, 0)
                         self.progress[channel] = last_id or 0
 
-        self.client.hooks['on_guild_channel_create'] = self._channel_create_hook
-        self.client.hooks['on_guild_channel_delete'] = self._channel_delete_hook
-        self.client.hooks['on_guild_channel_update'] = self._channel_update_hook
+        self.client.hooks["on_guild_channel_create"] = self._channel_create_hook
+        self.client.hooks["on_guild_channel_delete"] = self._channel_delete_hook
+        self.client.hooks["on_guild_channel_update"] = self._channel_update_hook
 
     async def read(self, channel, last_id):
         # pylint: disable=arguments-differ
         last = discord.utils.snowflake_time(last_id)
-        limit = self.config['crawler']['batch-size']
-        self.logger.info(f"Reading through channel {channel.id} ({channel.guild.name} #{channel.name}):")
+        limit = self.config["crawler"]["batch-size"]
+        self.logger.info(
+            f"Reading through channel {channel.id} ({channel.guild.name} #{channel.name}):"
+        )
         self.logger.info(f"Starting from ID {last_id} ({last})")
 
         messages = await channel.history(after=last, limit=limit).flatten()
@@ -240,13 +248,16 @@ class HistoryCrawler(AbstractCrawler):
             self.logger.info(f"Updating #{after.name} - removing from list")
             self._delete_progress(after)
 
+
 class AuditLogCrawler(AbstractCrawler):
     def __init__(self, client, sql, config, logger=null_logger):
-        AbstractCrawler.__init__(self, 'Audit Log', client, sql, config, logger, continuous=True)
+        AbstractCrawler.__init__(
+            self, "Audit Log", client, sql, config, logger, continuous=True
+        )
 
     async def init(self):
         with self.sql.transaction() as txact:
-            for guild in map(self.client.get_guild, self.config['guild-ids']):
+            for guild in map(self.client.get_guild, self.config["guild-ids"]):
                 if guild.me.guild_permissions.view_audit_log:
                     last_id = self.sql.lookup_audit_log_crawl(txact, guild)
                     if last_id is None:
@@ -256,7 +267,7 @@ class AuditLogCrawler(AbstractCrawler):
     async def read(self, guild, last_id):
         # pylint: disable=arguments-differ
         last = discord.utils.snowflake_time(last_id)
-        limit = self.config['crawler']['batch-size']
+        limit = self.config["crawler"]["batch-size"]
         self.logger.info(f"Reading through {guild.name}'s audit logs")
         self.logger.info(f"Starting from ID {last_id} ({last})")
 

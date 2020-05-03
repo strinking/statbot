@@ -13,15 +13,15 @@
 from . import audit_log, cache, client, config, emoji, mention, sql, util
 
 __all__ = [
-    '__version__',
-    'audit_log',
-    'cache',
-    'client',
-    'config',
-    'emoji',
-    'mention',
-    'sql',
-    'util',
+    "__version__",
+    "audit_log",
+    "cache",
+    "client",
+    "config",
+    "emoji",
+    "mention",
+    "sql",
+    "util",
 ]
 
-__version__ = '0.7.0'
+__version__ = "0.7.0"
