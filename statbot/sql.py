@@ -1231,6 +1231,41 @@ class DiscordSqlHandler:
         self._delete_role_membership(txact, member)
         self._insert_role_membership(txact, member)
 
+    # User alias information
+    def add_avatar(self, txact, user, timestamp, avatar, ext):
+        self.logger.debug("Adding user avatar update for '%s' (%d)", user.name, user.id)
+        ins = self.tb_alias_avatars.insert().values(
+            user_id=user.id,
+            timestamp=timestamp,
+            avatar=avatar.getbuffer().tobytes(),
+            avatar_ext=ext,
+        )
+        txact.execute(ins)
+
+    def add_username(self, txact, user, timestamp, username):
+        self.logger.debug(
+            "Adding username update for '%s', now '%s' (%d)",
+            user.name,
+            username,
+            user.id,
+        )
+        ins = self.tb_alias_usernames.insert().values(
+            user_id=user.id, timestamp=timestamp, username=username
+        )
+        txact.execute(ins)
+
+    def add_nickname(self, txact, user, timestamp, nickname):
+        self.logger.debug(
+            "Adding nickname update for '%s', now '%s' (%d)",
+            user.display_name,
+            nickname,
+            user.id,
+        )
+        ins = self.tb_alias_nicknames.insert().values(
+            user_id=user.id, timestamp=timestamp, nickname=nickname
+        )
+        txact.execute(ins)
+
     # Emojis
     def add_emoji(self, txact, emoji):
         data = EmojiData(emoji)
