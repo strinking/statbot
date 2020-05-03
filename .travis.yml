@@ -1,4 +1,6 @@
 language: python
+dist: xenial
+os: linux
 
 python:
   - '3.6'
@@ -13,7 +15,7 @@ services:
 addons:
   postgresql: '9.5' # on_conflict requires 9.5+
 
-matrix:
+jobs:
   allow_failures:
     - python: 'nightly'
 
