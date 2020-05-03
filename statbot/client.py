@@ -28,6 +28,21 @@ __all__ = [
 EXTENSION_REGEX = re.compile(r"/\w+\.(\w+)(?:\?.+)?$")
 
 
+def user_needs_update(before, after):
+    """
+    See if the given user update is something
+    we care about.
+
+    Returns 'False' for no difference or
+    change we will ignore.
+    """
+
+    for attr in ("name", "discriminator", "avatar"):
+        if getattr(before, attr) != getattr(after, attr):
+            return True
+    return False
+
+
 def member_needs_update(before, after):
     """
     See if the given member update is something
@@ -37,7 +52,7 @@ def member_needs_update(before, after):
     change we will ignore.
     """
 
-    for attr in ("name", "discriminator", "nick", "avatar", "roles"):
+    for attr in ("nick", "avatar", "roles"):
         if getattr(before, attr) != getattr(after, attr):
             return True
     return False
@@ -417,8 +432,27 @@ class EventIngestionClient(discord.Client):
 
         with self.sql.transaction() as txact:
             now = datetime.now()
-            self.sql.update_user(txact, after)
             self.sql.update_member(txact, after)
+
+            if before.nick != after.nick and after.nick is not None:
+                self.sql.add_nickname(txact, before, now, after.nick)
+
+    async def on_user_update(self, before, after):
+        self._log_ignored(f"User {after.id} was updated")
+
+        if not user_needs_update(before, after):
+            self._log_ignored("We don't care about this kind user update")
+            return
+
+        if before.display_name != after.display_name:
+            changed = f" (now {after.name})"
+        else:
+            changed = ""
+        self.logger.info(f"User {before.display_name}{changed} was changed")
+
+        with self.sql.transaction() as txact:
+            now = datetime.now()
+            self.sql.update_user(txact, after)
 
             if before.avatar != after.avatar:
                 avatar, avatar_ext = await self.get_avatar(after.avatar_url)
@@ -426,9 +460,6 @@ class EventIngestionClient(discord.Client):
 
             if before.name != after.name:
                 self.sql.add_username(txact, before, now, after.name)
-
-            if before.nick != after.nick and after.nick is not None:
-                self.sql.add_nickname(txact, before, now, after.nick)
 
     async def get_avatar(self, avatar_url):
         avatar = await download_link(avatar_url)
