@@ -263,9 +263,9 @@ class DiscordSqlHandler:
         "tb_users",
         "tb_guild_membership",
         "tb_role_membership",
-        "tb_alias_avatars",
-        "tb_alias_usernames",
-        "tb_alias_nicknames",
+        "tb_avatar_history",
+        "tb_username_history",
+        "tb_nickname_history",
         "tb_emojis",
         "tb_roles",
         "tb_audit_log",
@@ -472,23 +472,23 @@ class DiscordSqlHandler:
             Column("int_user_id", BigInteger, ForeignKey("users.int_user_id")),
             UniqueConstraint("role_id", "int_user_id", name="uq_role_membership"),
         )
-        self.tb_alias_avatars = Table(
-            "alias_avatars",
+        self.tb_avatar_history = Table(
+            "avatar_history",
             meta,
             Column("user_id", BigInteger, primary_key=True),
             Column("timestamp", DateTime, primary_key=True),
             Column("avatar", LargeBinary),
             Column("avatar_ext", String),
         )
-        self.tb_alias_usernames = Table(
-            "alias_usernames",
+        self.tb_username_history = Table(
+            "username_history",
             meta,
             Column("user_id", BigInteger, primary_key=True),
             Column("timestamp", DateTime, primary_key=True),
             Column("username", Unicode),
         )
-        self.tb_alias_nicknames = Table(
-            "alias_nicknames",
+        self.tb_nickname_history = Table(
+            "nickname_history",
             meta,
             Column("user_id", BigInteger, primary_key=True),
             Column("timestamp", DateTime, primary_key=True),
@@ -1234,7 +1234,7 @@ class DiscordSqlHandler:
     # User alias information
     def add_avatar(self, txact, user, timestamp, avatar, ext):
         self.logger.debug("Adding user avatar update for '%s' (%d)", user.name, user.id)
-        ins = self.tb_alias_avatars.insert().values(
+        ins = self.tb_avatar_history.insert().values(
             user_id=user.id,
             timestamp=timestamp,
             avatar=avatar.getbuffer().tobytes(),
@@ -1249,7 +1249,7 @@ class DiscordSqlHandler:
             username,
             user.id,
         )
-        ins = self.tb_alias_usernames.insert().values(
+        ins = self.tb_username_history.insert().values(
             user_id=user.id, timestamp=timestamp, username=username
         )
         txact.execute(ins)
@@ -1261,7 +1261,7 @@ class DiscordSqlHandler:
             nickname,
             user.id,
         )
-        ins = self.tb_alias_nicknames.insert().values(
+        ins = self.tb_nickname_history.insert().values(
             user_id=user.id, timestamp=timestamp, nickname=nickname
         )
         txact.execute(ins)
