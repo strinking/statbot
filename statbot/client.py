@@ -10,17 +10,22 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
+import re
 import sys
 
+from datetime import datetime
 import asyncio
 import discord
 
+from .download import download_link
 from .emoji import EmojiData
 from .util import null_logger
 
 __all__ = [
     "EventIngestionClient",
 ]
+
+EXTENSION_REGEX = re.compile(r"/\w+\.(\w+)(?:\?.+)?$")
 
 
 def member_needs_update(before, after):
@@ -411,8 +416,28 @@ class EventIngestionClient(discord.Client):
         )
 
         with self.sql.transaction() as txact:
+            now = datetime.now()
             self.sql.update_user(txact, after)
             self.sql.update_member(txact, after)
+
+            if before.avatar != after.avatar:
+                avatar, avatar_ext = await self.get_avatar(after.avatar_url)
+                self.sql.add_avatar(txact, before, now, avatar, avatar_ext)
+
+            if before.name != after.name:
+                self.sql.add_username(txact, before, now, after.name)
+
+            if before.nick != after.nick and after.nick is not None:
+                self.sql.add_nickname(txact, before, now, after.nick)
+
+    async def get_avatar(self, avatar_url):
+        avatar = await download_link(avatar_url)
+        match = EXTENSION_REGEX.findall(avatar_url)
+        if not match:
+            raise ValueError(f"Avatar URL does not match extension regex: {avatar_url}")
+
+        avatar_ext = match[0]
+        return avatar, avatar_ext
 
     async def on_guild_role_create(self, role):
         self._log_ignored(f"Role {role.id} was created in guild {role.guild.id}")
