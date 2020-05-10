@@ -35,8 +35,10 @@ before_script:
   - psql -f .travis/setup.sql -U postgres
 
 script:
+  # Run statbot tests
   - python3 -m unittest --verbose
-  - pylint statbot
+  # Display all lints and a report
+  - pylint --reports=yes futaba
 
 notifications:
   email:
