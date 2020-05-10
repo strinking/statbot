@@ -37,4 +37,3 @@ You shouldn't. Each person who you collect data from must explicitly agree to it
 running a server you have the ability to enforce this, but that also means you may as well
 just use an actual bot account. We will not support forks that add selfbot support to statbot,
 and we will not accept patches that do so either.
-
