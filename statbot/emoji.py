@@ -17,6 +17,18 @@ __all__ = [
 ]
 
 
+def get_unicode_data(emoji):
+    try:
+        name = [unicodedata.name(ch) for ch in emoji]
+        category = [unicodedata.category(ch) for ch in emoji]
+    except ValueError:
+        # Couldn't find for codepoint
+        name = [emoji]
+        category = ["unicode_other"]
+
+    return name, category
+
+
 class EmojiData:
     __slots__ = (
         "raw",
@@ -34,12 +46,14 @@ class EmojiData:
         self.raw = emoji
 
         if isinstance(emoji, str):
+            name, category = get_unicode_data(emoji)
+
             self.id = 0
             self.unicode = emoji
             self.custom = False
             self.managed = False
-            self.name = [unicodedata.name(ch) for ch in emoji]
-            self.category = [unicodedata.category(ch) for ch in emoji]
+            self.name = name
+            self.category = category
             self.roles = []
             self.guild = None
         else:
