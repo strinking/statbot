@@ -733,7 +733,7 @@ class DiscordSqlHandler:
     def typing(self, txact, channel, user, when):
         key = (when, user.id, channel.id)
         if self.typing_cache.get(key, False):
-            self.logger.debug(f"Typing lookup is up-to-date")
+            self.logger.debug("Typing lookup is up-to-date")
             return
 
         self.logger.info(f"Inserting typing event for user {user.id}")
