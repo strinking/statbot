@@ -24,7 +24,7 @@ jobs:
     - stage: black
       python: '3.8'
       script:
-        - black --check futaba
+        - black --check statbot
   allow_failures:
     - python: 'nightly'
   fast_finish: true
@@ -42,7 +42,7 @@ script:
   # Run statbot tests
   - python3 -m unittest --verbose
   # Display all lints and a report
-  - pylint --reports=yes futaba
+  - pylint --reports=yes statbot
 
 notifications:
   email:
