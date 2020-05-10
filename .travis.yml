@@ -16,6 +16,11 @@ addons:
   postgresql: '9.5' # on_conflict requires 9.5+
 
 jobs:
+  include:
+    - stage: black
+      python: '3.8'
+      script:
+        - black --check futaba
   allow_failures:
     - python: 'nightly'
 
