@@ -23,12 +23,13 @@ jobs:
         - black --check futaba
   allow_failures:
     - python: 'nightly'
+  fast_finish: true
 
 cache: pip
 
 install:
-  - pip install --requirement requirements.txt
-  - pip install pylint
+  - pip install -r requirements.txt
+  - pip install -r requirements-dev.txt
 
 before_script:
   - psql -f .travis/setup.sql -U postgres
