@@ -1,0 +1,14 @@
+[Unit]
+Description=Statbot - the Discord SQL ingestion bot
+After=network.target
+
+[Service]
+Type=simple
+User=statbot
+ExecStart=/usr/bin/python3.7 -m statbot config.yaml
+WorkingDirectory=/home/statbot/repo
+Restart=always
+RestartSec=600
+
+[Install]
+WantedBy=multi-user.target
