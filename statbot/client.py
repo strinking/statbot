@@ -69,7 +69,7 @@ class EventIngestionClient(discord.Client):
     )
 
     def __init__(self, config, sql, logger=null_logger):
-        super().__init__()
+        super().__init__(intents=discord.Intents.all())
         self.config = config
         self.logger = logger
         self.sql = sql
