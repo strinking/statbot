@@ -603,7 +603,7 @@ class DiscordSqlHandler:
             self.logger.debug(f"Message lookup for {message.id} is already up-to-date")
             return
 
-        self.logger.info(f"Inserting message {message.id}")
+        self.logger.debug(f"Inserting message {message.id}")
         ins = self.tb_messages.insert().values(values)
         txact.execute(ins)
         self.message_cache[message.id] = values
@@ -612,7 +612,7 @@ class DiscordSqlHandler:
         self.insert_mentions(txact, message)
 
     def edit_message(self, txact, before, after):
-        self.logger.info(f"Updating message {after.id}")
+        self.logger.debug(f"Updating message {after.id}")
         upd = (
             self.tb_messages.update()
             .values(
@@ -629,7 +629,7 @@ class DiscordSqlHandler:
         self.insert_mentions(txact, after)
 
     def remove_message(self, txact, message):
-        self.logger.info(f"Deleting message {message.id}")
+        self.logger.debug(f"Deleting message {message.id}")
         upd = (
             self.tb_messages.update()
             .values(deleted_at=datetime.now())
@@ -736,7 +736,7 @@ class DiscordSqlHandler:
             self.logger.debug("Typing lookup is up-to-date")
             return
 
-        self.logger.info(f"Inserting typing event for user {user.id}")
+        self.logger.debug(f"Inserting typing event for user {user.id}")
         ins = self.tb_typing.insert().values(
             {
                 "timestamp": when,
@@ -750,7 +750,7 @@ class DiscordSqlHandler:
 
     # Reactions
     def add_reaction(self, txact, reaction, user):
-        self.logger.info(
+        self.logger.debug(
             f"Inserting live reaction for user {user.id} on message {reaction.message.id}"
         )
         self.upsert_emoji(txact, reaction.emoji)
@@ -760,7 +760,7 @@ class DiscordSqlHandler:
         txact.execute(ins)
 
     def remove_reaction(self, txact, reaction, user):
-        self.logger.info(
+        self.logger.debug(
             f"Deleting reaction for user {user.id} on message {reaction.message.id}"
         )
         data = EmojiData(reaction.emoji)
@@ -775,7 +775,7 @@ class DiscordSqlHandler:
         txact.execute(upd)
 
     def insert_reaction(self, txact, reaction, users):
-        self.logger.info(f"Inserting past reactions for {reaction.message.id}")
+        self.logger.debug(f"Inserting past reactions for {reaction.message.id}")
         self.upsert_emoji(txact, reaction.emoji)
         data = EmojiData(reaction.emoji)
         for user in users:
@@ -798,7 +798,7 @@ class DiscordSqlHandler:
             txact.execute(ins)
 
     def clear_reactions(self, txact, message):
-        self.logger.info(f"Deleting all reactions on message {message.id}")
+        self.logger.debug(f"Deleting all reactions on message {message.id}")
         upd = (
             self.tb_reactions.update()
             .values(deleted_at=datetime.now())
@@ -811,7 +811,7 @@ class DiscordSqlHandler:
         # pylint: disable=unreachable
         raise NotImplementedError
 
-        self.logger.info(f"Inserting pin for message {message.id}")
+        self.logger.debug(f"Inserting pin for message {message.id}")
         ins = self.tb_pins.insert().values(
             {
                 "pin_id": announce.id,
@@ -828,7 +828,7 @@ class DiscordSqlHandler:
         # pylint: disable=unreachable
         raise NotImplementedError
 
-        self.logger.info(f"Deleting pin for message {message.id}")
+        self.logger.debug(f"Deleting pin for message {message.id}")
         delet = (
             self.tb_pins.delete()
             .where(self.tb_pins.c.pin_id == announce.id)
@@ -1092,14 +1092,14 @@ class DiscordSqlHandler:
             self.logger.debug(f"User {user.id} already inserted.")
             return
 
-        self.logger.info(f"Inserting user {user.id}")
+        self.logger.debug(f"Inserting user {user.id}")
         values = user_values(user)
         ins = self.tb_users.insert().values(values)
         txact.execute(ins)
         self.user_cache[user.id] = values
 
     def _update_user(self, txact, user):
-        self.logger.info(f"Updating user {user.id}")
+        self.logger.debug(f"Updating user {user.id}")
         values = user_values(user)
         upd = (
             self.tb_users.update()
@@ -1116,7 +1116,7 @@ class DiscordSqlHandler:
             self.upsert_user(txact, user)
 
     def remove_user(self, txact, user):
-        self.logger.info(f"Removing user {user.id}")
+        self.logger.debug(f"Removing user {user.id}")
         upd = (
             self.tb_users.update()
             .values(is_deleted=True)
@@ -1146,7 +1146,7 @@ class DiscordSqlHandler:
 
     # Members
     def update_member(self, txact, member):
-        self.logger.info(f"Updating member data for {member.id}")
+        self.logger.debug(f"Updating member data for {member.id}")
         upd = (
             self.tb_guild_membership.update()
             .where(
@@ -1203,7 +1203,7 @@ class DiscordSqlHandler:
         #
         # pylint: disable=singleton-comparison
 
-        self.logger.info(f"Deleting old members from guild {guild.name}")
+        self.logger.debug(f"Deleting old members from guild {guild.name}")
         sel = select([self.tb_guild_membership]).where(
             and_(
                 self.tb_guild_membership.c.guild_id == guild.id,
