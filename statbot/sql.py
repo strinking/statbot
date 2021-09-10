@@ -1224,7 +1224,10 @@ class DiscordSqlHandler:
         ups = (
             p_insert(self.tb_guild_membership)
             .values(values)
-            .on_conflict_do_update(constraint="uq_guild_membership", set_=values,)
+            .on_conflict_do_update(
+                constraint="uq_guild_membership",
+                set_=values,
+            )
         )
         txact.execute(ups)
 
@@ -1349,7 +1352,10 @@ class DiscordSqlHandler:
         )
 
         ins = self.tb_channel_crawl.insert().values(
-            {"channel_id": channel.id, "last_message_id": last_id,}
+            {
+                "channel_id": channel.id,
+                "last_message_id": last_id,
+            }
         )
         txact.execute(ins)
 
@@ -1392,7 +1398,10 @@ class DiscordSqlHandler:
         self.logger.info(f"Inserting new audit log crawl progress for {guild.name}")
 
         ins = self.tb_audit_log_crawl.insert().values(
-            {"guild_id": guild.id, "last_audit_entry_id": last_id,}
+            {
+                "guild_id": guild.id,
+                "last_audit_entry_id": last_id,
+            }
         )
         txact.execute(ins)
 
