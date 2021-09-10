@@ -134,7 +134,7 @@ class EventIngestionClient(discord.Client):
         guild = message.guild.name
         chan = message.channel.name
 
-        self.logger.info(f"Message {action} by {name} in {guild} #{chan}")
+        self.logger.debug(f"Message {action} by {name} in {guild} #{chan}")
         if self.config["logger"]["full-messages"]:
             self.logger.info("<bom>")
             self.logger.info(message.content)
@@ -145,7 +145,7 @@ class EventIngestionClient(discord.Client):
         guild = channel.guild.name
         chan = channel.name
 
-        self.logger.info(f"Typing by {name} on {guild} #{chan}")
+        self.logger.debug(f"Typing by {name} on {guild} #{chan}")
 
     def _log_react(self, reaction, user, action):
         name = user.display_name
@@ -153,7 +153,7 @@ class EventIngestionClient(discord.Client):
         count = reaction.count
         id = reaction.message.id
 
-        self.logger.info(f"{name} {action} {emote} (total {count}) on message id {id}")
+        self.logger.debug(f"{name} {action} {emote} (total {count}) on message id {id}")
 
     def _log_ignored(self, message):
         if self.config["logger"]["ignored-events"]:
@@ -388,7 +388,7 @@ class EventIngestionClient(discord.Client):
         if not await self._accept_channel(channel):
             return
 
-        self.logger.info(f"Channel #{channel.name} got a pin update")
+        self.logger.debug(f"Channel #{channel.name} got a pin update")
         self.logger.warn("TODO: handling for on_guild_channel_pins_update")
 
     async def on_member_join(self, member):
@@ -396,7 +396,7 @@ class EventIngestionClient(discord.Client):
         if not await self._accept_guild(member.guild):
             return
 
-        self.logger.info(f"Member {member.name} has joined {member.guild.name}")
+        self.logger.debug(f"Member {member.name} has joined {member.guild.name}")
 
         with self.sql.transaction() as txact:
             self.sql.upsert_user(txact, member)
@@ -407,7 +407,7 @@ class EventIngestionClient(discord.Client):
         if not await self._accept_guild(member.guild):
             return
 
-        self.logger.info(f"Member {member.name} has left {member.guild.name}")
+        self.logger.debug(f"Member {member.name} has left {member.guild.name}")
 
         with self.sql.transaction() as txact:
             self.sql.remove_user(txact, member)
@@ -426,7 +426,7 @@ class EventIngestionClient(discord.Client):
             changed = f" (now {after.name})"
         else:
             changed = ""
-        self.logger.info(
+        self.logger.debug(
             f"Member {before.display_name}{changed} was changed in {after.guild.name}"
         )
 
@@ -448,7 +448,7 @@ class EventIngestionClient(discord.Client):
             changed = f" (now {after.name})"
         else:
             changed = ""
-        self.logger.info(f"User {before.display_name}{changed} was changed")
+        self.logger.debug(f"User {before.display_name}{changed} was changed")
 
         with self.sql.transaction() as txact:
             now = datetime.now()
