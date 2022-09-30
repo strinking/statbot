@@ -308,6 +308,8 @@ class DiscordSqlHandler:
 
         alembic_cfg = Config("alembic.ini")
         alembic_cfg.set_main_option("sqlalchemy.url", addr)
+        # Don't allow Alembic to replace our logging handlers
+        alembic_cfg.attributes["configure_logger"] = False
 
         if not inspect(self.db).has_table("messages"):
             self.logger.info("Creating tables")
