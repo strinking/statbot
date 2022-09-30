@@ -165,7 +165,10 @@ class EventIngestionClient(discord.Client):
             self.sql.upsert_user(txact, user)
 
         self.logger.info(f"Processing {len(self.guilds)} guilds...")
-        for guild in set(self.guilds) & set(self.config["guild-ids"]):
+        allowed_guilds = [
+            guild for guild in self.guilds if guild.id in set(self.config["guild-ids"])
+        ]
+        for guild in allowed_guilds:
             self.sql.upsert_guild(txact, guild)
 
             self.logger.info(f"Processing {len(guild.roles)} roles...")

@@ -15,28 +15,11 @@ from datetime import datetime
 import functools
 import random
 
+from alembic import command
+from alembic.config import Config
+from alembic.migration import MigrationContext
 import discord
-from sqlalchemy import (
-    create_engine,
-    and_,
-    ARRAY,
-    Boolean,
-    BigInteger,
-    Column,
-    DateTime,
-    Enum,
-    Integer,
-    JSON,
-    LargeBinary,
-    SmallInteger,
-    String,
-    Table,
-    Unicode,
-    UnicodeText,
-    ForeignKey,
-    MetaData,
-    UniqueConstraint,
-)
+from sqlalchemy import create_engine, and_, Column, inspect
 from sqlalchemy.sql import select
 from sqlalchemy.dialects.postgresql import insert as p_insert
 
@@ -44,12 +27,13 @@ from .audit_log import AuditLogData
 from .cache import LruCache
 from .emoji import EmojiData
 from .mention import MentionType
+from .schema import DiscordMetadata
 from .util import int_hash, null_logger
 
 Column = functools.partial(Column, nullable=False)
 FakeMember = namedtuple("FakeMember", ("guild", "id"))
 
-MAX_ID = 2 ** 63 - 1
+MAX_ID = 2**63 - 1
 
 __all__ = [
     "DiscordSqlHandler",
@@ -286,274 +270,29 @@ class DiscordSqlHandler:
         logger.info(f"Opening database: '{addr}'")
         self.db = create_engine(addr)
         self.conn = self.db.connect()
-        meta = MetaData(self.db)
+        meta = DiscordMetadata(self.db)
         self.logger = logger
 
-        self.tb_messages = Table(
-            "messages",
-            meta,
-            Column("message_id", BigInteger, primary_key=True),
-            Column("created_at", DateTime),
-            Column("edited_at", DateTime, nullable=True),
-            Column("deleted_at", DateTime, nullable=True),
-            Column("message_type", Enum(discord.MessageType)),
-            Column("system_content", UnicodeText),
-            Column("content", UnicodeText),
-            Column("embeds", JSON),
-            Column("attachments", SmallInteger),
-            Column("webhook_id", BigInteger, nullable=True),
-            Column("int_user_id", BigInteger),
-            Column("channel_id", BigInteger, ForeignKey("channels.channel_id")),
-            Column("guild_id", BigInteger, ForeignKey("guilds.guild_id")),
-        )
-        self.tb_reactions = Table(
-            "reactions",
-            meta,
-            Column("message_id", BigInteger),
-            Column("emoji_id", BigInteger),
-            Column("emoji_unicode", Unicode(7)),
-            Column("int_user_id", BigInteger, ForeignKey("users.int_user_id")),
-            Column("created_at", DateTime, nullable=True),
-            Column("deleted_at", DateTime, nullable=True),
-            Column("channel_id", BigInteger, ForeignKey("channels.channel_id")),
-            Column("guild_id", BigInteger, ForeignKey("guilds.guild_id")),
-            UniqueConstraint(
-                "message_id",
-                "emoji_id",
-                "emoji_unicode",
-                "int_user_id",
-                "created_at",
-                name="uq_reactions",
-            ),
-        )
-        self.tb_typing = Table(
-            "typing",
-            meta,
-            Column("timestamp", DateTime),
-            Column("int_user_id", BigInteger, ForeignKey("users.int_user_id")),
-            Column("channel_id", BigInteger, ForeignKey("channels.channel_id")),
-            Column("guild_id", BigInteger, ForeignKey("guilds.guild_id")),
-            UniqueConstraint(
-                "timestamp", "int_user_id", "channel_id", "guild_id", name="uq_typing"
-            ),
-        )
-        self.tb_pins = Table(
-            "pins",
-            meta,
-            Column("pin_id", BigInteger, primary_key=True),
-            Column(
-                "message_id",
-                BigInteger,
-                ForeignKey("messages.message_id"),
-                primary_key=True,
-            ),
-            Column("pinner_id", BigInteger, ForeignKey("users.int_user_id")),
-            Column("int_user_id", BigInteger, ForeignKey("users.int_user_id")),
-            Column("channel_id", BigInteger, ForeignKey("channels.channel_id")),
-            Column("guild_id", BigInteger, ForeignKey("guilds.guild_id")),
-        )
-        self.tb_mentions = Table(
-            "mentions",
-            meta,
-            Column("mentioned_id", BigInteger, primary_key=True),
-            Column("type", Enum(MentionType), primary_key=True),
-            Column(
-                "message_id",
-                BigInteger,
-                ForeignKey("messages.message_id"),
-                primary_key=True,
-            ),
-            Column("channel_id", BigInteger, ForeignKey("channels.channel_id")),
-            Column("guild_id", BigInteger, ForeignKey("guilds.guild_id")),
-            UniqueConstraint("mentioned_id", "type", "message_id", name="uq_mention"),
-        )
-        self.tb_guilds = Table(
-            "guilds",
-            meta,
-            Column("guild_id", BigInteger, primary_key=True),
-            Column("int_owner_id", BigInteger, ForeignKey("users.int_user_id")),
-            Column("name", Unicode),
-            Column("icon", String),
-            Column("voice_region", Enum(discord.VoiceRegion)),
-            Column("afk_channel_id", BigInteger, nullable=True),
-            Column("afk_timeout", Integer),
-            Column("mfa", Boolean),
-            Column("verification_level", Enum(discord.VerificationLevel)),
-            Column("explicit_content_filter", Enum(discord.ContentFilter)),
-            Column("features", ARRAY(String)),
-            Column("splash", String, nullable=True),
-        )
-        self.tb_channels = Table(
-            "channels",
-            meta,
-            Column("channel_id", BigInteger, primary_key=True),
-            Column("name", String),
-            Column("is_nsfw", Boolean),
-            Column("is_deleted", Boolean),
-            Column("position", SmallInteger),
-            Column("topic", UnicodeText, nullable=True),
-            Column("changed_roles", ARRAY(BigInteger)),
-            Column(
-                "category_id",
-                BigInteger,
-                ForeignKey("channel_categories.category_id"),
-                nullable=True,
-            ),
-            Column("guild_id", BigInteger, ForeignKey("guilds.guild_id")),
-        )
-        self.tb_voice_channels = Table(
-            "voice_channels",
-            meta,
-            Column("voice_channel_id", BigInteger, primary_key=True),
-            Column("name", Unicode),
-            Column("is_deleted", Boolean),
-            Column("position", SmallInteger),
-            Column("bitrate", Integer),
-            Column("user_limit", SmallInteger),
-            Column("changed_roles", ARRAY(BigInteger)),
-            Column(
-                "category_id",
-                BigInteger,
-                ForeignKey("channel_categories.category_id"),
-                nullable=True,
-            ),
-            Column("guild_id", BigInteger, ForeignKey("guilds.guild_id")),
-        )
-        self.tb_channel_categories = Table(
-            "channel_categories",
-            meta,
-            Column("category_id", BigInteger, primary_key=True),
-            Column("name", Unicode),
-            Column("position", SmallInteger),
-            Column("is_deleted", Boolean),
-            Column("is_nsfw", Boolean),
-            Column("changed_roles", ARRAY(BigInteger)),
-            Column(
-                "parent_category_id",
-                BigInteger,
-                ForeignKey("channel_categories.category_id"),
-                nullable=True,
-            ),
-            Column("guild_id", BigInteger, ForeignKey("guilds.guild_id")),
-        )
-        self.tb_users = Table(
-            "users",
-            meta,
-            Column("int_user_id", BigInteger, primary_key=True),
-            Column("real_user_id", BigInteger),
-            Column("name", Unicode),
-            Column("discriminator", SmallInteger),
-            Column("avatar", String, nullable=True),
-            Column("is_deleted", Boolean),
-            Column("is_bot", Boolean),
-        )
-        self.tb_guild_membership = Table(
-            "guild_membership",
-            meta,
-            Column(
-                "int_user_id",
-                BigInteger,
-                ForeignKey("users.int_user_id"),
-                primary_key=True,
-            ),
-            Column(
-                "guild_id", BigInteger, ForeignKey("guilds.guild_id"), primary_key=True
-            ),
-            Column("is_member", Boolean),
-            Column("joined_at", DateTime, nullable=True),
-            Column("nick", Unicode(32), nullable=True),
-            UniqueConstraint("int_user_id", "guild_id", name="uq_guild_membership"),
-        )
-        self.tb_role_membership = Table(
-            "role_membership",
-            meta,
-            Column("role_id", BigInteger, ForeignKey("roles.role_id")),
-            Column("guild_id", BigInteger, ForeignKey("guilds.guild_id")),
-            Column("int_user_id", BigInteger, ForeignKey("users.int_user_id")),
-            UniqueConstraint("role_id", "int_user_id", name="uq_role_membership"),
-        )
-        self.tb_avatar_history = Table(
-            "avatar_history",
-            meta,
-            Column("user_id", BigInteger, primary_key=True),
-            Column("timestamp", DateTime, primary_key=True),
-            Column("avatar", LargeBinary),
-            Column("avatar_ext", String),
-        )
-        self.tb_username_history = Table(
-            "username_history",
-            meta,
-            Column("user_id", BigInteger, primary_key=True),
-            Column("timestamp", DateTime, primary_key=True),
-            Column("username", Unicode),
-        )
-        self.tb_nickname_history = Table(
-            "nickname_history",
-            meta,
-            Column("user_id", BigInteger, primary_key=True),
-            Column("timestamp", DateTime, primary_key=True),
-            Column("nickname", Unicode),
-        )
-        self.tb_emojis = Table(
-            "emojis",
-            meta,
-            Column("emoji_id", BigInteger),
-            Column("emoji_unicode", Unicode(7)),
-            Column("is_custom", Boolean),
-            Column("is_managed", Boolean, nullable=True),
-            Column("is_deleted", Boolean),
-            Column("name", ARRAY(String)),
-            Column("category", ARRAY(String)),
-            Column("roles", ARRAY(BigInteger), nullable=True),
-            Column("guild_id", BigInteger, nullable=True),
-            UniqueConstraint("emoji_id", "emoji_unicode", name="uq_emoji"),
-        )
-        self.tb_roles = Table(
-            "roles",
-            meta,
-            Column("role_id", BigInteger, primary_key=True),
-            Column("name", Unicode),
-            Column("color", Integer),
-            Column("raw_permissions", BigInteger),
-            Column("guild_id", BigInteger, ForeignKey("guilds.guild_id")),
-            Column("is_hoisted", Boolean),
-            Column("is_managed", Boolean),
-            Column("is_mentionable", Boolean),
-            Column("is_deleted", Boolean),
-            Column("position", SmallInteger),
-        )
-        self.tb_audit_log = Table(
-            "audit_log",
-            meta,
-            Column("audit_entry_id", BigInteger, primary_key=True),
-            Column("guild_id", BigInteger, ForeignKey("guilds.guild_id")),
-            Column("action", Enum(discord.AuditLogAction)),
-            Column("int_user_id", BigInteger, ForeignKey("users.int_user_id")),
-            Column("reason", Unicode, nullable=True),
-            Column("category", Enum(discord.AuditLogActionCategory), nullable=True),
-            Column("before", JSON),
-            Column("after", JSON),
-            UniqueConstraint("audit_entry_id", "guild_id", name="uq_audit_log"),
-        )
-        self.tb_channel_crawl = Table(
-            "channel_crawl",
-            meta,
-            Column(
-                "channel_id",
-                BigInteger,
-                ForeignKey("channels.channel_id"),
-                primary_key=True,
-            ),
-            Column("last_message_id", BigInteger),
-        )
-        self.tb_audit_log_crawl = Table(
-            "audit_log_crawl",
-            meta,
-            Column(
-                "guild_id", BigInteger, ForeignKey("guilds.guild_id"), primary_key=True
-            ),
-            Column("last_audit_entry_id", BigInteger),
-        )
+        self.tb_messages = meta.tb_messages
+        self.tb_reactions = meta.tb_reactions
+        self.tb_typing = meta.tb_typing
+        self.tb_pins = meta.tb_pins
+        self.tb_mentions = meta.tb_mentions
+        self.tb_guilds = meta.tb_guilds
+        self.tb_channels = meta.tb_channels
+        self.tb_voice_channels = meta.tb_voice_channels
+        self.tb_channel_categories = meta.tb_channel_categories
+        self.tb_users = meta.tb_users
+        self.tb_guild_membership = meta.tb_guild_membership
+        self.tb_role_membership = meta.tb_role_membership
+        self.tb_avatar_history = meta.tb_avatar_history
+        self.tb_username_history = meta.tb_username_history
+        self.tb_nickname_history = meta.tb_nickname_history
+        self.tb_emojis = meta.tb_emojis
+        self.tb_roles = meta.tb_roles
+        self.tb_audit_log = meta.tb_audit_log
+        self.tb_channel_crawl = meta.tb_channel_crawl
+        self.tb_audit_log_crawl = meta.tb_audit_log_crawl
 
         # Caches
         if cache_size is not None:
@@ -567,8 +306,21 @@ class DiscordSqlHandler:
             self.emoji_cache = LruCache(cache_size["lookup-size"])
             self.role_cache = LruCache(cache_size["lookup-size"])
 
-        # Create tables
-        meta.create_all(self.db)
+        alembic_cfg = Config("alembic.ini")
+        alembic_cfg.set_main_option("sqlalchemy.url", addr)
+
+        if not inspect(self.db).has_table("messages"):
+            self.logger.info("Creating tables")
+            meta.metadata_obj.create_all(self.db)
+            command.stamp(alembic_cfg, "head")
+        else:
+            self.logger.info("Performing migrations")
+            migration_context = MigrationContext.configure(self.conn)
+            current_rev = migration_context.get_current_revision()
+            if current_rev is None:
+                # This means the db is in a state prior to when Alembic was added
+                command.stamp(alembic_cfg, "initial_revision")
+            command.upgrade(alembic_cfg, "head")
         self.logger.info("Created all tables.")
 
     # Transaction logic

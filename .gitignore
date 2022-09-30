@@ -2,6 +2,10 @@
 /config*.yaml
 /docker-compose.yaml
 
+# Environment
+venv/
+.vscode/
+
 # Artifacts
 __pycache__
 *.py[cdo]
