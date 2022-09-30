@@ -198,14 +198,14 @@ if __name__ == "__main__":
 
     # Create client
     main_logger.info("Setting up bot")
-    client = EventIngestionClient(config, sql, event_logger)
+    client = EventIngestionClient(
+        config,
+        sql,
+        logger=event_logger,
+        crawlers=[HistoryCrawler, AuditLogCrawler],
+        crawler_logger=crawler_logger
+    )
     main_logger.info("Starting bot, waiting for discord.py...")
-
-    # Create crawlers
-    hist_crawler = HistoryCrawler(client, sql, config, crawler_logger)
-    hist_crawler.start()
-    audit_crawler = AuditLogCrawler(client, sql, config, crawler_logger)
-    audit_crawler.start()
 
     # Start main loop
     client.run_with_token()

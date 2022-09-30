@@ -63,16 +63,22 @@ class EventIngestionClient(discord.Client):
         "config",
         "logger",
         "sql",
+        "crawlers",
+        "crawler_logger",
         "ready",
         "sql_init",
         "hooks",
     )
 
-    def __init__(self, config, sql, logger=null_logger):
+    def __init__(
+        self, config, sql, logger=null_logger, crawlers=None, crawler_logger=null_logger
+    ):
         super().__init__(intents=discord.Intents.all())
         self.config = config
         self.logger = logger
         self.sql = sql
+        self.crawlers = crawlers
+        self.crawler_logger = crawler_logger
         self.ready = asyncio.Event()
         self.sql_init = False
         self.hooks = {
@@ -83,6 +89,16 @@ class EventIngestionClient(discord.Client):
 
     def run_with_token(self):
         return self.run(self.config["bot"]["token"])
+
+    # Async initialization hook. See
+    # https://gist.github.com/Rapptz/6706e1c8f23ac27c98cee4dd985c8120
+    async def setup_hook(self):
+        if self.crawlers is None:
+            return
+
+        for Crawler in self.crawlers:
+            crawler = Crawler(self, self.sql, self.config, self.crawler_logger)
+            crawler.start()
 
     async def wait_until_ready(self):
         # Override wait method to wait until SQL data is also ready
@@ -309,7 +325,7 @@ class EventIngestionClient(discord.Client):
 
         if isinstance(channel, discord.VoiceChannel):
             self.logger.info(
-                f"Voice channel {channel.name} deleted in {channel.guild.name}"
+                f"Voice channel {channel.name} created in {channel.guild.name}"
             )
             with self.sql.transaction() as txact:
                 self.sql.add_voice_channel(txact, channel)
