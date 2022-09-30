@@ -1,4 +1,5 @@
 import discord
+from enum import Enum as BaseEnum
 from sqlalchemy import (
     ARRAY,
     Boolean,
@@ -20,6 +21,37 @@ from sqlalchemy import (
 )
 
 from .mention import MentionType
+
+
+class DeprecatedVoiceRegion(BaseEnum):
+    us_west       = 'us-west'
+    us_east       = 'us-east'
+    us_south      = 'us-south'
+    us_central    = 'us-central'
+    eu_west       = 'eu-west'
+    eu_central    = 'eu-central'
+    singapore     = 'singapore'
+    london        = 'london'
+    sydney        = 'sydney'
+    amsterdam     = 'amsterdam'
+    frankfurt     = 'frankfurt'
+    brazil        = 'brazil'
+    hongkong      = 'hongkong'
+    russia        = 'russia'
+    japan         = 'japan'
+    southafrica   = 'southafrica'
+    south_korea   = 'south-korea'
+    india         = 'india'
+    europe        = 'europe'
+    dubai         = 'dubai'
+    vip_us_east   = 'vip-us-east'
+    vip_us_west   = 'vip-us-west'
+    vip_amsterdam = 'vip-amsterdam'
+    deprecated    = 'deprecated'
+
+    def __str__(self):
+        return self.value
+
 
 class DiscordMetadata:
     def __init__(self, db):
@@ -115,7 +147,7 @@ class DiscordMetadata:
             Column("int_owner_id", BigInteger, ForeignKey("users.int_user_id")),
             Column("name", Unicode),
             Column("icon", String),
-            Column("voice_region", Enum(discord.VoiceRegion)),
+            Column("voice_region", Enum(DeprecatedVoiceRegion)),
             Column("afk_channel_id", BigInteger, nullable=True),
             Column("afk_timeout", Integer),
             Column("mfa", Boolean),
