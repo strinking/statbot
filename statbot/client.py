@@ -79,7 +79,6 @@ class EventIngestionClient(discord.Client):
         self.sql = sql
         self.crawlers = crawlers
         self.crawler_logger = crawler_logger
-        self.ready = asyncio.Event()
         self.sql_init = False
         self.hooks = {
             "on_guild_channel_create": None,
@@ -93,6 +92,8 @@ class EventIngestionClient(discord.Client):
     # Async initialization hook. See
     # https://gist.github.com/Rapptz/6706e1c8f23ac27c98cee4dd985c8120
     async def setup_hook(self):
+        self.ready = asyncio.Event(loop=self.loop)
+
         if self.crawlers is None:
             return
 
