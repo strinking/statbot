@@ -320,8 +320,9 @@ class DiscordSqlHandler:
             migration_context = MigrationContext.configure(self.conn)
             current_rev = migration_context.get_current_revision()
             if current_rev is None:
-                # This means the db is in a state prior to when Alembic was added
-                command.stamp(alembic_cfg, "initial_revision")
+                # This means the db is in a state prior to when Alembic
+                # was added; this assumes discord.py v1.5
+                command.stamp(alembic_cfg, "initial_revision_discord_py_1_5")
             command.upgrade(alembic_cfg, "head")
         self.logger.info("Created all tables.")
 

@@ -1,6 +1,6 @@
-"""empty message
+"""This initial revision assumes statbot is running discord.py v1.5
 
-Revision ID: initial_revision
+Revision ID: initial_revision_discord_py_1_5
 Revises: 
 Create Date: 2022-09-30 00:46:40.565202
 
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'initial_revision'
+revision = 'initial_revision_discord_py_1_5'
 down_revision = None
 branch_labels = None
 depends_on = None
