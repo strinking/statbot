@@ -181,7 +181,9 @@ class HistoryCrawler(AbstractCrawler):
         )
         self.logger.info(f"Starting from ID {last_id} ({last})")
 
-        messages = await channel.history(after=last, limit=limit).flatten()
+        messages = [
+            message async for message in channel.history(after=last, limit=limit)
+        ]
         if messages:
             self.logger.info(f"Queued {len(messages)} messages for ingestion")
             return messages
@@ -195,7 +197,7 @@ class HistoryCrawler(AbstractCrawler):
             self.sql.insert_message(txact, message)
             for reaction in message.reactions:
                 try:
-                    users = await reaction.users().flatten()
+                    users = [user async for user in reaction.users()]
                 except discord.NotFound:
                     self.logger.warn("Unable to find reaction users", exc_info=1)
                     users = []
@@ -275,7 +277,7 @@ class AuditLogCrawler(AbstractCrawler):
         # It will give us entries not in our specified range of "after=last".
         # As a simple remedy, we keep on slamming it with requests until it gives
         # us the same list twice in a row, and then we know we're done.
-        entries = await guild.audit_logs(after=last, limit=limit).flatten()
+        entries = [entry async for entry in guild.audit_logs(after=last, limit=limit)]
         if entries and self.get_last_id(entries) != last_id:
             self.logger.info(f"Queued {len(entries)} audit log entries for ingestion")
             return entries
