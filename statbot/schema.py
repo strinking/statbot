@@ -71,7 +71,8 @@ class DiscordMetadata:
             Column("attachments", SmallInteger),
             Column("webhook_id", BigInteger, nullable=True),
             Column("int_user_id", BigInteger),
-            Column("channel_id", BigInteger, ForeignKey("channels.channel_id")),
+            Column("channel_id", BigInteger, ForeignKey("channels.channel_id"), nullable=True),
+            Column("thread_id", BigInteger, ForeignKey("threads.thread_id"), nullable=True),
             Column("guild_id", BigInteger, ForeignKey("guilds.guild_id")),
         )
 
@@ -101,10 +102,11 @@ class DiscordMetadata:
             self.metadata_obj,
             Column("timestamp", DateTime),
             Column("int_user_id", BigInteger, ForeignKey("users.int_user_id")),
-            Column("channel_id", BigInteger, ForeignKey("channels.channel_id")),
+            Column("channel_id", BigInteger, ForeignKey("channels.channel_id"), nullable=True),
+            Column("thread_id", BigInteger, ForeignKey("threads.thread_id"), nullable=True),
             Column("guild_id", BigInteger, ForeignKey("guilds.guild_id")),
             UniqueConstraint(
-                "timestamp", "int_user_id", "channel_id", "guild_id", name="uq_typing"
+                "timestamp", "int_user_id", "channel_id", "thread_id", "guild_id", name="uq_typing"
             ),
         )
 
@@ -336,4 +338,33 @@ class DiscordMetadata:
             self.metadata_obj,
             Column("guild_id", BigInteger, ForeignKey("guilds.guild_id"), primary_key=True),
             Column("last_audit_entry_id", BigInteger),
+        )
+
+        self.tb_threads = Table(
+            "threads",
+            self.metadata_obj,
+            Column("thread_id", BigInteger, primary_key=True),
+            Column("name", String),
+            Column("invitable", Boolean),
+            Column("locked", Boolean),
+            Column("archived", Boolean),
+            Column("auto_archive_duration", Integer),
+            Column("archive_timestamp", DateTime),
+            Column("created_at", DateTime, nullable=True),
+            Column("edited_at", DateTime, nullable=True),
+            Column("deleted_at", DateTime, nullable=True),
+            Column("is_deleted", Boolean),
+            Column("int_owner_id", BigInteger, ForeignKey("users.int_user_id")),
+            Column("parent_id", BigInteger, ForeignKey("channels.channel_id")),
+            Column("guild_id", BigInteger, ForeignKey("guilds.guild_id")),
+        )
+
+        self.tb_thread_members = Table(
+            "thread_members",
+            self.metadata_obj,
+            Column("int_member_id", BigInteger, ForeignKey("users.int_user_id")),
+            Column("thread_id", BigInteger, ForeignKey("threads.thread_id")),
+            Column("joined_at", DateTime),
+            Column("left_at", DateTime, nullable=True),
+            UniqueConstraint("int_member_id", "thread_id", "joined_at", name="uq_thread_members"),
         )
