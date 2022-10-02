@@ -84,6 +84,9 @@ class EventIngestionClient(discord.Client):
             "on_guild_channel_create": None,
             "on_guild_channel_delete": None,
             "on_guild_channel_update": None,
+            "on_thread_create": None,
+            "on_thread_delete": None,
+            "on_thread_update": None,
         }
 
     def run_with_token(self):
@@ -538,3 +541,72 @@ class EventIngestionClient(discord.Client):
                 self.sql.add_emoji(txact, emoji)
             for emoji in before - after:
                 self.sql.remove_emoji(txact, emoji)
+
+    async def on_thread_create(self, thread: discord.Thread):
+        self._log_ignored(f"Thread was created in guild {thread.guild.id}")
+        if not await self._accept_channel(thread.parent):
+            return
+
+        self.logger.info(
+            f"Thread {thread.name} created in guild {thread.guild.name}, channel {thread.parent.name}"
+        )
+        with self.sql.transaction() as txact:
+            self.sql.add_thread(txact, thread)
+
+        hook = self.hooks["on_thread_create"]
+        if hook:
+            self.logger.debug(f"Found hook {hook!r}, calling it")
+            await hook(thread)
+
+    async def on_thread_delete(self, thread: discord.Thread):
+        self._log_ignored(f"Thread was deleted in guild {thread.guild.id}")
+        if not await self._accept_channel(thread.parent):
+            return
+
+        self.logger.info(
+            f"Thread {thread.name} deleted in guild {thread.guild.name}, channel {thread.parent.name}"
+        )
+        with self.sql.transaction() as txact:
+            self.sql.remove_thread(txact, thread)
+
+        hook = self.hooks["on_thread_delete"]
+        if hook:
+            self.logger.debug(f"Found hook {hook!r}, calling it")
+            await hook(thread)
+
+    async def on_thread_update(self, before: discord.Thread, after: discord.Thread):
+        self._log_ignored(f"Thread was updated in guild {after.guild.id}")
+        if not await self._accept_channel(after.parent):
+            return
+
+        changed = f" (now {after.name})" if before.name != after.name else ""
+
+        self.logger.info(
+            (
+                f"Thread {before.name}{changed} changed in guild {after.guild.name}, "
+                f"channel {after.parent.name}"
+            )
+        )
+        with self.sql.transaction() as txact:
+            self.sql.update_thread(txact, after)
+
+        hook = self.hooks["on_thread_update"]
+        if hook:
+            self.logger.debug(f"Found hook {hook!r}, calling it")
+            await hook(before, after)
+
+    async def on_thread_member_join(self, member: discord.ThreadMember):
+        self._log_ignored(f"User id {member.id} joined thread {member.thread.name}")
+        if not await self._accept_channel(member.thread.parent):
+            return
+
+        with self.sql.transaction() as txact:
+            self.sql.add_thread_member(txact, member)
+
+    async def on_thread_member_remove(self, member: discord.ThreadMember):
+        self._log_ignored(f"User id {member.id} left thread {member.thread.name}")
+        if not await self._accept_channel(member.thread.parent):
+            return
+
+        with self.sql.transaction() as txact:
+            self.sql.remove_thread_member(txact, member)
