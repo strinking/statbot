@@ -57,7 +57,7 @@ def guild_values(guild):
     }
 
 
-def message_values(message):
+def message_values(message: discord.Message, is_in_thread=False):
     if message.type == discord.MessageType.default:
         system_content = ""
     else:
@@ -81,7 +81,8 @@ def message_values(message):
         "attachments": len(message.attachments),
         "webhook_id": message.webhook_id,
         "int_user_id": int_hash(message.author.id),
-        "channel_id": message.channel.id,
+        "channel_id": message.channel.id if not is_in_thread else None,
+        "thread_id": message.channel.id if is_in_thread else None,
         "guild_id": message.guild.id,
     }
 
@@ -186,6 +187,34 @@ def reaction_values(reaction, user, current):
     }
 
 
+def thread_values(thread: discord.Thread, deleted=False):
+    return {
+        "thread_id": thread.id,
+        "name": thread.name,
+        "invitable": thread.invitable,
+        "locked": thread.locked,
+        "archived": thread.archived,
+        "auto_archive_duration": thread.auto_archive_duration,
+        "archive_timestamp": thread.archive_timestamp,
+        "created_at": thread.created_at,
+        "edited_at": datetime.now(),
+        "deleted_at": datetime.now() if deleted else None,
+        "is_deleted": deleted,
+        "int_owner_id": int_hash(thread.owner_id),
+        "parent_id": thread.parent_id,
+        "guild_id": thread.guild.id,
+    }
+
+
+def thread_member_values(member: discord.ThreadMember, removed=False):
+    return {
+        "int_member_id": int_hash(member.id),
+        "thread_id": member.thread_id,
+        "joined_at": member.joined_at,
+        "left_at": datetime.now() if removed else None,
+    }
+
+
 class _Transaction:
     __slots__ = (
         "conn",
@@ -255,6 +284,8 @@ class DiscordSqlHandler:
         "tb_audit_log",
         "tb_channel_crawl",
         "tb_audit_log_crawl",
+        "tb_threads",
+        "tb_thread_members",
         "message_cache",
         "typing_cache",
         "guild_cache",
@@ -264,6 +295,7 @@ class DiscordSqlHandler:
         "user_cache",
         "emoji_cache",
         "role_cache",
+        "thread_cache",
     )
 
     def __init__(self, addr, cache_size, logger=null_logger):
@@ -293,6 +325,8 @@ class DiscordSqlHandler:
         self.tb_audit_log = meta.tb_audit_log
         self.tb_channel_crawl = meta.tb_channel_crawl
         self.tb_audit_log_crawl = meta.tb_audit_log_crawl
+        self.tb_threads = meta.tb_threads
+        self.tb_thread_members = meta.tb_thread_members
 
         # Caches
         if cache_size is not None:
@@ -305,6 +339,7 @@ class DiscordSqlHandler:
             self.user_cache = LruCache(cache_size["lookup-size"])
             self.emoji_cache = LruCache(cache_size["lookup-size"])
             self.role_cache = LruCache(cache_size["lookup-size"])
+            self.thread_cache = LruCache(cache_size["lookup-size"])
 
         alembic_cfg = Config("alembic.ini")
         alembic_cfg.set_main_option("sqlalchemy.url", addr)
@@ -351,12 +386,17 @@ class DiscordSqlHandler:
         self.guild_cache[guild.id] = values
 
     # Messages
-    def add_message(self, txact, message):
-        values = message_values(message)
+    def add_message(self, txact, message: discord.Message):
+        is_in_thread = isinstance(message.channel, discord.Thread)
+
+        values = message_values(message, is_in_thread)
 
         if self.message_cache.get(message.id) == values:
             self.logger.debug(f"Message lookup for {message.id} is already up-to-date")
             return
+
+        if is_in_thread:
+            self.upsert_thread(txact, message.channel)
 
         self.logger.debug(f"Inserting message {message.id}")
         ins = self.tb_messages.insert().values(values)
@@ -393,11 +433,17 @@ class DiscordSqlHandler:
         txact.execute(upd)
         self.message_cache.pop(message.id, None)
 
-    def insert_message(self, txact, message):
-        values = message_values(message)
+    def insert_message(self, txact, message: discord.Message):
+        is_in_thread = isinstance(message.channel, discord.Thread)
+
+        values = message_values(message, is_in_thread)
+
         if self.message_cache.get(message.id) == values:
             self.logger.debug(f"Message lookup for {message.id} is already up-to-date")
             return
+
+        if is_in_thread:
+            self.upsert_thread(txact, message.channel)
 
         self.logger.debug(f"Inserting message {message.id}")
         ins = (
@@ -491,12 +537,18 @@ class DiscordSqlHandler:
             self.logger.debug("Typing lookup is up-to-date")
             return
 
+        is_in_thread = isinstance(channel, discord.Thread)
+
+        if is_in_thread:
+            self.upsert_thread(txact, channel)
+
         self.logger.debug(f"Inserting typing event for user {user.id}")
         ins = self.tb_typing.insert().values(
             {
                 "timestamp": when,
                 "int_user_id": int_hash(user.id),
-                "channel_id": channel.id,
+                "channel_id": channel.id if not is_in_thread else None,
+                "thread_id": channel.id if is_in_thread else None,
                 "guild_id": channel.guild.id,
             }
         )
@@ -1177,6 +1229,88 @@ class DiscordSqlHandler:
             self.tb_audit_log_crawl.c.guild_id == guild.id
         )
         txact.execute(delet)
+
+    # Threads
+    def add_thread(self, txact, thread: discord.Thread):
+        if thread in self.thread_cache:
+            self.logger.debug(f"Thread {thread.id} already inserted")
+            return
+
+        self.logger.info(
+            f"Inserting new thread {thread.id} for guild {thread.guild.id}"
+        )
+        values = thread_values(thread)
+        ins = self.tb_threads.insert().values(values)
+        txact.execute(ins)
+        self.thread_cache[thread.id] = values
+
+    def _update_thread(self, txact, thread: discord.Thread):
+        self.logger.info(f"Updating thread {thread.id} in guild {thread.guild.id}")
+        values = thread_values(thread)
+        upd = (
+            self.tb_threads.update()
+            .where(self.tb_threads.c.thread_id == thread.id)
+            .values(values)
+        )
+        txact.execute(upd)
+        self.thread_cache[thread.id] = values
+
+    def update_thread(self, txact, thread: discord.Thread):
+        if thread.id in self.thread_cache:
+            self._update_thread(txact, thread)
+        else:
+            self.upsert_thread(txact, thread)
+
+    def remove_thread(self, txact, thread: discord.Thread):
+        self.logger.info(f"Deleting thread {thread.id} in guild {thread.guild.id}")
+        upd = (
+            self.tb_threads.update()
+            .values(is_deleted=True)
+            .where(self.tb_threads.c.thread_id == thread.id)
+        )
+        txact.execute(upd)
+        self.thread_cache.pop(thread.id, None)
+
+    def upsert_thread(self, txact, thread: discord.Thread):
+        values = thread_values(thread)
+        if self.thread_cache.get(thread.id) == values:
+            self.logger.debug(f"Thread lookup for {thread.id} is already up-to-date")
+            return
+
+        self.logger.debug(f"Updating lookup data for thread #{thread.name}")
+        ups = (
+            p_insert(self.tb_threads)
+            .values(values)
+            .on_conflict_do_update(
+                index_elements=["thread_id"],
+                index_where=(self.tb_threads.c.thread_id == thread.id),
+                set_=values,
+            )
+        )
+        txact.execute(ups)
+        self.thread_cache[thread.id] = values
+
+    # Thread Members
+    def add_thread_member(self, txact, member: discord.ThreadMember):
+        self.logger.debug(
+            f"Inserting thread member {member.id} for thread {member.thread_id}"
+        )
+        values = thread_member_values(member)
+        ins = self.tb_thread_members.insert().values(values)
+        txact.execute(ins)
+
+    def remove_thread_member(self, txact, member: discord.ThreadMember):
+        self.logger.debug(
+            f"Removing thread member {member.id} for thread {member.thread_id}"
+        )
+        upd = (
+            self.tb_thread_members.update()
+            .values(left_at=datetime.now())
+            .where(self.tb_thread_members.c.int_member_id == member.id)
+            .where(self.tb_thread_members.c.thread_id == member.thread_id)
+            .where(self.tb_thread_members.c.left_at == None)
+        )
+        txact.execute(upd)
 
     # Privacy operations
     def privacy_scrub(self, user):
