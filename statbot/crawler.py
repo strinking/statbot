@@ -293,3 +293,125 @@ class AuditLogCrawler(AbstractCrawler):
     async def update(self, txact, guild, last_id):
         # pylint: disable=arguments-differ
         self.sql.update_audit_log_crawl(txact, guild, last_id)
+
+
+class ThreadCrawler(AbstractCrawler):
+    def __init__(self, client, sql, config, logger=null_logger):
+        AbstractCrawler.__init__(self, "Threads", client, sql, config, logger)
+
+    def _channel_ok(self, channel: discord.TextChannel):
+        if channel.guild.id in self.config["guild-ids"]:
+            return channel.permissions_for(channel.guild.me).read_message_history
+        return False
+
+    def _init_progress_for_thread(self, txact, thread: discord.Thread):
+        last_id = self.sql.lookup_thread_crawl(txact, thread)
+        if last_id is None:
+            self.sql.insert_thread_crawl(txact, thread, 0)
+        self.progress[thread] = last_id or 0
+
+    async def init(self):
+        with self.sql.transaction() as txact:
+            for guild in map(self.client.get_guild, self.config["guild-ids"]):
+                for channel in guild.text_channels:
+                    if not self._channel_ok(channel):
+                        continue
+
+                    # public threads
+                    if not channel.permissions_for(guild.me).read_message_history:
+                        continue
+                    for thread in channel.threads:
+                        self._init_progress_for_thread(txact, thread)
+                    async for thread in channel.archived_threads(private=False):
+                        self._init_progress_for_thread(txact, thread)
+
+                    # private threads
+                    if not channel.permissions_for(guild.me).manage_threads:
+                        continue
+                    async for thread in channel.archived_threads(private=True):
+                        self._init_progress_for_thread(txact, thread)
+
+        self.client.hooks["on_thread_create"] = self._thread_create_hook
+        self.client.hooks["on_thread_delete"] = self._thread_delete_hook
+        self.client.hooks["on_thread_update"] = self._thread_update_hook
+
+    async def read(self, thread: discord.Thread, last_id):
+        # pylint: disable=arguments-differ
+        last = discord.utils.snowflake_time(last_id)
+        limit = self.config["crawler"]["batch-size"]
+        self.logger.info(
+            f"Reading through thread {thread.id} (guild {thread.guild.name}, #{thread.parent.name}):"
+        )
+        self.logger.info(f"Starting from ID {last_id} ({last})")
+
+        messages = [
+            message async for message in thread.history(after=last, limit=limit)
+        ]
+        if messages:
+            self.logger.info(f"Queued {len(messages)} messages for ingestion")
+            return messages
+        else:
+            self.logger.info("No messages found in this range")
+            return None
+
+    async def write(self, txact, source, messages):
+        # pylint: disable=arguments-differ
+        for message in messages:
+            self.sql.insert_message(txact, message)
+            for reaction in message.reactions:
+                try:
+                    users = [user async for user in reaction.users()]
+                except discord.NotFound:
+                    self.logger.warn("Unable to find reaction users", exc_info=1)
+                    users = []
+
+                self.sql.upsert_emoji(txact, reaction.emoji)
+                self.sql.insert_reaction(txact, reaction, users)
+
+    async def update(self, txact, thread: discord.Thread, last_id):
+        # pylint: disable=arguments-differ
+        self.sql.update_thread_crawl(txact, thread, last_id)
+
+    def _create_progress(self, thread: discord.Thread):
+        self.logger.info(f"Adding #{thread.name} to tracked threads")
+
+        self.progress[thread] = None
+
+        with self.sql.transaction() as txact:
+            self.sql.insert_thread_crawl(txact, thread, 0)
+
+    def _update_progress(self, thread: discord.Thread):
+        self.logger.info(f"Updating #{thread.name} in tracked threads")
+
+        with self.sql.transaction() as txact:
+            self.sql.update_thread_crawl(txact, thread, self.progress[thread])
+
+    def _delete_progress(self, thread: discord.Thread):
+        self.logger.info(f"Removing #{thread.name} from tracked threads")
+
+        self.progress.pop(thread, None)
+
+        with self.sql.transaction() as txact:
+            self.sql.delete_thread_crawl(txact, thread)
+
+    async def _thread_create_hook(self, thread: discord.Thread):
+        if not self._channel_ok(thread.parent) or thread in self.progress:
+            return
+
+        self._create_progress(thread)
+
+    async def _thread_delete_hook(self, thread: discord.Thread):
+        self._delete_progress(thread)
+
+    async def _thread_update_hook(self, before: discord.Thread, after: discord.Thread):
+        if not self._channel_ok(before.parent):
+            return
+
+        if not self._channel_ok(after.parent):
+            self._delete_progress(after)
+            return
+
+        if after.id in self.progress:
+            return
+
+        self._update_progress(after)

@@ -368,3 +368,15 @@ class DiscordMetadata:
             Column("left_at", DateTime, nullable=True),
             UniqueConstraint("int_member_id", "thread_id", "joined_at", name="uq_thread_members"),
         )
+
+        self.tb_thread_crawl = Table(
+            "thread_crawl",
+            self.metadata_obj,
+            Column(
+                "thread_id",
+                BigInteger,
+                ForeignKey("threads.thread_id"),
+                primary_key=True,
+            ),
+            Column("last_message_id", BigInteger),
+        )

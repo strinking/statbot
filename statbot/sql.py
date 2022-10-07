@@ -286,6 +286,7 @@ class DiscordSqlHandler:
         "tb_audit_log_crawl",
         "tb_threads",
         "tb_thread_members",
+        "tb_thread_crawl",
         "message_cache",
         "typing_cache",
         "guild_cache",
@@ -327,6 +328,7 @@ class DiscordSqlHandler:
         self.tb_audit_log_crawl = meta.tb_audit_log_crawl
         self.tb_threads = meta.tb_threads
         self.tb_thread_members = meta.tb_thread_members
+        self.tb_thread_crawl = meta.tb_thread_crawl
 
         # Caches
         if cache_size is not None:
@@ -1227,6 +1229,71 @@ class DiscordSqlHandler:
 
         delet = self.tb_audit_log_crawl.delete().where(
             self.tb_audit_log_crawl.c.guild_id == guild.id
+        )
+        txact.execute(delet)
+
+    def lookup_thread_crawl(self, txact, thread: discord.Thread):
+        self.logger.info(
+            (
+                f"Looking up thread crawl progress for thread {thread.name} "
+                f"in guild {thread.guild.name}, channel #{thread.parent.name}"
+            )
+        )
+
+        sel = select([self.tb_thread_crawl]).where(
+            self.tb_thread_crawl.c.thread_id == thread.id
+        )
+        result = txact.execute(sel)
+
+        if result.rowcount:
+            _, last_id = result.fetchone()
+            return last_id
+        else:
+            return None
+
+    def insert_thread_crawl(self, txact, thread: discord.Thread, last_id):
+        self.logger.info(
+            (
+                f"Inserting new thread crawl progress {last_id} for thread {thread.name} "
+                f"in guild {thread.guild.name}, channel #{thread.parent.name}"
+            )
+        )
+
+        self.update_thread(txact, thread)
+
+        ins = self.tb_thread_crawl.insert().values(
+            {
+                "thread_id": thread.id,
+                "last_message_id": last_id,
+            }
+        )
+        txact.execute(ins)
+
+    def update_thread_crawl(self, txact, thread: discord.Thread, last_id):
+        self.logger.info(
+            (
+                f"Updating thread crawl progress {last_id} for thread {thread.name} "
+                f"in guild {thread.guild.name}, channel #{thread.parent.name}"
+            )
+        )
+
+        upd = (
+            self.tb_thread_crawl.update()
+            .values(last_message_id=last_id)
+            .where(self.tb_thread_crawl.c.thread_id == thread.id)
+        )
+        txact.execute(upd)
+
+    def delete_thread_crawl(self, txact, thread: discord.Thread):
+        self.logger.info(
+            (
+                f"Deleting thread crawl progress for thread {thread.name} "
+                f"in guild {thread.guild.name}, channel #{thread.parent.name}"
+            )
+        )
+
+        delet = self.tb_thread_crawl.delete().where(
+            self.tb_thread_crawl.c.thread_id == thread.id
         )
         txact.execute(delet)
 

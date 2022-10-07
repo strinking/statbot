@@ -16,7 +16,7 @@ import sys
 
 from .client import EventIngestionClient
 from .config import load_config
-from .crawler import AuditLogCrawler, HistoryCrawler
+from .crawler import AuditLogCrawler, HistoryCrawler, ThreadCrawler
 from .sql import DiscordSqlHandler
 
 __all__ = [
@@ -202,7 +202,7 @@ if __name__ == "__main__":
         config,
         sql,
         logger=event_logger,
-        crawlers=[HistoryCrawler, AuditLogCrawler],
+        crawlers=[HistoryCrawler, AuditLogCrawler, ThreadCrawler],
         crawler_logger=crawler_logger
     )
     main_logger.info("Starting bot, waiting for discord.py...")
