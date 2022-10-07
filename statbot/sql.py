@@ -345,10 +345,15 @@ class DiscordSqlHandler:
 
         alembic_cfg = Config("alembic.ini")
         alembic_cfg.set_main_option("sqlalchemy.url", addr)
-        # Don't allow Alembic to replace our logging handlers
+
+        # This is used in migrations/env.py and prevents Alembic from replacing
+        # our logging handlers. This has the drawback of not getting any log
+        # output from Alembic.
         alembic_cfg.attributes["configure_logger"] = False
 
         if not inspect(self.db).has_table("messages"):
+            # No tables exist (probably), so create all of them, and mark the
+            # current revision as up-to-date
             self.logger.info("Creating tables")
             meta.metadata_obj.create_all(self.db)
             command.stamp(alembic_cfg, "head")
@@ -357,9 +362,13 @@ class DiscordSqlHandler:
             migration_context = MigrationContext.configure(self.conn)
             current_rev = migration_context.get_current_revision()
             if current_rev is None:
-                # This means the db is in a state prior to when Alembic
-                # was added; this assumes discord.py v1.5
+                # This means the db is in a state prior to when Alembic was
+                # added. This assumes discord.py is at v1.5, but it shouldn't be
+                # a big problem if it isn't, since the first few migrations are
+                # fairly trivial.
                 command.stamp(alembic_cfg, "initial_revision_discord_py_1_5")
+
+            # Perform any pending migrations for the current revision.
             command.upgrade(alembic_cfg, "head")
         self.logger.info("Created all tables.")
 
