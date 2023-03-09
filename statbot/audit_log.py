@@ -10,6 +10,8 @@
 # WITHOUT ANY WARRANTY. See the LICENSE file for more details.
 #
 
+import discord
+
 from .util import int_hash
 
 __all__ = [
@@ -67,7 +69,7 @@ class AuditLogData:
         "guild",
     )
 
-    def __init__(self, entry, guild):
+    def __init__(self, entry: discord.AuditLogEntry, guild: discord.Guild):
         self.entry = entry
         self.guild = guild
 

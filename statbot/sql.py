@@ -1138,7 +1138,9 @@ class DiscordSqlHandler:
         self.emoji_cache[data.cache_id] = values
 
     # Audit log
-    def insert_audit_log_entry(self, txact, guild, entry):
+    def insert_audit_log_entry(
+        self, txact, guild: discord.Guild, entry: discord.AuditLogEntry
+    ):
         self.logger.debug(f"Inserting audit log entry {entry.id} from {guild.name}")
         data = AuditLogData(entry, guild)
         values = data.values()

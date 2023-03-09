@@ -17,6 +17,7 @@ import asyncio
 from sqlalchemy.exc import SQLAlchemyError
 import discord
 
+from .sql import DiscordSqlHandler
 from .util import null_logger
 
 __all__ = [
@@ -39,7 +40,15 @@ class AbstractCrawler:
         "current",
     )
 
-    def __init__(self, name, client, sql, config, logger=null_logger, continuous=False):
+    def __init__(
+        self,
+        name,
+        client,
+        sql: DiscordSqlHandler,
+        config,
+        logger=null_logger,
+        continuous=False,
+    ):
         self.name = name
         self.client = client
         self.sql = sql
@@ -172,7 +181,9 @@ class HistoryCrawler(AbstractCrawler):
         self.client.hooks["on_guild_channel_delete"] = self._channel_delete_hook
         self.client.hooks["on_guild_channel_update"] = self._channel_update_hook
 
-    async def read(self, channel, last_id):
+    async def read(
+        self, channel: discord.TextChannel, last_id
+    ) -> list[discord.message.Message]:
         # pylint: disable=arguments-differ
         last = discord.utils.snowflake_time(last_id)
         limit = self.config["crawler"]["batch-size"]
@@ -266,7 +277,7 @@ class AuditLogCrawler(AbstractCrawler):
                         self.sql.insert_audit_log_crawl(txact, guild, 0)
                     self.progress[guild] = last_id or 0
 
-    async def read(self, guild, last_id):
+    async def read(self, guild: discord.Guild, last_id) -> list[discord.AuditLogEntry]:
         # pylint: disable=arguments-differ
         last = discord.utils.snowflake_time(last_id)
         limit = self.config["crawler"]["batch-size"]
@@ -285,7 +296,7 @@ class AuditLogCrawler(AbstractCrawler):
             self.logger.info("No audit log entries found in this range")
             return None
 
-    async def write(self, txact, guild, entries):
+    async def write(self, txact, guild, entries: list[discord.AuditLogEntry]):
         # pylint: disable=arguments-differ
         for entry in entries:
             self.sql.insert_audit_log_entry(txact, guild, entry)
