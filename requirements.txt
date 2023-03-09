@@ -1,5 +1,5 @@
 PyYAML>=3.10
-SQLAlchemy>=1.0,<1.4
+SQLAlchemy>=1.4,<2
 discord.py>=2
 psycopg2-binary>=2.7
 alembic>=1.8
