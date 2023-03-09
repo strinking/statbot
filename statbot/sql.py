@@ -39,13 +39,14 @@ __all__ = [
     "DiscordSqlHandler",
 ]
 
+
 # Value builders
-def guild_values(guild):
+def guild_values(guild: discord.Guild):
     return {
         "guild_id": guild.id,
         "int_owner_id": int_hash(guild.owner.id),
         "name": guild.name,
-        "icon": '' if guild.icon is None else guild.icon.url,
+        "icon": "" if guild.icon is None else guild.icon.url,
         "voice_region": "deprecated",
         "afk_channel_id": getattr(guild.afk_channel, "id", None),
         "afk_timeout": guild.afk_timeout,
@@ -53,7 +54,7 @@ def guild_values(guild):
         "verification_level": guild.verification_level,
         "explicit_content_filter": guild.explicit_content_filter,
         "features": guild.features,
-        "splash": guild.splash,
+        "splash": "" if guild.splash is None else guild.splash.key,
     }
 
 

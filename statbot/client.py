@@ -19,6 +19,7 @@ import asyncio
 import discord
 
 from .emoji import EmojiData
+from .sql import DiscordSqlHandler
 from .util import null_logger
 
 __all__ = [
@@ -71,7 +72,12 @@ class EventIngestionClient(discord.Client):
     )
 
     def __init__(
-        self, config, sql, logger=null_logger, crawlers=None, crawler_logger=null_logger
+        self,
+        config,
+        sql: DiscordSqlHandler,
+        logger=null_logger,
+        crawlers=None,
+        crawler_logger=null_logger,
     ):
         super().__init__(intents=discord.Intents.all())
         self.config = config
