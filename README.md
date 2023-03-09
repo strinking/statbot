@@ -10,8 +10,8 @@ with any database that SQLAlchemy supports.
 Available under the terms of the MIT License.
 
 ### Requirements
-* Python 3.6 or later
-* [discord.py (rewrite branch)](https://github.com/Rapptz/discord.py)
+* Python 3.8 or later
+* [discord.py](https://github.com/Rapptz/discord.py)
 * [SQLAlchemy](http://www.sqlalchemy.org/)
 * [psycopg2](https://pypi.python.org/pypi/psycopg2)
 
@@ -21,7 +21,7 @@ pip3 install -r requirements.txt
 ```
 
 ### Execution
-After preparing a configuration file, (see `misc/sample_config.yaml1`)
+After preparing a configuration file, (see `misc/config.yaml`)
 you can call the program as follows:
 ```sh
 python3 -m statbot [-q] [-d] your_config_file.yaml

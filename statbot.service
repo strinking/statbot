@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 User=statbot
-ExecStart=/usr/bin/python3.7 -m statbot config.yaml
+ExecStart=/usr/bin/python3 -m statbot config.yaml
 WorkingDirectory=/home/statbot/repo
 Restart=always
 RestartSec=600
