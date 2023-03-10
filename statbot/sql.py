@@ -13,6 +13,7 @@
 from collections import namedtuple
 from datetime import datetime
 import functools
+import io
 import random
 
 from alembic import command
@@ -1054,7 +1055,7 @@ class DiscordSqlHandler:
         self._insert_role_membership(txact, member)
 
     # User alias information
-    def add_avatar(self, txact, user, timestamp, avatar, ext):
+    def add_avatar(self, txact, user, timestamp, avatar: io.BytesIO, ext: str):
         self.logger.debug("Adding user avatar update for '%s' (%d)", user.name, user.id)
         ins = self.tb_avatar_history.insert().values(
             user_id=user.id,

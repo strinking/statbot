@@ -466,7 +466,7 @@ class EventIngestionClient(discord.Client):
             if before.nick != after.nick and after.nick is not None:
                 self.sql.add_nickname(txact, before, now, after.nick)
 
-    async def on_user_update(self, before, after):
+    async def on_user_update(self, before: discord.User, after: discord.User):
         self._log_ignored(f"User {after.id} was updated")
 
         if not user_needs_update(before, after):
@@ -483,22 +483,20 @@ class EventIngestionClient(discord.Client):
             now = datetime.now()
             self.sql.update_user(txact, after)
 
-            if before.avatar != after.avatar:
-                avatar, avatar_ext = await self.get_avatar(after.avatar_url)
+            if before.avatar != after.avatar and after.avatar is not None:
+                avatar, avatar_ext = await self.get_avatar(after.avatar)
                 self.sql.add_avatar(txact, before, now, avatar, avatar_ext)
 
             if before.name != after.name:
                 self.sql.add_username(txact, before, now, after.name)
 
-    async def get_avatar(self, asset):
+    async def get_avatar(self, asset: discord.Asset) -> tuple[BytesIO, str]:
         avatar = BytesIO()
-        avatar_url = str(asset)
         await asset.save(avatar)
 
-        match = EXTENSION_REGEX.findall(avatar_url)
+        match = EXTENSION_REGEX.findall(asset.url)
         if not match:
-            raise ValueError(f"Avatar URL does not match extension regex: {avatar_url}")
-
+            raise ValueError(f"Avatar URL does not match extension regex: {asset.url}")
         avatar_ext = match[0]
         return avatar, avatar_ext
 
