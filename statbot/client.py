@@ -101,7 +101,7 @@ class EventIngestionClient(discord.Client):
     # Async initialization hook. See
     # https://gist.github.com/Rapptz/6706e1c8f23ac27c98cee4dd985c8120
     async def setup_hook(self):
-        self.ready = asyncio.Event(loop=self.loop)
+        self.ready = asyncio.Event()
 
         if self.crawlers is None:
             return
